@@ -21,17 +21,17 @@ dog** (§5), and every card must be readable in one glance.
 Source material: `podklady/` (downloaded from the author's Google Drive, **not
 committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 
-| #   | Phase                                         | Status              |
-| --- | --------------------------------------------- | ------------------- |
-| R0  | Scaffold (monorepo, tooling, CLAUDE.md)       | ✅ 2026-09-27       |
-| R1  | Content pipeline + national ruleset (CZ 2026) | ✅ 2026-09-27       |
-| R2  | FCI ruleset                                   | ⏳                  |
-| R3  | Random cards mode (rule-aware dealing)        | 🚧 before R2        |
-| R4  | Card catalogue                                | ⏳                  |
-| R5  | PWA: offline + install                        | ⏳                  |
-| R6  | Deploy + open-source release                  | 🚧 Dockerfile ready |
-| R7  | Full competition-course generator             | 💭 post-MVP         |
-| R8  | Quiz                                          | 💭 post-MVP         |
+| #   | Phase                                         | Status                                |
+| --- | --------------------------------------------- | ------------------------------------- |
+| R0  | Scaffold (monorepo, tooling, CLAUDE.md)       | ✅ 2026-09-27                         |
+| R1  | Content pipeline + national ruleset (CZ 2026) | ✅ 2026-09-27                         |
+| R2  | FCI ruleset                                   | ⏳                                    |
+| R3  | Random cards mode (rule-aware dealing)        | ✅ 2026-09-27 (national; FCI with R2) |
+| R4  | Card catalogue                                | ⏳                                    |
+| R5  | PWA: offline + install                        | ⏳                                    |
+| R6  | Deploy + open-source release                  | 🚧 Dockerfile ready                   |
+| R7  | Full competition-course generator             | 💭 post-MVP                           |
+| R8  | Quiz                                          | 💭 post-MVP                           |
 
 > **Order:** R3 is built before R2 so the national classes are usable end to end first;
 > FCI plugs into the same dealer afterwards.
@@ -329,11 +329,11 @@ plochu" hint with the Safari share-sheet steps.
 ### R3 — Random cards mode
 
 - [x] `dealDeck` + `validateDeck` with seeded PRNG; unit tests per rule + property tests per class (`packages/content/src/deal/`)
-- [ ] Setup screen (class, whole / new-only, count, equipment, start side, description)
-- [ ] Deck screen: full-screen card, main + D0 pairing, swipe + tap + buttons, progress, pace/side badges, reshuffle
-- [ ] Description toggle, wake lock
-- [ ] Deck state in the URL (class + options + seed)
-- [ ] Last setup remembered in local storage (`lib/storage.ts`, tested)
+- [x] Setup screen (class, whole / new-only, count, equipment, start side, description)
+- [x] Deck screen: full-screen card, main + D0 pairing, swipe + tap + buttons, progress, pace/side badges, reshuffle
+- [x] Description toggle, wake lock
+- [x] Deck state in the URL (class + options + seed)
+- [x] Last setup remembered in local storage (`lib/storage.ts`, tested)
 
 ### R4 — Card catalogue
 

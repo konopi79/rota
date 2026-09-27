@@ -6,7 +6,10 @@
   },
   "home": {
     "chooseClass": "Vyber třídu",
-    "comingSoon": "Připravujeme"
+    "comingSoon": "Připravujeme",
+    "cardCount_one": "{{count}} karta",
+    "cardCount_few": "{{count}} karty",
+    "cardCount_other": "{{count}} karet"
   },
   "classes": {
     "RO-Z": "RO-Z – začátečníci",
@@ -15,5 +18,46 @@
     "RO3": "RO3",
     "RO-V": "RO-V – veteráni",
     "FCI-ROB": "FCI-ROB"
+  },
+  "setup": {
+    "back": "Třídy",
+    "cards": "Karty",
+    "wholeClass": "Celá třída",
+    "newOnly": "Jen nové karty",
+    "newOnlyHint": "Jen karty, které třída přidává k nižším třídám – na učení nové úrovně.",
+    "count": "Počet karet",
+    "countHint": "Na závodech {{min}}–{{max}} karet.",
+    "fewer": "Méně",
+    "more": "Více",
+    "equipment": "Pomůcky s sebou",
+    "equipmentHint": "Karty s pomůckami, které nemáš, se vynechají.",
+    "cones": "Kužely",
+    "bowls": "Misky",
+    "jump": "Překážka",
+    "startSide": "Pes na startu",
+    "left": "Vlevo",
+    "right": "Vpravo",
+    "random": "Náhodně",
+    "showDescription": "Popis pod kartou",
+    "start": "Zamíchat a začít"
+  },
+  "deck": {
+    "close": "Zpět na nastavení",
+    "progress": "{{current}} / {{total}}",
+    "dogLeft": "Pes vlevo",
+    "dogRight": "Pes vpravo",
+    "paceSlow": "Pomalé tempo",
+    "paceFast": "Rychlé tempo",
+    "previous": "Předchozí",
+    "next": "Další",
+    "reshuffle": "Zamíchat znovu",
+    "changeSetup": "Změnit nastavení",
+    "startRight": "Start na pravou ruku (R)",
+    "startHint": "Klepni nebo přejeď pro první kartu.",
+    "shortDeck": "Z vybraných karet šlo sestavit jen {{dealt}} z {{requested}}.",
+    "finished": "Hotovo – {{count}} karet.",
+    "invalid": "Tenhle odkaz nepopisuje žádný balíček.",
+    "backHome": "Na výběr třídy",
+    "supplementary": "Doplňková karta"
   }
 }

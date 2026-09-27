@@ -86,8 +86,14 @@ No runtime env vars. Health check: `GET /healthz` → `ok`.
 - `import type` for type-only imports.
 - **shadcn/ui is base-ui, not Radix**: compose with `render={<Link />}`, never `asChild`.
 - **`cn` comes from `@/lib/utils`** (clsx + tailwind-merge, as in Malibo). The current
-  shadcn CLI generates `import { cn } from "cn"` (a separate package we don't use) — fix
-  the import in every component it adds, then run `bun run format` on it.
+  shadcn CLI generates `import { cn } from "cn"` **and adds the `cn` package** to
+  `apps/web/package.json` — after every `shadcn add`, fix the imports, `bun remove cn` in
+  `apps/web`, then `bun run format`.
+- `Button` with `render={<Link />}` sets `nativeButton={false}` itself (patched in
+  `components/ui/button.tsx`, same as Malibo) — keep that patch if the component is
+  regenerated.
+- Local storage is read through `useSyncExternalStore` (server snapshot = defaults) and
+  the form is remounted with a `key` — see `components/setup-form.tsx`.
 - Semantic colour tokens only (`bg-card`, `text-muted-foreground`), never raw `gray-*`/hex.
 - React 19: no `setState` inside `useEffect` to reset state — remount with a `key`.
 - Pages that use hooks (`useTranslation`, state) are client components (`'use client'`);

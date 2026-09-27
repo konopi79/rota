@@ -1,9 +1,12 @@
 'use client'
 
-import { CLASS_IDS } from '@rota/content'
+import { CLASS_IDS, getClass } from '@rota/content'
+import { ChevronRight } from 'lucide-react'
+import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
+import { classSlug } from '@/lib/classes'
 
 export default function HomePage() {
   const { t } = useTranslation()
@@ -18,12 +21,37 @@ export default function HomePage() {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">{t('home.chooseClass')}</h2>
         <div className="grid gap-2">
-          {CLASS_IDS.map((id) => (
-            <Button key={id} variant="outline" size="lg" disabled className="justify-between">
-              {t(`classes.${id}`)}
-              <span className="text-muted-foreground text-xs">{t('home.comingSoon')}</span>
-            </Button>
-          ))}
+          {CLASS_IDS.map((id) => {
+            const cls = getClass(id)
+            const label = t(`classes.${id}`)
+            if (!cls) {
+              return (
+                <Button
+                  key={id}
+                  variant="outline"
+                  disabled
+                  className="h-14 justify-between text-base"
+                >
+                  {label}
+                  <span className="text-muted-foreground text-xs">{t('home.comingSoon')}</span>
+                </Button>
+              )
+            }
+            return (
+              <Button
+                key={id}
+                variant="outline"
+                className="h-14 justify-between text-base"
+                render={<Link href={`/trida/${classSlug(id)}`} />}
+              >
+                {label}
+                <span className="text-muted-foreground flex items-center gap-1 text-xs">
+                  {t('home.cardCount', { count: cls.cardCodes.length })}
+                  <ChevronRight className="size-4" />
+                </span>
+              </Button>
+            )
+          })}
         </div>
       </section>
     </main>
