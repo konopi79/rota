@@ -68,7 +68,8 @@ bun run format
 
 ## Deployment (rock8.cloud)
 
-rock8.cloud builds the image from `apps/web/Dockerfile` (context = repo root): Bun builds
+Live at **https://rota.rock8cloud.app**. rock8.cloud builds the image from
+`apps/web/Dockerfile` (context = repo root): Bun builds
 the static export, `nginxinc/nginx-unprivileged` serves `apps/web/out` on **port 3030**.
 No runtime env vars. Health check: `GET /healthz` → `ok`.
 

@@ -21,17 +21,17 @@ dog** (§5), and every card must be readable in one glance.
 Source material: `podklady/` (downloaded from the author's Google Drive, **not
 committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 
-| #   | Phase                                         | Status              |
-| --- | --------------------------------------------- | ------------------- |
-| R0  | Scaffold (monorepo, tooling, CLAUDE.md)       | ✅ 2026-09-27       |
-| R1  | Content pipeline + national ruleset (CZ 2026) | ✅ 2026-09-27       |
-| R2  | FCI ruleset                                   | ✅ 2026-09-27       |
-| R3  | Random cards mode (rule-aware dealing)        | ✅ 2026-09-27       |
-| R4  | Card catalogue                                | ✅ 2026-09-27       |
-| R5  | PWA: offline + install                        | ✅ 2026-09-27       |
-| R6  | Deploy + open-source release                  | 🚧 Dockerfile ready |
-| R7  | Full competition-course generator             | 💭 post-MVP         |
-| R8  | Quiz                                          | 💭 post-MVP         |
+| #   | Phase                                         | Status                      |
+| --- | --------------------------------------------- | --------------------------- |
+| R0  | Scaffold (monorepo, tooling, CLAUDE.md)       | ✅ 2026-09-27               |
+| R1  | Content pipeline + national ruleset (CZ 2026) | ✅ 2026-09-27               |
+| R2  | FCI ruleset                                   | ✅ 2026-09-27               |
+| R3  | Random cards mode (rule-aware dealing)        | ✅ 2026-09-27               |
+| R4  | Card catalogue                                | ✅ 2026-09-27               |
+| R5  | PWA: offline + install                        | ✅ 2026-09-27               |
+| R6  | Deploy + open-source release                  | 🚧 live; repo still private |
+| R7  | Full competition-course generator             | 💭 post-MVP                 |
+| R8  | Quiz                                          | 💭 post-MVP                 |
 
 > **Order:** R3 is built before R2 so the national classes are usable end to end first;
 > FCI plugs into the same dealer afterwards.
@@ -304,7 +304,7 @@ plochu" hint with the Safari share-sheet steps.
 
 ## 10. Open items
 
-- Domain (hosting: rock8.cloud).
+- Own domain? Live at `rota.rock8cloud.app` for now.
 - English UI for FCI-ROB — later, i18n is ready (D6).
 
 ## 11. Checklist
@@ -355,13 +355,13 @@ plochu" hint with the Safari share-sheet steps.
 ### R5 — PWA
 
 - [x] Manifest + icons (`app/manifest.ts`, icon drawn in `app/icon.svg`, PNGs by `apps/web/scripts/icons.ts`; square variants for iOS and maskable)
-- [x] Service worker precaching shell, content and all card images (1 611 files, 17.6 MB) — tested offline on the production image by stopping the server: fresh page loads, a deck from its URL and card images all work. On a real phone: still to try.
+- [x] Service worker precaching shell, content and all card images (1 611 files, 17.6 MB) — tested offline on the production image by stopping the server: fresh page loads, a deck from its URL and card images all work. Tried on an iPhone by the author after the deploy (2026-09-27): works.
 - [x] Install hint on the home screen until dismissed: iOS Safari steps, Chrome/Android install button (`beforeinstallprompt`)
 
 ### R6 — Deploy + open-source release
 
 - [x] Dockerfile: Bun build → `nginx-unprivileged` serving `out/` on **port 3030**, security headers, `/healthz`, verified in CI
-- [ ] rock8.cloud service, domain, HTTPS
+- [x] rock8.cloud service, HTTPS — live at https://rota.rock8cloud.app (2026-09-27; the first deploys failed on a rock8 registry outage, fixed by rock8 support)
 - [x] About page (`/o-aplikaci`): unofficial training aid, sources and regulation versions, credits, privacy, offline, link to the repo
 - [ ] Make `konopi79/rota` public
 
