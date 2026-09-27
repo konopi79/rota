@@ -8,7 +8,7 @@ import {
   type ClassId,
   type Equipment,
 } from '@rota/content'
-import { ChevronLeft, Minus, Plus, Shuffle } from 'lucide-react'
+import { ChevronLeft, LayoutGrid, Minus, Plus, Shuffle } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useSyncExternalStore } from 'react'
@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { classSlug } from '@/lib/classes'
 import { encodeDeckParams } from '@/lib/deck-url'
 import { defaultSetup, loadSetup, saveSetup, type Setup } from '@/lib/storage'
 
@@ -94,8 +95,15 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
           {t('setup.back')}
         </Button>
         <h1 className="text-3xl font-bold tracking-tight">{t(`classes.${classId}`)}</h1>
-        <p className="text-muted-foreground">
+        <p className="text-muted-foreground flex items-center gap-3">
           {t('home.cardCount', { count: cls.cardCodes.length })}
+          <Link
+            href={`/trida/${classSlug(classId)}/karty`}
+            className="text-foreground inline-flex items-center gap-1 underline underline-offset-4"
+          >
+            <LayoutGrid className="size-4" />
+            {t('setup.browseCards')}
+          </Link>
         </p>
       </header>
 

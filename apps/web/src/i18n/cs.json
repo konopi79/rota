@@ -39,7 +39,8 @@
     "right": "Vpravo",
     "random": "Náhodně",
     "showDescription": "Popis pod kartou",
-    "start": "Zamíchat a začít"
+    "start": "Zamíchat a začít",
+    "browseCards": "Prohlédnout karty třídy"
   },
   "deck": {
     "close": "Zpět na nastavení",
@@ -62,5 +63,67 @@
     "points_one": "{{count}} bod",
     "points_few": "{{count}} body",
     "points_other": "{{count}} bodů"
+  },
+  "catalogue": {
+    "title": "Karty – {{cls}}",
+    "back": "Nastavení",
+    "search": "Hledat podle čísla nebo názvu",
+    "newOnly": "Jen nové karty",
+    "all": "Vše",
+    "typeA": "Statické (A)",
+    "typeB": "Dynamické (B)",
+    "typeAB": "S doplňkovou",
+    "supplementary": "D0",
+    "points": "{{count}} b.",
+    "noEquipment": "Bez pomůcek",
+    "empty": "Žádná karta neodpovídá filtru.",
+    "count_one": "{{count}} karta",
+    "count_few": "{{count}} karty",
+    "count_other": "{{count}} karet"
+  },
+  "card": {
+    "back": "Zpět",
+    "diagram": "Nákres provedení",
+    "subParts": "Dílčí části",
+    "mainExercise": "hlavní cvik",
+    "rules": "Řazení a pomůcky",
+    "equipment": "Pomůcky",
+    "classes": "Třídy",
+    "source": "Zdroj: {{source}}, str. {{page}}",
+    "typeA": "Statický cvik – končí v klidu (typ A).",
+    "typeB": "Dynamický cvik – končí v pohybu (typ B).",
+    "typeAB": "Konec cviku (typ A, nebo B) určuje doplňková karta.",
+    "placementA": "Provádí se vlevo od karty.",
+    "placementB": "Provádí se před kartou.",
+    "placementC": "Provádí se u kuželu pro přivolání.",
+    "placementD": "Skok – začíná nejdříve u karty."
+  },
+  "notes": {
+    "requiresSupplementary": "Vždy s doplňkovou kartou D0.",
+    "nextOneOf": "Musí následovat jedna z karet {{codes}}.",
+    "mayBeFollowedBy": "Může následovat přivolání {{codes}}, jinak se přivolává u kuželu.",
+    "onlyAfterLeave": "Jen hned po kartě, kde pes zůstal odložený.",
+    "afterStatic": "Jen po statickém cviku.",
+    "pace": {
+      "slow": "Mění tempo na pomalé.",
+      "fast": "Mění tempo na rychlé.",
+      "normal": "Vrací normální tempo."
+    },
+    "paceCompatible": "Lze provést i v pomalém nebo rychlém tempu.",
+    "sideOnly": {
+      "left": "Jen se psem vlevo.",
+      "right": "Jen se psem vpravo."
+    },
+    "sideChange": "Mění stranu vedení psa.",
+    "endSide": {
+      "left": "Končí se psem vlevo.",
+      "right": "Končí se psem vpravo."
+    },
+    "lastOnly": "Ve třídě {{cls}} jen jako poslední karta."
+  },
+  "equipment": {
+    "cones": "kužely",
+    "bowls": "misky",
+    "jump": "překážka"
   }
 }

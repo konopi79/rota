@@ -27,7 +27,7 @@ committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 | R1  | Content pipeline + national ruleset (CZ 2026) | ✅ 2026-09-27       |
 | R2  | FCI ruleset                                   | ✅ 2026-09-27       |
 | R3  | Random cards mode (rule-aware dealing)        | ✅ 2026-09-27       |
-| R4  | Card catalogue                                | ⏳                  |
+| R4  | Card catalogue                                | ✅ 2026-09-27       |
 | R5  | PWA: offline + install                        | ⏳                  |
 | R6  | Deploy + open-source release                  | 🚧 Dockerfile ready |
 | R7  | Full competition-course generator             | 💭 post-MVP         |
@@ -349,8 +349,8 @@ plochu" hint with the Safari share-sheet steps.
 
 ### R4 — Card catalogue
 
-- [ ] List with thumbnails, filters (class, new-in-class, A/B, points, equipment), search
-- [ ] Card detail (image, description, sub-parts, sequencing notes, classes)
+- [x] List with thumbnails, filters (new-in-class, type A/B/D0 or FCI points, without equipment), diacritics-insensitive search — `/trida/<class>/karty`
+- [x] Card detail (image, execution diagram, description, sub-parts, sequencing rules in words, equipment, classes, source page) — `/karta/<ruleset>/<card>`, all 215 prerendered
 
 ### R5 — PWA
 
