@@ -12,7 +12,7 @@
 import { $ } from 'bun'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import sharp from 'sharp'
+import sharp, { type Sharp } from 'sharp'
 
 import { cardFileName, SOURCES, VERIFIED_BY_EYE, type PageEntry, type Source } from './sources'
 
@@ -88,7 +88,7 @@ async function frameBox(png: string) {
 }
 
 /** Read the code printed in the card's top-right corner. */
-async function readCode(card: sharp.Sharp, base: string): Promise<string> {
+async function readCode(card: Sharp, base: string): Promise<string> {
   const { width = 0, height = 0 } = await card.metadata()
   const crop = `${base}-code.png`
   await card

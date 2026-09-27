@@ -108,6 +108,23 @@ Everything is prebuilt; there is no server at runtime. Consequences:
 
 - Card texts and sequencing rules come from the regulations in `podklady/` and are
   **proofread by hand** — PDF extraction mangles lines and tables, and a wrong rule is
-  worse than none. Cite the regulation paragraph in a comment next to each sequencing rule.
+  worse than none. Cite the regulation page in a comment next to each sequencing rule.
+- `packages/content/src/cz/*.ts` are **hand-maintained**. They were bootstrapped from the
+  draft of `scripts/content/parse-cz.ts`; that script stays for the next regulation
+  version — re-run it and diff its draft against the previous one to see what changed.
+- **The national regulation PDF contains tracked changes**: struck-through (deleted) text
+  is still in the text layer, so extracted text shows old and new wording side by side.
+  Always check a new version with `scripts/content/strikethrough.py` (PyMuPDF, lives in
+  `.cache/venv`) and drop the struck runs.
 - Class card lists are explicit; never derive them from code ranges at runtime.
-- Every content change keeps the data-integrity tests green.
+- `packages/content/src/schema.ts` is the source of truth for the data shape; every
+  content change keeps the data-integrity tests green (`bun test packages/content`).
+
+## Card images (`bun run cards:extract`)
+
+`scripts/cards/extract.ts` renders the card PDFs (`scripts/cards/sources.ts` maps page →
+code), crops each card to its printed frame, checks the page → code mapping by OCR of the
+code printed on the card, and writes `apps/web/public/cards/<ruleset>/<code>.webp` plus
+`thumb/`. Review `.cache/cards/contact-sheet.html` after every run. Needs `poppler` and
+`tesseract` (`brew install poppler tesseract`). Work files go to `.cache/` — the
+sandboxed tooling cannot read `/tmp`.

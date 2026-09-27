@@ -24,7 +24,7 @@ committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 | #   | Phase                                         | Status              |
 | --- | --------------------------------------------- | ------------------- |
 | R0  | Scaffold (monorepo, tooling, CLAUDE.md)       | ✅ 2026-09-27       |
-| R1  | Content pipeline + national ruleset (CZ 2026) | ⏳                  |
+| R1  | Content pipeline + national ruleset (CZ 2026) | ✅ 2026-09-27       |
 | R2  | FCI ruleset                                   | ⏳                  |
 | R3  | Random cards mode (rule-aware dealing)        | ⏳                  |
 | R4  | Card catalogue                                | ⏳                  |
@@ -198,10 +198,26 @@ regulations:
   are always dealt **together with one D0 card**, shown on the same screen (as on a real
   course, where D0 sits right next to the main card). D0a/b end static (type A), D0c/d
   dynamic (type B); RO-V only D0a and D0c. D0 cards are never dealt on their own.
-- **Pace.** Slow (Z-015) and fast (Z-016) pace hold "until another exercise changes it
-  (static exercise, pace change, finish)". Normal pace (Z-017) only makes sense after
-  slow or fast pace; the same pace twice in a row is meaningless.
+- **Pace.** Slow (Z-015) and fast (Z-016, and 1-110 "rychlé tempo ze sedu") pace hold
+  "until another exercise changes it (static exercise, pace change, finish)". Normal pace
+  (Z-017) only makes sense after slow or fast pace; the same pace twice in a row is
+  meaningless.
+- **Leave → follow-up.** Cards where the dog is left behind and the handler walks on
+  (2-211, 2-212, 2-218, 3-301, 3-307, 3-310–3-312, 3-314, 3-324) say "Další cvik v
+  parkuru musí být vybrán z těchto karet: …". The next card must come from that list
+  (`nextOneOf`), and the listed recall / return cards (2-213–2-216, 3-302, 3-308, 3-309,
+  3-319–3-322) are **never dealt on their own** (`onlyAfterLeave`). Codes outside the
+  dealt class are ignored (RO2 decks never contain 3-3xx follow-ups).
+- **After a static exercise.** 2-218 and 3-314 ("z poslední pozice") must follow a card
+  that ends static (`afterStatic`).
+- **Dog's side.** "Psovod vede psa standardně po své levé straně" (§4.2), but a start can
+  be "na pravou ruku" and the side-change cards 1-123–1-125, 2-232, 3-325–3-327 switch
+  it (`sideChange`). The dealer tracks and shows the side (see §10 for an open question).
 - **Last card only.** RO-V: Z-016 and 1-110 only as the last card.
+- **Tracked changes in the PDF.** The 2026 regulation was published with struck-through
+  text still in it; `pdftotext` returns deleted and new wording side by side. Found with
+  `scripts/content/strikethrough.py` and removed during proofreading — among them two
+  follow-ups of 3-311 (p. 55).
 
 **FCI-ROB**
 
@@ -217,18 +233,10 @@ regulations:
 
 **Implementation.**
 
-```ts
-type CardSequencing = {
-  requiresSupplementary?: boolean // deal with one allowed D0 card
-  pace?: 'slow' | 'fast' | 'normal' // pace-change card
-  paceCompatible?: boolean // may be performed in slow/fast pace (flowing)
-  endsPace?: boolean // static exercise ends slow/fast pace (national)
-  sideChange?: boolean // FCI: toggles the dog's side
-  sideOnly?: 'left' | 'right' // FCI 417 / 418
-  lastOnly?: ClassId[] // classes where it may only be the last card
-  equipment?: ('cones' | 'bowls' | 'jump')[]
-}
-```
+The metadata lives on each card as `sequencing` (`packages/content/src/schema.ts` is the
+source of truth): `requiresSupplementary`, `pace`, `nextOneOf`, `onlyAfterLeave`,
+`afterStatic`, `sideChange`, `lastOnly`, `equipment`; FCI adds what R2 needs
+(`paceCompatible` for 105–113, `sideOnly` for 417/418).
 
 - `dealDeck(class, options, seed)` — pure function, seeded PRNG, builds the sequence
   step by step over a small state (current pace, current side, used counts), drawing only
@@ -276,8 +284,9 @@ plochu" hint with the Safari share-sheet steps.
 
 ## 10. Open items
 
-- Verify during proofreading whether more national cards carry sequencing rules than the
-  ones in §5 (e.g. cards that must not follow each other, jump cards needing distance).
+- **National side changes** — after a side-change card, does the course continue with the
+  dog on the right until another side change, and must it end on the left? (Asked
+  2026-09-27.)
 - Domain (hosting: rock8.cloud).
 - English UI for FCI-ROB — later, i18n is ready (D6).
 
@@ -298,11 +307,11 @@ plochu" hint with the Safari share-sheet steps.
 
 - [x] Card image script: render, trim, webp full + thumb, contact sheet — `bun run cards:extract` (`scripts/cards/`); needs poppler + tesseract
 - [x] National images extracted; page → code mapping verified against printed codes (OCR, 2-202 by eye) — 124 images, 3.5 MB
-- [ ] Content types + Zod schemas in `packages/content`
-- [ ] National classes RO-Z, RO1, RO2, RO3 (cumulative lists + new-card lists), RO-V (explicit list) with course rules
-- [ ] National cards: start, finish, D0a–d, Z-001…032, 1-101…125, 2-201…232, 3-301…327 — descriptions and sub-parts proofread
-- [ ] National sequencing metadata (D0 pairing, pace, last-only, equipment) with regulation references
-- [ ] Data-integrity tests (counts, images, codes, class lists, cumulative inclusion)
+- [x] Content types + Zod schemas in `packages/content`
+- [x] National classes RO-Z, RO1, RO2, RO3 (cumulative lists + new-card lists), RO-V (explicit list) with course rules
+- [x] National cards: start, finish, D0a–d, Z-001…032, 1-101…125, 2-201…232, 3-301…327 — descriptions and sub-parts proofread (draft: `scripts/content/parse-cz.ts`; struck text: `strikethrough.py`)
+- [x] National sequencing metadata (D0 pairing, pace, leave → follow-up, after-static, side change, last-only, equipment) with regulation references
+- [x] Data-integrity tests (counts, images, codes, class lists, cumulative inclusion, rule consistency)
 
 ### R2 — FCI ruleset
 

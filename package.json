@@ -9,7 +9,7 @@
     "dev": "bun run --filter './apps/web' dev",
     "build": "bun run --filter './apps/web' build",
     "lint": "bun run --filter '*' lint",
-    "typecheck": "bun run --filter '*' typecheck",
+    "typecheck": "bun run --filter '*' typecheck && tsc -p scripts",
     "test": "bun test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
