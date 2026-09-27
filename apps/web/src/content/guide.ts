@@ -20,9 +20,9 @@ export const GUIDE: GuideSection[] = [
     id: 'iphone',
     title: 'iPhone',
     steps: [
-      `Otevři ${APP_URL} v Safari – na iPhonu jde aplikace přidat na plochu jen ze Safari.`,
-      'Klepni na tlačítko Sdílet (čtvereček se šipkou nahoru) a vyber „Přidat na plochu“.',
-      'Spouštěj ROTA ikonou z plochy. Aplikace na ploše má vlastní paměť – nastavení ze Safari se do ní nepřenese.',
+      `Otevři ${APP_URL} v Safari, Chromu nebo jiném prohlížeči.`,
+      'Klepni na tlačítko Sdílet (čtvereček se šipkou nahoru – v Safari dole, v Chromu v adresním řádku) a vyber „Přidat na plochu“. Když položku nevidíš, posuň nabídku níž.',
+      'Spouštěj ROTA ikonou z plochy. Aplikace na ploše má vlastní paměť – nastavení z prohlížeče se do ní nepřenese.',
     ],
   },
   {

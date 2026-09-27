@@ -292,7 +292,7 @@ worker precaching the app shell, content and **all card images** so the app work
 offline on a field. Tool: Serwist — verified in R0: bundle `sw.ts` with
 `bun build`, then `@serwist/build` `injectManifest` over `out/` after `next build`.
 Bundler-independent, no Next/Turbopack plugin. iOS has no install prompt: a one-time "Přidej si ROTA na
-plochu" hint with the Safari share-sheet steps.
+plochu" hint with the share-sheet steps (any iOS browser since iOS 16.4 — all are WebKit).
 
 ## 9. After the MVP (R7–R9)
 
@@ -380,7 +380,7 @@ gesture for audio).
 
 - [x] Manifest + icons (`app/manifest.ts`, icon drawn in `app/icon.svg`, PNGs by `apps/web/scripts/icons.ts`; square variants for iOS and maskable)
 - [x] Service worker precaching shell, content and all card images (1 611 files, 17.6 MB) — tested offline on the production image by stopping the server: fresh page loads, a deck from its URL and card images all work. Tried on an iPhone by the author after the deploy (2026-09-27): works.
-- [x] Install hint on the home screen until dismissed: iOS Safari steps, Chrome/Android install button (`beforeinstallprompt`)
+- [x] Install hint on the home screen until dismissed: iOS share-sheet steps (Safari, Chrome and the rest — all WebKit), Chrome/Android install button (`beforeinstallprompt`)
 
 ### R6 — Deploy + open-source release
 

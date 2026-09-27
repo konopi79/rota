@@ -35,9 +35,11 @@ export function installMode(): InstallMode {
     (navigator as Navigator & { standalone?: boolean }).standalone === true
   if (standalone) return 'installed'
   if (deferred) return 'prompt'
-  // iOS has no install prompt; only Safari can add to the home screen.
+  // iOS has no install prompt, but every iOS browser (all are WebKit) can add to the
+  // home screen from its share menu since iOS 16.4. iPadOS reports itself as a Mac.
   const ua = navigator.userAgent
-  if (/iPhone|iPad|iPod/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua)) return 'ios'
+  const iPadOS = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1
+  if (/iPhone|iPad|iPod/.test(ua) || iPadOS) return 'ios'
   return 'none'
 }
 

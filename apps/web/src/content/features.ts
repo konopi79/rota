@@ -109,7 +109,7 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
       {
         id: 'install',
         title: 'Na plochu telefonu',
-        desc: 'Přidáš si ji na plochu jako běžnou aplikaci – na iPhonu přes Safari, na Androidu tlačítkem.',
+        desc: 'Přidáš si ji na plochu jako běžnou aplikaci – na iPhonu přes Sdílet → „Přidat na plochu“, na Androidu tlačítkem.',
       },
       {
         id: 'privacy',
