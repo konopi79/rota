@@ -77,7 +77,8 @@ No runtime env vars. Health check: `GET /healthz` → `ok`.
   `apps/web/docker/security-headers.conf` — every `location` must `include` it, because
   a location's own `add_header` drops all inherited ones.
 - Caching: `/_next/static/` immutable, `/cards/` one day, pages and `/sw.js` `no-cache`.
-- CI builds the image on every push (verification only, not pushed anywhere).
+- **rock8 deploys every push to `main` automatically** — a red `main` is a broken live app.
+- CI builds the image on every push too (verification only, not pushed anywhere).
 - Local check: `docker build -f apps/web/Dockerfile -t rota . && docker run -p 3030:3030 rota`
 
 ## Offline (service worker)

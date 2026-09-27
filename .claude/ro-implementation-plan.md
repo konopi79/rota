@@ -21,18 +21,18 @@ dog** (§5), and every card must be readable in one glance.
 Source material: `podklady/` (downloaded from the author's Google Drive, **not
 committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 
-| #   | Phase                                         | Status                       |
-| --- | --------------------------------------------- | ---------------------------- |
-| R0  | Scaffold (monorepo, tooling, CLAUDE.md)       | ✅ 2026-09-27                |
-| R1  | Content pipeline + national ruleset (CZ 2026) | ✅ 2026-09-27                |
-| R2  | FCI ruleset                                   | ✅ 2026-09-27                |
-| R3  | Random cards mode (rule-aware dealing)        | ✅ 2026-09-27                |
-| R4  | Card catalogue                                | ✅ 2026-09-27                |
-| R5  | PWA: offline + install                        | ✅ 2026-09-27                |
-| R6  | Deploy + open-source release                  | 🚧 live; repo still private  |
-| R7  | Competition-course generator                  | ✅ 2026-09-27                |
-| R8  | Quiz                                          | ✅ 2026-09-27                |
-| R9  | Voice: cards read aloud                       | 🚧 done; iPhone test pending |
+| #   | Phase                                         | Status                      |
+| --- | --------------------------------------------- | --------------------------- |
+| R0  | Scaffold (monorepo, tooling, CLAUDE.md)       | ✅ 2026-09-27               |
+| R1  | Content pipeline + national ruleset (CZ 2026) | ✅ 2026-09-27               |
+| R2  | FCI ruleset                                   | ✅ 2026-09-27               |
+| R3  | Random cards mode (rule-aware dealing)        | ✅ 2026-09-27               |
+| R4  | Card catalogue                                | ✅ 2026-09-27               |
+| R5  | PWA: offline + install                        | ✅ 2026-09-27               |
+| R6  | Deploy + open-source release                  | 🚧 live; repo still private |
+| R7  | Competition-course generator                  | ✅ 2026-09-27               |
+| R8  | Quiz                                          | ✅ 2026-09-27               |
+| R9  | Voice: cards read aloud                       | ✅ 2026-09-27               |
 
 > **Order:** R3 is built before R2 so the national classes are usable end to end first;
 > FCI plugs into the same dealer afterwards.
@@ -328,7 +328,7 @@ gesture for audio).
 
 ## 10. Open items
 
-- Own domain? Live at `rota.rock8cloud.app` for now.
+- Own domain — not now (rota.cz and rota.app are taken); `rota.rock8cloud.app` is enough to spread the MVP in the community.
 - English UI for FCI-ROB — later, i18n is ready (D6).
 
 ## 11. Checklist
@@ -407,7 +407,7 @@ gesture for audio).
 
 - [x] Announcement text (card, D0, pace, side change) as a pure function; tests (`lib/announce.ts`)
 - [x] Speech on the deck screen: setup option (remembered) + toggle in the deck header, `cs-CZ` voice (`lib/speech.ts`; `hlas=1` in the URL)
-- [ ] Tried on an iPhone (Safari and home-screen app)
+- [x] Tried on an iPhone (home-screen app, speech included) by the author, 2026-09-27
 
 Each phase ends green on `bun run format && bun run typecheck && bun run lint` plus its
 own tests, and is committed separately.
