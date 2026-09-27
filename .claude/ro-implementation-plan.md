@@ -30,8 +30,9 @@ committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 | R4  | Card catalogue                                | ✅ 2026-09-27               |
 | R5  | PWA: offline + install                        | ✅ 2026-09-27               |
 | R6  | Deploy + open-source release                  | 🚧 live; repo still private |
-| R7  | Full competition-course generator             | 💭 post-MVP                 |
-| R8  | Quiz                                          | 💭 post-MVP                 |
+| R7  | Competition-course generator                  | ⏳                          |
+| R8  | Quiz                                          | ⏳                          |
+| R9  | Voice: cards read aloud                       | ⏳                          |
 
 > **Order:** R3 is built before R2 so the national classes are usable end to end first;
 > FCI plugs into the same dealer afterwards.
@@ -293,14 +294,37 @@ offline on a field. Tool: Serwist — verified in R0: bundle `sw.ts` with
 Bundler-independent, no Next/Turbopack plugin. iOS has no install prompt: a one-time "Přidej si ROTA na
 plochu" hint with the Safari share-sheet steps.
 
-## 9. Post-MVP sketches
+## 9. After the MVP (R7–R9)
 
-- **R7 — Full competition-course generator.** On top of `dealDeck`: the class's course
-  composition (size, FCI ≥ 7 four-point / ≥ 5 three-point), start/finish, printable
-  numbered list, shareable URL.
-- **R8 — Quiz.** Show a card, recall its meaning, reveal; or pick from 3 descriptions.
-  "Cards I struggle with" kept locally and dealt more often.
-- Voice: read the card name aloud (Web Speech API).
+**R7 — Competition-course generator** (`/trida/<class>/parkur`). A full course the way a
+judge would build one: the class's course size (min–max, default max), all equipment,
+start side stated, start → numbered cards (with their D0 cards) → finish. FCI adds the
+point mix of §3.5 — **≥ 7 four-point and ≥ 5 three-point cards**. Only ~4 % of random
+decks meet it by chance, so the dealer gets a `competition` option: candidates whose
+points still have an unmet quota are drawn with more weight, and once the remaining
+slots only just cover the missing cards, only those are allowed. `validateDeck` checks
+the mix independently. The course lives in the URL like a deck (`parkur=1` marks the
+competition rules), is printable (print stylesheet), shareable, and can be walked
+through as a deck.
+
+**R8 — Quiz** (`/trida/<class>/kviz`), two modes over a class's exercises:
+
+- **Recall** — the card is shown; think what exactly to do; reveal name, description
+  and sub-parts; answer "Vím" / "Nevím".
+- **Pick** — the card is shown with three descriptions (the right one + two from the
+  same class, preferably the same type or points); tap one, see if it was right.
+
+Answers are counted per card in local storage (D2). The next card is drawn weighted:
+unseen and often-missed cards come more often, mastered ones less. A short summary
+("umíš X z Y") and a reset. Pure logic in `lib/quiz.ts`, tested.
+
+**R9 — Voice.** With "Číst nahlas" on (setup option, remembered, and a toggle on the
+deck screen), each new card's Czech name is spoken with the Web Speech API
+(`speechSynthesis`, a `cs-CZ` voice when available): "Karta 3. Obrat vpravo za chůze.",
+with its D0 card, the pace and a side change announced when they change. The phone can
+stay in the pocket for the name; the card is there when needed. The announcement text is
+a pure, tested function; speaking only happens on a user's tap/swipe (iOS requires a
+gesture for audio).
 
 ## 10. Open items
 
@@ -364,6 +388,26 @@ plochu" hint with the Safari share-sheet steps.
 - [x] rock8.cloud service, HTTPS — live at https://rota.rock8cloud.app (2026-09-27; the first deploys failed on a rock8 registry outage, fixed by rock8 support)
 - [x] About page (`/o-aplikaci`): unofficial training aid, sources and regulation versions, credits, privacy, offline, link to the repo
 - [ ] Make `konopi79/rota` public
+
+### R7 — Competition-course generator
+
+- [ ] Dealer `competition` option: class course size, FCI point-mix quota (weighted + forced), validator check; tests
+- [ ] Course page: numbered list start → cards (+ D0, side and pace notes) → finish, FCI points total
+- [ ] Course in the URL (seed + options), new course, print stylesheet, share, "projít jako balíček"
+- [ ] Entry point on the setup screen
+
+### R8 — Quiz
+
+- [ ] `lib/quiz.ts`: weighted next card, distractor descriptions, answer stats (local storage); tests
+- [ ] Recall mode (reveal, "Vím / Nevím")
+- [ ] Pick mode (three descriptions)
+- [ ] Progress summary + reset; entry point on the setup screen
+
+### R9 — Voice
+
+- [ ] Announcement text (card, D0, pace, side change) as a pure function; tests
+- [ ] Speech on the deck screen: setup option (remembered) + toggle in the deck header, `cs-CZ` voice
+- [ ] Tried on an iPhone (Safari and home-screen app)
 
 Each phase ends green on `bun run format && bun run typecheck && bun run lint` plus its
 own tests, and is committed separately.
