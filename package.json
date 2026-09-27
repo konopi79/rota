@@ -1,0 +1,26 @@
+{
+  "name": "rota",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --filter './apps/web' dev",
+    "build": "bun run --filter './apps/web' build",
+    "lint": "bun run --filter '*' lint",
+    "typecheck": "bun run --filter '*' typecheck",
+    "test": "bun test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@evilmartians/lefthook": "^2.1.10",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/bun": "^1.3.12",
+    "prettier": "^3.9.6",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.7.0"
+  }
+}

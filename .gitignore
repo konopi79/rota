@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Bun
+.bun/
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+*.tsbuildinfo
+
+# Next.js auto-generated (flips between dev/build paths)
+next-env.d.ts
+
+# Source PDFs of the regulations and cards (~120 MB) — the author's Google Drive
+# folder is the source of truth, see .claude/ro-implementation-plan.md
+podklady/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Test / coverage
+coverage/
+
+# Logs
+*.log
+
+# Editor / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Claude Code local settings (keep shared docs/config checked in)
+.claude/settings.local.json

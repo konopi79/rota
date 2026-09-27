@@ -1,0 +1,23 @@
+# https://lefthook.dev/configuration/
+
+# Ensure bun is in PATH for GUI clients (SourceTree, etc.)
+rc: .lefthookrc
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: lint
+      root: apps/web/
+      glob: '**/*.{ts,tsx}'
+      exclude: '**/next-env.d.ts'
+      run: bun --bun ./node_modules/.bin/eslint {staged_files}
+
+    - name: format-check
+      glob: '**/*.{ts,tsx,js,mjs,json,css,md,yml,yaml}'
+      exclude: '**/next-env.d.ts'
+      run: bun --bun ./node_modules/.bin/prettier --check {staged_files}
+
+pre-push:
+  jobs:
+    - name: typecheck
+      run: bun run typecheck

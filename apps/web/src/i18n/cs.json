@@ -1,0 +1,19 @@
+{
+  "app": {
+    "name": "ROTA",
+    "tagline": "Rally Obedience Training App",
+    "description": "Náhodné karty rally obedience pro trénink – národní řád i FCI."
+  },
+  "home": {
+    "chooseClass": "Vyber třídu",
+    "comingSoon": "Připravujeme"
+  },
+  "classes": {
+    "RO-Z": "RO-Z – začátečníci",
+    "RO1": "RO1",
+    "RO2": "RO2",
+    "RO3": "RO3",
+    "RO-V": "RO-V – veteráni",
+    "FCI-ROB": "FCI-ROB"
+  }
+}
