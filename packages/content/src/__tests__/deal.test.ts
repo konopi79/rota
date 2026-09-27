@@ -207,3 +207,57 @@ describe('dealDeck', () => {
     expect(validateDeck(deck)).toEqual([])
   })
 })
+
+describe('competition courses (R7)', () => {
+  const competition = (classId: ClassId, seed: number, count?: number) => {
+    const cls = CLASSES.find((c) => c.id === classId)
+    return dealDeck({
+      classId,
+      scope: 'all',
+      count: count ?? cls?.course.maxCards ?? 0,
+      equipment: [...EQUIPMENT],
+      startSide: seed % 2 ? 'left' : 'right',
+      seed,
+      competition: true,
+    })
+  }
+
+  test('FCI courses always meet the point mix (≥ 7 four-point, ≥ 5 three-point)', () => {
+    for (let seed = 0; seed < 1500; seed++) {
+      for (const count of [18, 20]) {
+        const deck = competition('FCI-ROB', seed, count)
+        expect(deck.entries).toHaveLength(count)
+        const errors = validateDeck(deck)
+        if (errors.length) throw new Error(`seed ${seed}/${count}: ${errors}`)
+      }
+    }
+  })
+
+  test('every class yields a valid competition course', () => {
+    for (const cls of CLASSES) {
+      for (let seed = 0; seed < 100; seed++) {
+        const deck = competition(cls.id as ClassId, seed)
+        expect(validateDeck(deck)).toEqual([])
+      }
+    }
+  })
+
+  test('the validator catches a missing point mix and a wrong course size', () => {
+    // A plain training deck rarely meets the mix (~4 %) — find one that misses it.
+    const missesMix = Array.from({ length: 50 }, (_, seed) =>
+      dealDeck({
+        classId: 'FCI-ROB',
+        scope: 'all',
+        count: 20,
+        equipment: [...EQUIPMENT],
+        startSide: 'left',
+        seed,
+      }),
+    )
+      .map((deck) => validateDeck({ ...deck, options: { ...deck.options, competition: true } }))
+      .find((errors) => errors.length > 0)
+    expect(missesMix?.some((e) => e.includes('-point cards'))).toBe(true)
+    const short = competition('RO1', 1, 10)
+    expect(validateDeck(short)).toContain('course of 10 cards, RO1 needs 18–20')
+  })
+})

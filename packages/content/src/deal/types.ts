@@ -14,6 +14,11 @@ export type DealOptions = {
   equipment: Equipment[]
   startSide: Side
   seed: number
+  /**
+   * A competition course (R7) rather than a training deck: the class's point mix
+   * (`course.minByPoints`) must be met. Size and equipment are the caller's to set.
+   */
+  competition?: boolean
 }
 
 export type DeckEntry = {

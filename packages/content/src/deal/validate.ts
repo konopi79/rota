@@ -90,5 +90,18 @@ export function validateDeck(deck: Deck): string[] {
     prevOptional = seq.mayBeFollowedBy ?? []
     prevCode = card.code
   })
+
+  if (options.competition) {
+    const { minCards, maxCards, minByPoints = {} } = cls.course
+    if (entries.length < minCards || entries.length > maxCards) {
+      errors.push(`course of ${entries.length} cards, ${cls.id} needs ${minCards}–${maxCards}`)
+    }
+    for (const [points, min] of Object.entries(minByPoints)) {
+      const have = entries.filter(
+        (e) => getCard(cls.ruleset, e.code)?.points === Number(points),
+      ).length
+      if (have < min) errors.push(`only ${have} ${points}-point cards, at least ${min} needed`)
+    }
+  }
   return errors
 }

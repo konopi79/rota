@@ -32,6 +32,7 @@ const paramsSchema = z.object({
     .max(2 ** 32 - 1),
   popis: z.enum(['0', '1']).default('0'),
   karta: z.coerce.number().int().min(0).default(0),
+  parkur: z.enum(['0', '1']).default('0'),
 })
 
 export function encodeDeckParams({ options, showDescription, position }: DeckParams): string {
@@ -45,6 +46,8 @@ export function encodeDeckParams({ options, showDescription, position }: DeckPar
     popis: showDescription ? '1' : '0',
     karta: String(position),
   })
+  // Only competition courses carry the flag, so training-deck URLs stay as they were.
+  if (options.competition) params.set('parkur', '1')
   return params.toString()
 }
 
@@ -64,6 +67,7 @@ export function decodeDeckParams(search: URLSearchParams): DeckParams | null {
       equipment,
       startSide: p.strana === 'P' ? 'right' : 'left',
       seed: p.seed,
+      ...(p.parkur === '1' && { competition: true }),
     },
     showDescription: p.popis === '1',
     position: p.karta,

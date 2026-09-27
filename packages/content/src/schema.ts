@@ -119,6 +119,11 @@ export const roClassSchema = z
         paceCompatibleOnly: z.boolean().optional(),
         /** How often one card may appear in a course (FCI: "maximálně dvakrát"). */
         maxRepeats: z.number().int().positive().optional(),
+        /**
+         * Competition courses only: the minimum number of cards per point value
+         * (FCI §3.5: at least 7 four-point and 5 three-point cards). Keys are points.
+         */
+        minByPoints: z.record(z.string(), z.number().int().positive()).optional(),
       })
       .strict(),
     /** Every exercise card of the class, lower classes included where cumulative. */

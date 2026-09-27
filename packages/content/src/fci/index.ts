@@ -48,8 +48,7 @@ export const FCI_CARDS: Card[] = [...START_FINISH, ...EXERCISES]
 /**
  * The one international class — §3.5: 18–20 cards plus start and finish, "Jednu kartu
  * lze v jednom parkuru použít maximálně dvakrát"; §1.5.3: off leash. The point mix
- * (≥ 7 four-point, ≥ 5 three-point cards) is a competition-course rule for R7, not for
- * training decks.
+ * (≥ 7 four-point, ≥ 5 three-point cards) applies to competition courses only (R7).
  */
 export const FCI_CLASSES: RoClass[] = [
   {
@@ -63,6 +62,8 @@ export const FCI_CLASSES: RoClass[] = [
       supplementary: [],
       paceCompatibleOnly: true,
       maxRepeats: 2,
+      // §3.5: "Parkur musí obsahovat alespoň 7 čtyřbodových a alespoň 5 tříbodových karet."
+      minByPoints: { '4': 7, '3': 5 },
     },
     cardCodes: EXERCISES.map((c) => c.code),
     newCardCodes: [],

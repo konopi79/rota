@@ -1,6 +1,6 @@
 import { getClass } from '../registry'
 import type { Card, RoClass } from '../schema'
-import { mulberry32, pick } from './prng'
+import { mulberry32, pick, pickWeighted } from './prng'
 import { cardOf, endsStatic, hasEquipment, paceAfter, sideAfter } from './rules'
 import type { Deck, DeckEntry, DealOptions, Pace, Side } from './types'
 
@@ -15,7 +15,12 @@ type State = {
   used: Set<string>
   /** How often each card appears so far, follow-ups included (`course.maxRepeats`). */
   counts: Map<string, number>
+  /** Cards dealt per point value (competition point mix). */
+  byPoints: Map<number, number>
 }
+
+/** How much more likely a card is drawn while its point value is still short. */
+const QUOTA_WEIGHT = 4
 
 /**
  * Deal a performable deck (plan §5, D8). Builds the sequence card by card, drawing only
@@ -63,7 +68,13 @@ function attemptDeal(
     side: options.startSide,
     used: new Set(),
     counts: new Map(),
+    byPoints: new Map(),
   }
+  const quota = options.competition ? (cls.course.minByPoints ?? {}) : {}
+  const missing = (points: number | undefined) =>
+    points === undefined
+      ? 0
+      : Math.max(0, (quota[String(points)] ?? 0) - (state.byPoints.get(points) ?? 0))
 
   while (entries.length < options.count) {
     const remaining = options.count - entries.length
@@ -79,7 +90,15 @@ function attemptDeal(
       .map((c) => cardOf(cls, c))
       .filter((card) => allowed(cls, card, state, remaining, inClass))
 
-    const card = pick(candidates, random)
+    // Competition point mix: prefer cards whose points are still short; once the
+    // remaining slots only just cover what is missing, allow nothing else.
+    const short = Object.keys(quota).reduce((sum, p) => sum + missing(Number(p)), 0)
+    const pool =
+      short > 0 && remaining <= short ? candidates.filter((c) => missing(c.points) > 0) : candidates
+    const card =
+      short > 0
+        ? pickWeighted(pool, (c) => (missing(c.points) > 0 ? QUOTA_WEIGHT : 1), random)
+        : pick(pool, random)
     if (!card) break
 
     const supplementary = card.sequencing.requiresSupplementary
@@ -90,6 +109,7 @@ function attemptDeal(
     const static_ = endsStatic(cls, card, supplementary)
     if (!card.sequencing.onlyAfterLeave) state.used.add(card.code)
     state.counts.set(card.code, (state.counts.get(card.code) ?? 0) + 1)
+    if (card.points) state.byPoints.set(card.points, (state.byPoints.get(card.points) ?? 0) + 1)
     state.pace = paceAfter(card, state.pace, static_)
     state.side = sideAfter(card, state.side)
     state.prevStatic = static_

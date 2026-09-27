@@ -41,7 +41,8 @@
     "random": "Náhodně",
     "showDescription": "Popis pod kartou",
     "start": "Zamíchat a začít",
-    "browseCards": "Prohlédnout karty třídy"
+    "browseCards": "Prohlédnout karty třídy",
+    "course": "Sestavit závodní parkur"
   },
   "deck": {
     "close": "Zpět na nastavení",
@@ -151,5 +152,24 @@
     "offline": "Po prvním otevření funguje aplikace i offline. Nejpohodlnější je přidat si ji na plochu telefonu.",
     "codeTitle": "Otevřený kód",
     "code": "Zdrojový kód je k dispozici pod licencí MIT:"
+  },
+  "course": {
+    "title": "Závodní parkur – {{cls}}",
+    "back": "Nastavení",
+    "summary": "{{count}} karet · pes na startu {{side}}",
+    "left": "vlevo",
+    "right": "vpravo",
+    "pointsTotal": "celkem {{total}} bodů",
+    "pointsGroup": "{{points}} b.: {{count}}",
+    "start": "Start",
+    "finish": "Cíl",
+    "dogLeft": "pes vlevo",
+    "dogRight": "pes vpravo",
+    "new": "Nový parkur",
+    "print": "Vytisknout",
+    "share": "Sdílet",
+    "copied": "Odkaz zkopírován",
+    "walk": "Projít jako balíček",
+    "shareTitle": "ROTA – závodní parkur {{cls}}"
   }
 }

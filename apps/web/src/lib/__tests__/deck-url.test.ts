@@ -54,4 +54,12 @@ describe('deck URL', () => {
       expect(decodeDeckParams(new URLSearchParams(bad))).toBeNull()
     }
   })
+
+  test('marks competition courses and keeps training decks without the flag', () => {
+    const course = { ...params, options: { ...params.options, competition: true } }
+    const encoded = encodeDeckParams(course)
+    expect(encoded).toEndWith('&parkur=1')
+    expect(decodeDeckParams(new URLSearchParams(encoded))).toEqual(course)
+    expect(encodeDeckParams(params)).not.toContain('parkur')
+  })
 })

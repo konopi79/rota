@@ -30,7 +30,7 @@ committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 | R4  | Card catalogue                                | ✅ 2026-09-27               |
 | R5  | PWA: offline + install                        | ✅ 2026-09-27               |
 | R6  | Deploy + open-source release                  | 🚧 live; repo still private |
-| R7  | Competition-course generator                  | ⏳                          |
+| R7  | Competition-course generator                  | ✅ 2026-09-27               |
 | R8  | Quiz                                          | ⏳                          |
 | R9  | Voice: cards read aloud                       | ⏳                          |
 
@@ -391,10 +391,10 @@ gesture for audio).
 
 ### R7 — Competition-course generator
 
-- [ ] Dealer `competition` option: class course size, FCI point-mix quota (weighted + forced), validator check; tests
-- [ ] Course page: numbered list start → cards (+ D0, side and pace notes) → finish, FCI points total
-- [ ] Course in the URL (seed + options), new course, print stylesheet, share, "projít jako balíček"
-- [ ] Entry point on the setup screen
+- [x] Dealer `competition` option: class course size, FCI point-mix quota (weighted + forced), validator check; tests
+- [x] Course page: numbered list start → cards (+ D0, side and pace notes) → finish, FCI points total
+- [x] Course in the URL (seed + options), new course, print stylesheet, share, "projít jako balíček"
+- [x] Entry point on the setup screen
 
 ### R8 — Quiz
 

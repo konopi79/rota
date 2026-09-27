@@ -8,7 +8,7 @@ import {
   type ClassId,
   type Equipment,
 } from '@rota/content'
-import { ChevronLeft, LayoutGrid, Minus, Plus, Shuffle } from 'lucide-react'
+import { ChevronLeft, LayoutGrid, ListOrdered, Minus, Plus, Shuffle } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useSyncExternalStore } from 'react'
@@ -80,6 +80,28 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
       position: 0,
     })
     router.push(`/balicek?${query}`)
+  }
+
+  // A competition course (R7): all equipment, the class's full course size window.
+  const buildCourse = () => {
+    saveSetup(classId, setup)
+    const { minCards, maxCards } = cls.course
+    const startSide =
+      setup.startSide === 'random' ? (Math.random() < 0.5 ? 'left' : 'right') : setup.startSide
+    const query = encodeDeckParams({
+      options: {
+        classId,
+        scope: 'all',
+        count: Math.min(maxCards, Math.max(minCards, setup.count)),
+        equipment: [...EQUIPMENT],
+        startSide,
+        seed: randomSeed(),
+        competition: true,
+      },
+      showDescription: setup.showDescription,
+      position: 0,
+    })
+    router.push(`/parkur?${query}`)
   }
 
   return (
@@ -194,6 +216,10 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
       <Button size="lg" className="mt-2 h-14 text-lg" onClick={start}>
         <Shuffle />
         {t('setup.start')}
+      </Button>
+      <Button variant="outline" size="lg" className="-mt-3 h-12 text-base" onClick={buildCourse}>
+        <ListOrdered />
+        {t('setup.course')}
       </Button>
     </main>
   )
