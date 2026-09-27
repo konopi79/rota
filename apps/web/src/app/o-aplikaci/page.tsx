@@ -5,7 +5,9 @@ import { ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { FEATURE_GROUPS, LATEST_FEATURE_ID } from '@/content/features'
 
 const REPO_URL = 'https://github.com/konopi79/rota'
 
@@ -32,6 +34,28 @@ export default function AboutPage() {
       </Button>
       <h1 className="text-3xl font-bold tracking-tight">{t('about.title')}</h1>
       <p>{t('about.intro')}</p>
+
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">{t('about.featuresTitle')}</h2>
+        {FEATURE_GROUPS.map((group) => (
+          <div key={group.title} className="bg-card space-y-3 rounded-lg border p-4">
+            <h3 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
+              {group.title}
+            </h3>
+            <ul className="space-y-3">
+              {group.items.map((item) => (
+                <li key={item.id} className="space-y-0.5">
+                  <p className="flex items-center gap-2 font-medium">
+                    {item.title}
+                    {item.id === LATEST_FEATURE_ID && <Badge>{t('about.new')}</Badge>}
+                  </p>
+                  <p className="text-muted-foreground text-sm">{item.desc}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </section>
       {section(t('about.unofficialTitle'), <p>{t('about.unofficial')}</p>)}
       {section(
         t('about.sourcesTitle'),

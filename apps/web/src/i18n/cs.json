@@ -155,7 +155,9 @@
     "offlineTitle": "Bez signálu",
     "offline": "Po prvním otevření funguje aplikace i offline. Nejpohodlnější je přidat si ji na plochu telefonu.",
     "codeTitle": "Otevřený kód",
-    "code": "Zdrojový kód je k dispozici pod licencí MIT:"
+    "code": "Zdrojový kód je k dispozici pod licencí MIT:",
+    "featuresTitle": "Co ROTA umí",
+    "new": "Nové"
   },
   "course": {
     "title": "Závodní parkur – {{cls}}",

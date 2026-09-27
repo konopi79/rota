@@ -116,6 +116,9 @@ No Next/Turbopack plugin.
 - React 19: no `setState` inside `useEffect` to reset state — remount with a `key`.
 - Pages that use hooks (`useTranslation`, state) are client components (`'use client'`);
   they are still prerendered to HTML by the static export.
+- **Feature list** (`apps/web/src/content/features.ts`, shown on `/o-aplikaci` — the link
+  the author sends when someone asks what ROTA does): every user-visible feature that
+  ships gets an item there, and `LATEST_FEATURE_ID` moves to it (the "Nové" badge).
 
 ## Static export (`output: 'export'`)
 
