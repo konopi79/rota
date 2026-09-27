@@ -107,6 +107,44 @@ describe('validateDeck — each rule', () => {
   })
 })
 
+describe('validateDeck — FCI rules', () => {
+  const fci = (entries: DeckEntry[], options: Partial<DealOptions> = {}) =>
+    check(entries, { classId: 'FCI-ROB', ...options })
+
+  test('slow/fast pace: only the flowing 105–113 or another pace card', () => {
+    expect(
+      fci([e('116'), e('105', { pace: 'slow' }), e('118', { pace: 'slow' }), e('101')]),
+    ).toEqual([])
+    expect(fci([e('116'), e('101', { pace: 'slow' })])).toContain(
+      '#2 101: cannot be performed in slow pace',
+    )
+    expect(fci([e('117'), e('116', { pace: 'fast' })])).toEqual([])
+  })
+
+  test('417 only with the dog left, then the dog is right', () => {
+    expect(fci([e('417'), e('101', { side: 'right' })])).toEqual([])
+    expect(fci([e('417', { side: 'right' })], { startSide: 'right' })).toContain(
+      '#1 417: only with the dog left',
+    )
+  })
+
+  test('cards returning the dog to the left', () => {
+    expect(fci([e('310'), e('209', { side: 'right' }), e('101')])).toEqual([])
+  })
+
+  test('recall cards: optional after 319/408/409, never on their own', () => {
+    expect(fci([e('319'), e('321'), e('101')])).toEqual([])
+    expect(fci([e('319'), e('101')])).toEqual([])
+    expect(fci([e('101'), e('321')])).toContain('#2 321: follow-up card without a leave card')
+  })
+
+  test('a card at most twice', () => {
+    expect(fci([e('319'), e('321'), e('408'), e('321'), e('409'), e('321')])).toContain(
+      '#6 321: more than 2 times',
+    )
+  })
+})
+
 describe('dealDeck', () => {
   const equipmentSets: Equipment[][] = [[], ['cones'], [...EQUIPMENT]]
 

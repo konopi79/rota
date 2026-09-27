@@ -1,13 +1,14 @@
 import type { ClassId } from './classes'
 import { CZ_CARDS, CZ_CLASSES } from './cz'
+import { FCI_CARDS, FCI_CLASSES } from './fci'
 import type { Card, RoClass, RulesetId } from './schema'
 
-/** Every class with content. FCI-ROB joins in R2. */
-export const CLASSES: RoClass[] = [...CZ_CLASSES]
+/** Every class with content, in the order of `CLASS_IDS`. */
+export const CLASSES: RoClass[] = [...CZ_CLASSES, ...FCI_CLASSES]
 
 const CARDS: Record<RulesetId, Map<string, Card>> = {
   CZ: new Map(CZ_CARDS.map((c) => [c.code, c])),
-  FCI: new Map(),
+  FCI: new Map(FCI_CARDS.map((c) => [c.code, c])),
 }
 
 export function getClass(id: ClassId): RoClass | undefined {

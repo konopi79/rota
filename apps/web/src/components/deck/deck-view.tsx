@@ -238,6 +238,11 @@ function Description({ cls, entry }: { cls: RoClass; entry: DeckEntry }) {
       <h2 className="font-semibold">
         {card.code} · {card.name}
       </h2>
+      {card.points && (
+        <p className="text-muted-foreground">
+          {card.nameEn} · {t('deck.points', { count: card.points })}
+        </p>
+      )}
       {card.description.map((p) => (
         <p key={p}>{p}</p>
       ))}

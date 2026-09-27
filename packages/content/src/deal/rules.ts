@@ -30,5 +30,13 @@ export function paceAfter(card: Card, before: Pace, static_: boolean): Pace {
   return static_ ? 'normal' : before
 }
 
-export const sideAfter = (card: Card, before: Side): Side =>
-  card.sequencing.sideChange ? (before === 'left' ? 'right' : 'left') : before
+/** Side after a card: an explicit end side wins, a side change flips it. */
+export function sideAfter(card: Card, before: Side): Side {
+  if (card.sequencing.endSide) return card.sequencing.endSide
+  if (card.sequencing.sideChange) return before === 'left' ? 'right' : 'left'
+  return before
+}
+
+/** Follow-ups a card allows next: required (`nextOneOf`) or optional (`mayBeFollowedBy`). */
+export const followUpsOf = (card: Card | undefined): string[] =>
+  card?.sequencing.nextOneOf ?? card?.sequencing.mayBeFollowedBy ?? []

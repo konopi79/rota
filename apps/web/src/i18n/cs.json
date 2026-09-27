@@ -58,6 +58,9 @@
     "finished": "Hotovo – {{count}} karet.",
     "invalid": "Tenhle odkaz nepopisuje žádný balíček.",
     "backHome": "Na výběr třídy",
-    "supplementary": "Doplňková karta"
+    "supplementary": "Doplňková karta",
+    "points_one": "{{count}} bod",
+    "points_few": "{{count}} body",
+    "points_other": "{{count}} bodů"
   }
 }

@@ -21,17 +21,17 @@ dog** (§5), and every card must be readable in one glance.
 Source material: `podklady/` (downloaded from the author's Google Drive, **not
 committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 
-| #   | Phase                                         | Status                                |
-| --- | --------------------------------------------- | ------------------------------------- |
-| R0  | Scaffold (monorepo, tooling, CLAUDE.md)       | ✅ 2026-09-27                         |
-| R1  | Content pipeline + national ruleset (CZ 2026) | ✅ 2026-09-27                         |
-| R2  | FCI ruleset                                   | ⏳                                    |
-| R3  | Random cards mode (rule-aware dealing)        | ✅ 2026-09-27 (national; FCI with R2) |
-| R4  | Card catalogue                                | ⏳                                    |
-| R5  | PWA: offline + install                        | ⏳                                    |
-| R6  | Deploy + open-source release                  | 🚧 Dockerfile ready                   |
-| R7  | Full competition-course generator             | 💭 post-MVP                           |
-| R8  | Quiz                                          | 💭 post-MVP                           |
+| #   | Phase                                         | Status              |
+| --- | --------------------------------------------- | ------------------- |
+| R0  | Scaffold (monorepo, tooling, CLAUDE.md)       | ✅ 2026-09-27       |
+| R1  | Content pipeline + national ruleset (CZ 2026) | ✅ 2026-09-27       |
+| R2  | FCI ruleset                                   | ✅ 2026-09-27       |
+| R3  | Random cards mode (rule-aware dealing)        | ✅ 2026-09-27       |
+| R4  | Card catalogue                                | ⏳                  |
+| R5  | PWA: offline + install                        | ⏳                  |
+| R6  | Deploy + open-source release                  | 🚧 Dockerfile ready |
+| R7  | Full competition-course generator             | 💭 post-MVP         |
+| R8  | Quiz                                          | 💭 post-MVP         |
 
 > **Order:** R3 is built before R2 so the national classes are usable end to end first;
 > FCI plugs into the same dealer afterwards.
@@ -227,15 +227,26 @@ regulations:
   `scripts/content/strikethrough.py` and removed during proofreading — among them two
   follow-ups of 3-311 (p. 55).
 
-**FCI-ROB**
+**FCI-ROB** (Czech translation, valid from 1 Feb 2025 — it also has tracked changes)
 
-- **Pace.** Only the flowing 1-point exercises 105–113 may be done in slow/fast pace.
-  After 116 (slow) or 117 (run), only 105–113 may follow until 118 (normal pace) or the
-  finish.
-- **Dog's side.** The course starts with the dog on the left or right; side-change cards
-  (310–316, 405–406) switch it; 417 is left side only, 418 right side only. The dealer
-  tracks the current side and shows it on the screen ("pes vpravo").
-- **Repetition.** One card at most twice per course.
+- **Placement letters.** The (A)/(B)/(C)/(D) after an FCI card name is _where_ the
+  exercise is done (§4.3: left of the card, in front of it, at the recall cone, jumps),
+  not the national static/dynamic type — stored as `placement`.
+- **Pace.** "Pouze plynulé jednobodové cviky (cviky 105-113) mohou být prováděny v
+  pomalém nebo rychlém tempu" (p. 19); the pace "musí být dodrženo, dokud jej nezmění
+  karta s novým tempem nebo dokud tým nedosáhne karty Cíl" (p. 15). The sentence that
+  _always_ required 118 after slow/fast pace is struck through, so another pace card may
+  follow directly. Class flag `paceCompatibleOnly`, card flag `paceCompatible`.
+- **Dog's side.** 310–316, 405, 406 change it ("Tímto cvikem se mění strana vedení
+  psa"); ten cards end with "Návrat k vedení po levé straně" (`endSide: 'left'`); 417
+  only with the dog left and ends right, 418 the mirror (`sideOnly` + `endSide`).
+- **Leave → optional recall.** 319, 408, 409 leave the dog; a recall card 321–323,
+  421, 422 _may_ follow ("Tato karta může být použita pouze po kartách 319, 408 a 409"),
+  otherwise the recall at a cone is part of the exercise (`mayBeFollowedBy`); recall
+  cards are never dealt on their own.
+- **Repetition.** "Jednu kartu lze v jednom parkuru použít maximálně dvakrát"
+  (`maxRepeats: 2`; main cards are dealt at most once anyway, recall cards can repeat).
+- **Point mix** (≥ 7 four-point, ≥ 5 three-point) is a competition-course rule — R7.
 
 **Both:** no card twice in a row; equipment filter (§3).
 
@@ -243,8 +254,9 @@ regulations:
 
 The metadata lives on each card as `sequencing` (`packages/content/src/schema.ts` is the
 source of truth): `requiresSupplementary`, `pace`, `nextOneOf`, `onlyAfterLeave`,
-`afterStatic`, `sideChange`, `lastOnly`, `equipment`; FCI adds what R2 needs
-(`paceCompatible` for 105–113, `sideOnly` for 417/418).
+`afterStatic`, `sideChange`, `lastOnly`, `equipment`; FCI adds `mayBeFollowedBy`,
+`endSide`, `sideOnly`, `paceCompatible`, and the class flags `paceCompatibleOnly` and
+`maxRepeats`.
 
 - `dealDeck(class, options, seed)` — pure function, seeded PRNG, builds the sequence
   step by step over a small state (current pace, current side, used counts), drawing only
@@ -320,11 +332,11 @@ plochu" hint with the Safari share-sheet steps.
 
 ### R2 — FCI ruleset
 
-- [ ] FCI images extracted (vector render), page → code from the text layer
-- [ ] FCI cards: code, points, English name, Czech name + description (proofread)
-- [ ] FCI-ROB class with course rules
-- [ ] FCI sequencing metadata (pace + flowing 105–113, side changes, 417/418, max twice, equipment)
-- [ ] Data-integrity tests
+- [x] FCI images extracted — rendered with **MuPDF** (the PDF does not embed its fonts; poppler draws empty boxes), page → code from the text layer; 91 images, 2.4 MB
+- [x] FCI cards: code, points, placement, English name, Czech name + description (proofread; draft `scripts/content/parse-fci.ts`; this PDF has tracked changes too)
+- [x] FCI-ROB class with course rules (18–20, off leash, max twice; point mix left to R7)
+- [x] FCI sequencing metadata (pace + flowing 105–113, side changes, end sides, 417/418, optional recall cards after 319/408/409, max twice, equipment)
+- [x] Data-integrity tests + validator unit tests for every FCI rule
 
 ### R3 — Random cards mode
 

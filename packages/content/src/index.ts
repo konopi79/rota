@@ -11,6 +11,7 @@ export {
   type RulesetId,
 } from './schema'
 export { CZ_CARDS, CZ_CLASSES, CZ_RULESET } from './cz'
+export { FCI_CARDS, FCI_CLASSES, FCI_RULESET } from './fci'
 export { CLASSES, getCard, getClass } from './registry'
 export {
   dealDeck,

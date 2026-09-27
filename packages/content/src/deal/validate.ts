@@ -19,8 +19,10 @@ export function validateDeck(deck: Deck): string[] {
   let pace: Pace = 'normal'
   let side: Side = options.startSide
   let prevStatic = false
-  let prevNext: string[] | undefined
+  let prevRequired: string[] | undefined
+  let prevOptional: string[] = []
   let prevCode: string | undefined
+  const counts = new Map<string, number>()
 
   entries.forEach((entry, i) => {
     const at = `#${i + 1} ${entry.code}`
@@ -30,16 +32,19 @@ export function validateDeck(deck: Deck): string[] {
       return
     }
     const seq = card.sequencing
-    const isFollowUp = prevNext !== undefined
 
     if (!inClass.has(card.code)) errors.push(`${at}: not in class ${cls.id}`)
     if (!hasEquipment(card, options)) errors.push(`${at}: needs equipment not at hand`)
     if (card.code === prevCode) errors.push(`${at}: same card twice in a row`)
 
-    if (isFollowUp) {
-      if (!prevNext?.includes(card.code)) errors.push(`${at}: not a follow-up of the leave card`)
+    if (prevRequired && !prevRequired.includes(card.code)) {
+      errors.push(`${at}: not a follow-up of the leave card`)
+    }
+    if (seq.onlyAfterLeave) {
+      if (!prevRequired?.includes(card.code) && !prevOptional.includes(card.code)) {
+        errors.push(`${at}: follow-up card without a leave card`)
+      }
     } else {
-      if (seq.onlyAfterLeave) errors.push(`${at}: follow-up card without a leave card`)
       if (seenMain.has(card.code)) errors.push(`${at}: dealt twice`)
       if (newOnly && !cls.newCardCodes.includes(card.code)) {
         errors.push(`${at}: not a new card of ${cls.id}`)
@@ -49,11 +54,21 @@ export function validateDeck(deck: Deck): string[] {
 
     if (seq.afterStatic && !prevStatic) errors.push(`${at}: must follow a static exercise`)
     if (seq.pace && seq.pace === pace) errors.push(`${at}: pace is already ${pace}`)
+    if (cls.course.paceCompatibleOnly && pace !== 'normal' && !seq.pace && !seq.paceCompatible) {
+      errors.push(`${at}: cannot be performed in ${pace} pace`)
+    }
+    if (seq.sideOnly && seq.sideOnly !== side)
+      errors.push(`${at}: only with the dog ${seq.sideOnly}`)
+    counts.set(card.code, (counts.get(card.code) ?? 0) + 1)
+    if (cls.course.maxRepeats && (counts.get(card.code) ?? 0) > cls.course.maxRepeats) {
+      errors.push(`${at}: more than ${cls.course.maxRepeats} times`)
+    }
     if (seq.lastOnly?.includes(cls.id) && i !== entries.length - 1) {
       errors.push(`${at}: allowed only as the last card in ${cls.id}`)
     }
-    if (seq.nextOneOf && i === entries.length - 1)
+    if (seq.nextOneOf && i === entries.length - 1) {
       errors.push(`${at}: leave card without follow-up`)
+    }
 
     if (seq.requiresSupplementary) {
       if (!entry.supplementary) errors.push(`${at}: missing its D0 card`)
@@ -71,7 +86,8 @@ export function validateDeck(deck: Deck): string[] {
     pace = paceAfter(card, pace, static_)
     side = sideAfter(card, side)
     prevStatic = static_
-    prevNext = seq.nextOneOf
+    prevRequired = seq.nextOneOf
+    prevOptional = seq.mayBeFollowedBy ?? []
     prevCode = card.code
   })
   return errors

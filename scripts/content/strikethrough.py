@@ -6,7 +6,7 @@ are struck through but still present in the text layer, so `pdftotext` returns t
 and the new wording side by side ("~~chůze~~ vpřed" → "chůze vpřed"). This lists every
 struck run with its page so the proofread card texts can drop them.
 
-    .cache/venv/bin/python scripts/content/strikethrough.py [first_page last_page]
+    .cache/venv/bin/python scripts/content/strikethrough.py [pdf] [first_page last_page]
 
 Needs PyMuPDF: `python3 -m venv .cache/venv && .cache/venv/bin/pip install pymupdf`.
 """
@@ -15,7 +15,7 @@ import sys
 
 import pymupdf
 
-PDF = "podklady/2026nzr-ro-cz-final.pdf"
+DEFAULT_PDF = "podklady/2026nzr-ro-cz-final.pdf"
 
 
 def horizontal_lines(page):
@@ -58,8 +58,10 @@ def struck_runs(page):
 
 
 def main():
-    first, last = (int(sys.argv[1]), int(sys.argv[2])) if len(sys.argv) == 3 else (17, 61)
-    doc = pymupdf.open(PDF)
+    args = sys.argv[1:]
+    pdf = args.pop(0) if args and args[0].endswith(".pdf") else DEFAULT_PDF
+    doc = pymupdf.open(pdf)
+    first, last = (int(args[0]), int(args[1])) if len(args) == 2 else (1, len(doc))
     for number in range(first, last + 1):
         runs = struck_runs(doc[number - 1])
         if runs:

@@ -11,7 +11,10 @@ type State = {
   prevStatic: boolean
   pace: Pace
   side: Side
+  /** Main cards already dealt (drawn without replacement). */
   used: Set<string>
+  /** How often each card appears so far, follow-ups included (`course.maxRepeats`). */
+  counts: Map<string, number>
 }
 
 /**
@@ -59,15 +62,19 @@ function attemptDeal(
     pace: 'normal',
     side: options.startSide,
     used: new Set(),
+    counts: new Map(),
   }
 
   while (entries.length < options.count) {
     const remaining = options.count - entries.length
-    const followUps = state.prev?.sequencing.nextOneOf
+    const required = state.prev?.sequencing.nextOneOf
+    const optional = state.prev?.sequencing.mayBeFollowedBy ?? []
+    const mains = mainPool.filter((c) => !state.used.has(c))
+    // After a leave card the follow-up is required (national) or optional (FCI recall).
     const candidates = (
-      followUps
-        ? followUps.filter((c) => inClass.has(c))
-        : mainPool.filter((c) => !state.used.has(c))
+      required
+        ? required.filter((c) => inClass.has(c))
+        : [...mains, ...optional.filter((c) => inClass.has(c))]
     )
       .map((c) => cardOf(cls, c))
       .filter((card) => allowed(cls, card, state, remaining, inClass))
@@ -81,7 +88,8 @@ function attemptDeal(
     entries.push({ code: card.code, supplementary, side: state.side, pace: state.pace })
 
     const static_ = endsStatic(cls, card, supplementary)
-    if (!followUps) state.used.add(card.code)
+    if (!card.sequencing.onlyAfterLeave) state.used.add(card.code)
+    state.counts.set(card.code, (state.counts.get(card.code) ?? 0) + 1)
     state.pace = paceAfter(card, state.pace, static_)
     state.side = sideAfter(card, state.side)
     state.prevStatic = static_
@@ -101,6 +109,19 @@ function allowed(
   if (card.code === state.prev?.code) return false
   if (seq.afterStatic && !state.prevStatic) return false
   if (seq.pace && seq.pace === state.pace) return false
+  // FCI: in slow/fast pace only the flowing exercises (105–113) or another pace card.
+  if (
+    cls.course.paceCompatibleOnly &&
+    state.pace !== 'normal' &&
+    !seq.pace &&
+    !seq.paceCompatible
+  ) {
+    return false
+  }
+  if (seq.sideOnly && seq.sideOnly !== state.side) return false
+  if (cls.course.maxRepeats && (state.counts.get(card.code) ?? 0) >= cls.course.maxRepeats) {
+    return false
+  }
   if (seq.lastOnly?.includes(cls.id) && remaining !== 1) return false
   // A leave card needs room for its follow-up and at least one follow-up in the class.
   if (seq.nextOneOf && (remaining < 2 || !seq.nextOneOf.some((c) => inClass.has(c)))) {

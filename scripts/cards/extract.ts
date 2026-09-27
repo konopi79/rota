@@ -5,9 +5,10 @@
  *   bun run cards:extract            # all sources
  *   bun run cards:extract --only cz  # one ruleset
  *
- * Needs poppler (`pdftoppm`, `pdfinfo`) and tesseract on PATH — `brew install poppler
- * tesseract`. Source PDFs live in podklady/ (not committed). Work files go to
- * .cache/cards/ — keep them inside the project: the sandboxed tooling cannot read /tmp.
+ * Needs poppler (`pdftoppm`, `pdfinfo`, `pdftotext`) and tesseract on PATH — `brew install
+ * poppler tesseract` — and PyMuPDF in .cache/venv for the FCI PDF (see sources.ts). Source
+ * PDFs live in podklady/ (not committed). Work files go to .cache/cards/ — keep them inside
+ * the project: the sandboxed tooling cannot read /tmp.
  */
 import { $ } from 'bun'
 import { mkdir, rm, writeFile } from 'node:fs/promises'
@@ -16,16 +17,19 @@ import sharp, { type Sharp } from 'sharp'
 
 import { cardFileName, SOURCES, VERIFIED_BY_EYE, type PageEntry, type Source } from './sources'
 
+type CardEntry = Exclude<PageEntry, { kind: 'skip' }>
+
 const RENDER_DPI = 200
 const FULL_WIDTH = 1600
 const THUMB_WIDTH = 400
 const WORK_DIR = '.cache/cards'
+const MUPDF_PYTHON = '.cache/venv/bin/python'
 const OUT_DIR = 'apps/web/public/cards'
 
 type Result = {
   source: Source
   page: number
-  entry: PageEntry
+  entry: CardEntry
   file: string
   framed: boolean
   ocr: string | null
@@ -43,9 +47,23 @@ async function pageCount(pdf: string): Promise<number> {
   return Number(match[1])
 }
 
-async function renderPage(pdf: string, page: number, base: string): Promise<string> {
-  await $`pdftoppm -f ${page} -l ${page} -r ${RENDER_DPI} -png -singlefile ${pdf} ${base}`.quiet()
-  return `${base}.png`
+async function renderPage(source: Source, page: number, base: string): Promise<string> {
+  const png = `${base}.png`
+  if (source.renderer === 'mupdf') {
+    const script =
+      'import pymupdf,sys; d=pymupdf.open(sys.argv[1]); ' +
+      'd[int(sys.argv[2])-1].get_pixmap(dpi=int(sys.argv[3])).save(sys.argv[4])'
+    await $`${MUPDF_PYTHON} -c ${script} ${source.pdf} ${page} ${RENDER_DPI} ${png}`.quiet()
+  } else {
+    await $`pdftoppm -f ${page} -l ${page} -r ${RENDER_DPI} -png -singlefile ${source.pdf} ${base}`.quiet()
+  }
+  return png
+}
+
+/** Vector cards carry their code as the first word of the page's text layer. */
+async function textCode(pdf: string, page: number): Promise<string> {
+  const text = await $`pdftotext -f ${page} -l ${page} ${pdf} -`.quiet().text()
+  return text.trim().split(/\s+/)[0] ?? ''
 }
 
 /**
@@ -123,13 +141,13 @@ const normalise = (s: string) =>
     .replace(/D[O0]{1,2}(?=[a-d])/g, 'D0')
     .replace(/(^|[^0-9])2-0/g, '$1Z-0')
 
-async function processPage(source: Source, page: number, entry: PageEntry): Promise<Result> {
+async function processPage(source: Source, page: number, entry: CardEntry): Promise<Result> {
   const workDir = join(WORK_DIR, source.ruleset)
   const outDir = join(OUT_DIR, source.ruleset)
   const name = cardFileName(entry)
   const base = join(workDir, name)
 
-  const png = await renderPage(source.pdf, page, base)
+  const png = await renderPage(source, page, base)
   const box = await frameBox(png)
   // Materialise the crop: `metadata()` on a pipeline reports the *input* size, and
   // `readCode` needs the cropped one.
@@ -137,7 +155,11 @@ async function processPage(source: Source, page: number, entry: PageEntry): Prom
 
   // Only cards with a printed code can be checked; START/FINISH and diagrams have none.
   const checkable = entry.kind === 'card' && entry.code !== 'START' && entry.code !== 'FINISH'
-  const ocr = checkable ? await readCode(card, base) : null
+  const ocr = !checkable
+    ? null
+    : source.verify === 'text'
+      ? await textCode(source.pdf, page)
+      : await readCode(card, base)
   const ok = ocr === null || normalise(ocr).includes(entry.code) || VERIFIED_BY_EYE.has(entry.code)
 
   const full = await card
@@ -192,13 +214,15 @@ async function main() {
     await mkdir(join(WORK_DIR, ruleset), { recursive: true })
   }
 
-  const jobs: { source: Source; page: number; entry: PageEntry }[] = []
+  const jobs: { source: Source; page: number; entry: CardEntry }[] = []
   for (const source of sources) {
     const count = await pageCount(source.pdf)
     if (count !== source.pages.length) {
       throw new Error(`${source.pdf}: ${count} pages, sources.ts lists ${source.pages.length}`)
     }
-    source.pages.forEach((entry, i) => jobs.push({ source, page: i + 1, entry }))
+    source.pages.forEach((entry, i) => {
+      if (entry.kind !== 'skip') jobs.push({ source, page: i + 1, entry })
+    })
   }
 
   const results = await pool(jobs, 6, (j) => processPage(j.source, j.page, j.entry))

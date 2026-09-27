@@ -28,7 +28,15 @@ export const sequencingSchema = z
      * (a recall or a return to the dog). Codes of cards outside the dealt class are ignored.
      */
     nextOneOf: z.array(z.string()).min(1).optional(),
-    /** A recall / return card: only valid right after a card whose `nextOneOf` lists it. */
+    /**
+     * FCI: the dog is left behind and **may** be recalled by one of these cards; without
+     * one, the recall at a cone is part of the exercise itself (319, 408, 409).
+     */
+    mayBeFollowedBy: z.array(z.string()).min(1).optional(),
+    /**
+     * A recall / return card: only valid right after a card whose `nextOneOf` or
+     * `mayBeFollowedBy` lists it.
+     */
     onlyAfterLeave: z.boolean().optional(),
     /** The previous card must end static (type A, or a supplementary card D0a/D0b). */
     afterStatic: z.boolean().optional(),
@@ -37,6 +45,12 @@ export const sequencingSchema = z
      * cards). The dealer tracks the current side and shows it.
      */
     sideChange: z.boolean().optional(),
+    /** FCI: the card ends with the dog on this side ("Návrat k vedení po levé straně"). */
+    endSide: z.enum(['left', 'right']).optional(),
+    /** FCI: the card may only start with the dog on this side (417 left, 418 right). */
+    sideOnly: z.enum(['left', 'right']).optional(),
+    /** FCI: may be performed in slow/fast pace (the flowing exercises 105–113). */
+    paceCompatible: z.boolean().optional(),
     /** Classes in which the card may only be the last one before the finish. */
     lastOnly: z.array(classIdSchema).min(1).optional(),
     equipment: z.array(equipmentSchema).min(1).optional(),
@@ -58,8 +72,16 @@ export const cardSchema = z
     code: z.string().min(1),
     ruleset: rulesetIdSchema,
     kind: z.enum(['exercise', 'start', 'finish', 'supplementary']),
-    /** A = ends static, B = ends in motion, AB = decided by the supplementary card. */
+    /**
+     * National only: A = ends static, B = ends in motion, AB = decided by the supplementary
+     * card.
+     */
     exerciseType: z.enum(['A', 'B', 'AB']).optional(),
+    /**
+     * FCI only: where the exercise is done (§4.3) — A left of the card, B in front of it,
+     * C at the recall cone, D jumps. Not a static/dynamic type, despite the same letters.
+     */
+    placement: z.enum(['A', 'B', 'C', 'D']).optional(),
     /** FCI only. */
     points: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]).optional(),
     /** Czech name. */
@@ -93,6 +115,10 @@ export const roClassSchema = z
         leash: z.enum(['allowed', 'off-leash']),
         /** Supplementary cards allowed in the class (RO-V: only D0a and D0c). */
         supplementary: z.array(z.string()),
+        /** In slow/fast pace only `paceCompatible` cards and pace cards may follow (FCI). */
+        paceCompatibleOnly: z.boolean().optional(),
+        /** How often one card may appear in a course (FCI: "maximálně dvakrát"). */
+        maxRepeats: z.number().int().positive().optional(),
       })
       .strict(),
     /** Every exercise card of the class, lower classes included where cumulative. */
