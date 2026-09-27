@@ -9,21 +9,24 @@ import {
   type DeckEntry,
   type RoClass,
 } from '@rota/content'
-import { ChevronLeft, ChevronRight, Settings2, Shuffle, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Settings2, Shuffle, Volume2, VolumeX, X } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { classSlug } from '@/lib/classes'
+import { announcement, type Screen } from '@/lib/announce'
 import { decodeDeckParams, encodeDeckParams, type DeckParams } from '@/lib/deck-url'
+import { speak, speechSupported, stopSpeaking } from '@/lib/speech'
 
 import { CardImage, cardImageUrl } from './card-image'
 import { useWakeLock } from './use-wake-lock'
 
 const SWIPE_PX = 50
+const noSubscribe = () => () => {}
 
 export function DeckView() {
   const search = useSearchParams()
@@ -44,20 +47,55 @@ function Deck({ params, cls }: { params: DeckParams; cls: RoClass }) {
   const position = Math.min(params.position, total + 1)
   const entry = position >= 1 && position <= total ? deck.entries[position - 1] : undefined
 
+  const canSpeak = useSyncExternalStore(noSubscribe, speechSupported, () => false)
+
+  /** What is read aloud for a screen of this deck (R9). */
+  const screenAt = useCallback(
+    (pos: number): Screen => {
+      if (pos === 0) return { kind: 'start', startSide: params.options.startSide }
+      const at = deck.entries[pos - 1]
+      if (!at) return { kind: 'finish' }
+      const card = getCard(cls.ruleset, at.code) as Card
+      const supplementary = at.supplementary ? getCard(cls.ruleset, at.supplementary) : undefined
+      return {
+        kind: 'card',
+        number: pos,
+        entry: at,
+        card,
+        supplementary,
+        previous: deck.entries[pos - 2],
+      }
+    },
+    [deck, cls.ruleset, params.options.startSide],
+  )
+
   // Position changes replace the URL instead of pushing: the back button should leave the
   // deck, not step through every card of it.
   const navigate = useCallback(
     (next: DeckParams) => window.history.replaceState(null, '', `?${encodeDeckParams(next)}`),
     [],
   )
+  // Speech starts here, inside the tap / swipe / key handler — iOS refuses it elsewhere.
   const go = useCallback(
-    (to: number) => navigate({ ...params, position: Math.max(0, Math.min(total + 1, to)) }),
-    [navigate, params, total],
+    (to: number) => {
+      const target = Math.max(0, Math.min(total + 1, to))
+      navigate({ ...params, position: target })
+      if (params.speak && target !== position) speak(announcement(screenAt(target), t))
+    },
+    [navigate, params, total, position, screenAt, t],
   )
   const next = useCallback(() => go(position + 1), [go, position])
   const prev = useCallback(() => go(position - 1), [go, position])
-  const reshuffle = () =>
+  const reshuffle = () => {
     navigate({ ...params, options: { ...params.options, seed: randomSeed() }, position: 0 })
+    if (params.speak) speak(announcement({ kind: 'start', startSide: params.options.startSide }, t))
+  }
+  const toggleSpeech = () => {
+    navigate({ ...params, speak: !params.speak })
+    if (params.speak) stopSpeaking()
+    else speak(announcement(screenAt(position), t))
+  }
+  useEffect(() => stopSpeaking, [])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -117,6 +155,17 @@ function Deck({ params, cls }: { params: DeckParams; cls: RoClass }) {
           </span>
         )}
         <div className="ml-auto flex items-center gap-1.5">
+          {canSpeak && (
+            <Button
+              variant={params.speak ? 'secondary' : 'ghost'}
+              size="icon-lg"
+              aria-label={t(params.speak ? 'deck.speakOff' : 'deck.speakOn')}
+              aria-pressed={params.speak ?? false}
+              onClick={toggleSpeech}
+            >
+              {params.speak ? <Volume2 /> : <VolumeX />}
+            </Button>
+          )}
           {entry?.pace === 'slow' && <Badge variant="secondary">{t('deck.paceSlow')}</Badge>}
           {entry?.pace === 'fast' && <Badge variant="secondary">{t('deck.paceFast')}</Badge>}
           {position <= total && (

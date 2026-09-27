@@ -43,7 +43,8 @@
     "start": "Zamíchat a začít",
     "browseCards": "Prohlédnout karty třídy",
     "course": "Sestavit závodní parkur",
-    "quiz": "Kvíz – poznáš karty?"
+    "quiz": "Kvíz – poznáš karty?",
+    "speak": "Číst karty nahlas"
   },
   "deck": {
     "close": "Zpět na nastavení",
@@ -65,7 +66,9 @@
     "supplementary": "Doplňková karta",
     "points_one": "{{count}} bod",
     "points_few": "{{count}} body",
-    "points_other": "{{count}} bodů"
+    "points_other": "{{count}} bodů",
+    "speakOn": "Zapnout čtení nahlas",
+    "speakOff": "Vypnout čtení nahlas"
   },
   "catalogue": {
     "title": "Karty – {{cls}}",
@@ -188,5 +191,21 @@
     "correct": "Správně!",
     "wrong": "Vedle – správná odpověď je zvýrazněná.",
     "next": "Další karta"
+  },
+  "speech": {
+    "card": "Karta {{number}}. {{name}}.",
+    "supplementary": "S doplňkovou kartou: {{name}}.",
+    "pace": {
+      "slow": "Pomalé tempo.",
+      "fast": "Rychlé tempo.",
+      "normal": "Normální tempo."
+    },
+    "side": {
+      "left": "Pes vlevo.",
+      "right": "Pes vpravo."
+    },
+    "start": "Start.",
+    "startRight": "Start na pravou ruku.",
+    "finish": "Cíl. Hotovo."
   }
 }

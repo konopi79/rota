@@ -9,6 +9,8 @@ import { z } from 'zod/v4'
 export type DeckParams = {
   options: DealOptions
   showDescription: boolean
+  /** Read each card aloud (R9). */
+  speak?: boolean
   /** Screen index: 0 = start, 1…n = cards, n + 1 = finish. */
   position: number
 }
@@ -33,9 +35,15 @@ const paramsSchema = z.object({
   popis: z.enum(['0', '1']).default('0'),
   karta: z.coerce.number().int().min(0).default(0),
   parkur: z.enum(['0', '1']).default('0'),
+  hlas: z.enum(['0', '1']).default('0'),
 })
 
-export function encodeDeckParams({ options, showDescription, position }: DeckParams): string {
+export function encodeDeckParams({
+  options,
+  showDescription,
+  speak,
+  position,
+}: DeckParams): string {
   const params = new URLSearchParams({
     trida: options.classId,
     karty: options.scope === 'new' ? 'nove' : 'vse',
@@ -48,6 +56,7 @@ export function encodeDeckParams({ options, showDescription, position }: DeckPar
   })
   // Only competition courses carry the flag, so training-deck URLs stay as they were.
   if (options.competition) params.set('parkur', '1')
+  if (speak) params.set('hlas', '1')
   return params.toString()
 }
 
@@ -70,6 +79,7 @@ export function decodeDeckParams(search: URLSearchParams): DeckParams | null {
       ...(p.parkur === '1' && { competition: true }),
     },
     showDescription: p.popis === '1',
+    ...(p.hlas === '1' && { speak: true }),
     position: p.karta,
   }
 }

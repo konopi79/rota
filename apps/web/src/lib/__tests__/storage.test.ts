@@ -35,7 +35,15 @@ describe('setup storage', () => {
       equipment: [],
       startSide: 'left',
       showDescription: false,
+      speak: false,
     })
+  })
+
+  test('setups stored before the speech option load with speech off', () => {
+    const stored = { ...defaultSetup(ro1), count: 9 } as Record<string, unknown>
+    delete stored.speak
+    localStorage.setItem('rota:v1', JSON.stringify({ setups: { RO1: stored } }))
+    expect(loadSetup(ro1)).toEqual({ ...defaultSetup(ro1), count: 9, speak: false })
   })
 
   test('remembers the last setup per class', () => {

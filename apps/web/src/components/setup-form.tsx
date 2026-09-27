@@ -28,6 +28,7 @@ import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { classSlug } from '@/lib/classes'
 import { encodeDeckParams } from '@/lib/deck-url'
+import { speechSupported as isSpeechSupported } from '@/lib/speech'
 import { defaultSetup, loadSetup, saveSetup, subscribeStorage, type Setup } from '@/lib/storage'
 
 const EQUIPMENT_LABEL: Record<Equipment, string> = {
@@ -35,6 +36,9 @@ const EQUIPMENT_LABEL: Record<Equipment, string> = {
   bowls: 'setup.bowls',
   jump: 'setup.jump',
 }
+
+/** Capability checks never change — nothing to subscribe to. */
+const noSubscribe = () => () => {}
 
 /**
  * The static HTML is rendered with the default setup; in the browser the stored one takes
@@ -59,6 +63,7 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
   if (!cls) throw new Error(`No content for ${classId}`)
 
   const [setup, setSetup] = useState<Setup>(initial)
+  const speechSupported = useSyncExternalStore(noSubscribe, isSpeechSupported, () => false)
   const update = (patch: Partial<Setup>) => setSetup((s) => ({ ...s, ...patch }))
 
   const hasNewScope = cls.newCardCodes.length > 0 && cls.newCardCodes.length < cls.cardCodes.length
@@ -85,6 +90,7 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
         seed: randomSeed(),
       },
       showDescription: setup.showDescription,
+      speak: setup.speak,
       position: 0,
     })
     router.push(`/balicek?${query}`)
@@ -107,6 +113,7 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
         competition: true,
       },
       showDescription: setup.showDescription,
+      speak: setup.speak,
       position: 0,
     })
     router.push(`/parkur?${query}`)
@@ -220,6 +227,19 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
           onCheckedChange={(checked) => update({ showDescription: checked })}
         />
       </div>
+
+      {speechSupported && (
+        <div className="flex items-center justify-between gap-4">
+          <Label htmlFor="speak" className="text-base">
+            {t('setup.speak')}
+          </Label>
+          <Switch
+            id="speak"
+            checked={setup.speak}
+            onCheckedChange={(checked) => update({ speak: checked })}
+          />
+        </div>
+      )}
 
       <Button size="lg" className="mt-2 h-14 text-lg" onClick={start}>
         <Shuffle />

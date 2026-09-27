@@ -15,6 +15,7 @@ const setupSchema = z.object({
   equipment: z.array(z.enum(EQUIPMENT)),
   startSide: z.enum(['left', 'right', 'random']),
   showDescription: z.boolean(),
+  speak: z.boolean().default(false),
 })
 export type Setup = z.infer<typeof setupSchema>
 
@@ -34,6 +35,7 @@ export const defaultSetup = (cls: RoClass): Setup => ({
   equipment: [],
   startSide: 'left',
   showDescription: false,
+  speak: false,
 })
 
 /** `localStorage` can be missing (server render) or throw (private mode, quota). */

@@ -21,18 +21,18 @@ dog** (§5), and every card must be readable in one glance.
 Source material: `podklady/` (downloaded from the author's Google Drive, **not
 committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 
-| #   | Phase                                         | Status                      |
-| --- | --------------------------------------------- | --------------------------- |
-| R0  | Scaffold (monorepo, tooling, CLAUDE.md)       | ✅ 2026-09-27               |
-| R1  | Content pipeline + national ruleset (CZ 2026) | ✅ 2026-09-27               |
-| R2  | FCI ruleset                                   | ✅ 2026-09-27               |
-| R3  | Random cards mode (rule-aware dealing)        | ✅ 2026-09-27               |
-| R4  | Card catalogue                                | ✅ 2026-09-27               |
-| R5  | PWA: offline + install                        | ✅ 2026-09-27               |
-| R6  | Deploy + open-source release                  | 🚧 live; repo still private |
-| R7  | Competition-course generator                  | ✅ 2026-09-27               |
-| R8  | Quiz                                          | ✅ 2026-09-27               |
-| R9  | Voice: cards read aloud                       | ⏳                          |
+| #   | Phase                                         | Status                       |
+| --- | --------------------------------------------- | ---------------------------- |
+| R0  | Scaffold (monorepo, tooling, CLAUDE.md)       | ✅ 2026-09-27                |
+| R1  | Content pipeline + national ruleset (CZ 2026) | ✅ 2026-09-27                |
+| R2  | FCI ruleset                                   | ✅ 2026-09-27                |
+| R3  | Random cards mode (rule-aware dealing)        | ✅ 2026-09-27                |
+| R4  | Card catalogue                                | ✅ 2026-09-27                |
+| R5  | PWA: offline + install                        | ✅ 2026-09-27                |
+| R6  | Deploy + open-source release                  | 🚧 live; repo still private  |
+| R7  | Competition-course generator                  | ✅ 2026-09-27                |
+| R8  | Quiz                                          | ✅ 2026-09-27                |
+| R9  | Voice: cards read aloud                       | 🚧 done; iPhone test pending |
 
 > **Order:** R3 is built before R2 so the national classes are usable end to end first;
 > FCI plugs into the same dealer afterwards.
@@ -405,8 +405,8 @@ gesture for audio).
 
 ### R9 — Voice
 
-- [ ] Announcement text (card, D0, pace, side change) as a pure function; tests
-- [ ] Speech on the deck screen: setup option (remembered) + toggle in the deck header, `cs-CZ` voice
+- [x] Announcement text (card, D0, pace, side change) as a pure function; tests (`lib/announce.ts`)
+- [x] Speech on the deck screen: setup option (remembered) + toggle in the deck header, `cs-CZ` voice (`lib/speech.ts`; `hlas=1` in the URL)
 - [ ] Tried on an iPhone (Safari and home-screen app)
 
 Each phase ends green on `bun run format && bun run typecheck && bun run lint` plus its
