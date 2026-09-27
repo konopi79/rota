@@ -37,3 +37,4 @@ coverage/
 
 # Claude Code local settings (keep shared docs/config checked in)
 .claude/settings.local.json
+.cache/

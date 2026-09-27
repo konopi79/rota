@@ -133,7 +133,7 @@ type Card = {
   karta".
 - Descriptions and sub-part tables: Příloha 1 (§8.1.1.1–8.1.1.5); types A / B / "A nebo
   B" (§8.1.1).
-- Images: `RO-Z.pdf` (40 pages: start, finish, D0a–d, Z-001…Z-032 + 2 to identify),
+- Images: `RO-Z.pdf` (40 pages: start, finish, D0a–d, Z-001…Z-032 + execution diagrams of the spirals Z-018 and Z-019, shown in the card detail),
   `RO1.pdf` (25 = 1-101…1-125), `RO2.pdf` (32 = 2-201…2-232), `RO3.pdf` (27 = 3-301…3-327).
   One card per landscape A4 page, raster ~3500 × 2500 px, the code printed top right.
 
@@ -276,7 +276,6 @@ plochu" hint with the Safari share-sheet steps.
 
 ## 10. Open items
 
-- Identify the 2 extra pages in `RO-Z.pdf` beyond start, finish, D0a–d and Z-001…Z-032.
 - Verify during proofreading whether more national cards carry sequencing rules than the
   ones in §5 (e.g. cards that must not follow each other, jump cards needing distance).
 - Domain (hosting: rock8.cloud).
@@ -297,8 +296,8 @@ plochu" hint with the Safari share-sheet steps.
 
 ### R1 — Content pipeline + national ruleset
 
-- [ ] Card image script: render, trim, webp full + thumb, contact sheet
-- [ ] National images extracted; page → code mapping verified against printed codes
+- [x] Card image script: render, trim, webp full + thumb, contact sheet — `bun run cards:extract` (`scripts/cards/`); needs poppler + tesseract
+- [x] National images extracted; page → code mapping verified against printed codes (OCR, 2-202 by eye) — 124 images, 3.5 MB
 - [ ] Content types + Zod schemas in `packages/content`
 - [ ] National classes RO-Z, RO1, RO2, RO3 (cumulative lists + new-card lists), RO-V (explicit list) with course rules
 - [ ] National cards: start, finish, D0a–d, Z-001…032, 1-101…125, 2-201…232, 3-301…327 — descriptions and sub-parts proofread
