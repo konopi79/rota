@@ -381,6 +381,7 @@ gesture for audio).
 - [x] Manifest + icons (`app/manifest.ts`, icon drawn in `app/icon.svg`, PNGs by `apps/web/scripts/icons.ts`; square variants for iOS and maskable)
 - [x] Service worker precaching shell, content and all card images (1 611 files, 17.6 MB) — tested offline on the production image by stopping the server: fresh page loads, a deck from its URL and card images all work. Tried on an iPhone by the author after the deploy (2026-09-27): works.
 - [x] Install hint on the home screen until dismissed: iOS share-sheet steps (Safari, Chrome and the rest — all WebKit), Chrome/Android install button (`beforeinstallprompt`)
+- [x] Installed app updates itself: iOS resumed the home-screen app from memory and kept an old version (found by the author, 2026-09-27) — now a check on every return to the screen, reload once hidden (`lib/sw-update.ts`, tested); build time at the bottom of `/o-aplikaci`
 
 ### R6 — Deploy + open-source release
 

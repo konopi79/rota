@@ -91,6 +91,9 @@ export default function AboutPage() {
           </a>
         </p>,
       )}
+      <p className="text-muted-foreground text-xs">
+        {t('about.version', { date: process.env.NEXT_PUBLIC_BUILD_TIME })}
+      </p>
     </main>
   )
 }

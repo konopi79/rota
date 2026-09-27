@@ -41,7 +41,7 @@ export const GUIDE: GuideSection[] = [
       'Otevři aplikaci jednou na Wi-Fi a chvíli ji nech otevřenou – stáhne si obrázky všech karet (asi 18 MB). Pak funguje i na cvičišti bez signálu.',
       'Vyber třídu, nastav balíček a začni. Další kartu ukáže přejetí prstem, klepnutí na kartu nebo tlačítko „Další“; klepnutí na levou třetinu karty vrátí předchozí.',
       'Displej během balíčku nezhasíná. Když přesto zhasne, nejspíš ho vypíná úspora baterie.',
-      'Nové verze se načtou samy při dalším otevření.',
+      'Nové verze se stahují samy: stáhnou se na pozadí a použijí se, až telefon odložíš. Datum verze, kterou máš, je úplně dole na stránce O aplikaci.',
     ],
   },
   {

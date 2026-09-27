@@ -94,6 +94,11 @@ No Next/Turbopack plugin.
 - Registered only in production (`components/pwa.tsx`); dev has no `sw.js`.
 - `skipWaiting` + `clientsClaim`: a new deploy takes over on the next load. nginx serves
   `/sw.js` and the manifest `no-cache`, the manifest with its proper MIME type.
+- **Installed apps are not reloaded** — iOS resumes a home-screen app from memory, so
+  without help it stays on an old version for days. `lib/sw-update.ts` checks for a new
+  version whenever the app comes back to the screen and reloads once it is hidden (phone
+  in the pocket); decks keep their position in the URL. The build time is shown at the
+  bottom of `/o-aplikaci` (`NEXT_PUBLIC_BUILD_TIME`, set in `next.config.ts`).
 - Test offline for real: build the Docker image, run it, open it, wait until
   `caches` holds everything, **stop the container**, navigate (see the R5 checklist).
 - Keep the precache under the plan's 25 MB budget — `build-sw.ts` prints the size.

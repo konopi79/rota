@@ -6,14 +6,22 @@ import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { installMode, promptInstall, subscribeInstall } from '@/lib/install'
+import { watchForUpdates } from '@/lib/sw-update'
 import { dismissInstallHint, isInstallHintDismissed, subscribeStorage } from '@/lib/storage'
 
-/** Registers the service worker; production only — dev has no sw.js. */
+/**
+ * Registers the service worker (production only — dev has no sw.js) and keeps an
+ * installed app up to date (`lib/sw-update.ts`).
+ */
 export function ServiceWorkerRegistration() {
   useEffect(() => {
-    if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
-      void navigator.serviceWorker.register('/sw.js')
-    }
+    if (process.env.NODE_ENV !== 'production' || !('serviceWorker' in navigator)) return
+    return watchForUpdates({
+      container: navigator.serviceWorker,
+      registration: navigator.serviceWorker.register('/sw.js'),
+      doc: document,
+      reload: () => window.location.reload(),
+    })
   }, [])
   return null
 }
