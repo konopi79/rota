@@ -387,6 +387,7 @@ gesture for audio).
 - [x] Dockerfile: Bun build → `nginx-unprivileged` serving `out/` on **port 3030**, security headers, `/healthz`, verified in CI
 - [x] rock8.cloud service, HTTPS — live at https://rota.rock8cloud.app (2026-09-27; the first deploys failed on a rock8 registry outage, fixed by rock8 support)
 - [x] About page (`/o-aplikaci`): unofficial training aid, sources and regulation versions, credits, privacy, offline, link to the repo
+- [x] Ready for public: history checked (no PDFs, secrets or service IDs ever committed), README (live link, how to report a card error, MIT covers the code only — not the card graphics), CI `permissions: contents: read`, issue form "Chyba v kartě nebo pravidle"; GitHub: homepage + topics, `main` ruleset (no force push / deletion), Dependabot alerts, secret scanning + push protection, private vulnerability reporting (2026-09-27)
 - [ ] Make `konopi79/rota` public
 
 ### R7 — Competition-course generator

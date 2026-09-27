@@ -1,0 +1,31 @@
+name: Chyba v kartě nebo pravidle
+description: Špatný obrázek, popis cviku nebo pořadí karet, které nejde se psem provést.
+title: '[karta] '
+labels: [content]
+body:
+  - type: input
+    id: class
+    attributes:
+      label: Třída
+      placeholder: RO-Z, RO1, RO2, RO3, RO-V nebo FCI-ROB
+    validations:
+      required: true
+  - type: input
+    id: card
+    attributes:
+      label: Karta
+      description: Číslo karty (např. 2-211 nebo FCI 319).
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Co je špatně
+      description: Co aplikace ukazuje a jak by to mělo být. U pořadí karet pomůže odkaz na balíček (adresa stránky).
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Zdroj
+      description: Článek nebo strana zkušebního řádu, podle kterého to má být jinak (nepovinné).

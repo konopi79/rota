@@ -4,16 +4,26 @@ A free, open-source web app for rally obedience training. Pick a class — **RO-
 RO2, RO3, RO-V** (Czech national regulations) or **FCI-ROB** — and ROTA deals the
 exercise cards in random order, one at a time, full screen on your phone. The order is
 always one you can actually perform with your dog: supplementary cards stay with their
-exercise, pace changes and (for FCI) the dog's side are respected.
+exercise, a leave is followed by a recall, pace changes and the dog's side are respected.
 
-No account, no tracking; works offline on the training field once installed.
+**Try it: [rota.rock8cloud.app](https://rota.rock8cloud.app)** — no account, no tracking;
+add it to your home screen and it works offline on the training field. Everything it can
+do is listed on its [About page](https://rota.rock8cloud.app/o-aplikaci) (Czech).
 
-> **Status:** in development — see the [implementation plan](.claude/ro-implementation-plan.md).
+Also in the app: a card catalogue with descriptions and sequencing rules, a
+competition-course generator, a quiz, and cards read aloud.
 
 ROTA is an unofficial training aid. Card graphics and exercise descriptions come from the
 official regulations — the Czech national rally obedience regulations (Zkušební řád Rally
 Obedience v ČR, 2026) and the FCI Rally Obedience regulations (Czech translation valid from
-1 February 2025) — and remain the work of their authors.
+1 February 2025) — and remain the work of their authors. The regulations in force are
+always binding.
+
+## Found a mistake?
+
+A wrong card, description or sequencing rule is a bug — please
+[open an issue](https://github.com/konopi79/rota/issues/new/choose) with the card code
+and, ideally, the page of the regulation.
 
 ## Development
 
@@ -27,8 +37,23 @@ bun test
 ```
 
 Tech stack: Bun · Next.js 16 (static export) · React 19 · Tailwind CSS 4 · shadcn/ui ·
-i18next · Zod.
+i18next · Zod. The app is plain static files (served by nginx in `apps/web/Dockerfile`);
+there is no backend.
+
+- `packages/content` — cards, classes and the dealing rules (`dealDeck` / `validateDeck`),
+  each rule citing the regulation page it comes from.
+- `apps/web` — the app; UI strings in `apps/web/src/i18n/cs.json`.
+- [`CLAUDE.md`](CLAUDE.md) — conventions and how things fit together;
+  [implementation plan](.claude/ro-implementation-plan.md) — decisions and their reasons.
+
+The regulation and card PDFs are **not** in this repository. The card images in
+`apps/web/public/cards/` are generated from them by `bun run cards:extract`
+(`scripts/cards/`) and committed, so you only need the PDFs to regenerate the images or
+to update the content for a new regulation version.
 
 ## Licence
 
-Code: [MIT](LICENSE).
+The **code** is under the [MIT licence](LICENSE). The MIT licence does **not** cover the
+card graphics (`apps/web/public/cards/`) or the exercise descriptions taken from the
+regulations — those remain the work of their authors and are included only so the app
+shows the same cards a handler sees at a competition.
