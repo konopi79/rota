@@ -6,6 +6,9 @@ import {
   dismissInstallHint,
   isInstallHintDismissed,
   loadSetup,
+  quizStatsSnapshot,
+  resetQuizStats,
+  saveQuizStats,
   saveSetup,
 } from '../storage'
 
@@ -61,5 +64,11 @@ describe('setup storage', () => {
     dismissInstallHint()
     expect(isInstallHintDismissed()).toBe(true)
     expect(loadSetup(ro1).count).toBe(5)
+  })
+
+  test('quiz answers: saved, and reset per set of cards', () => {
+    saveQuizStats({ 'CZ:Z-001': { right: 2, wrong: 0 }, 'FCI:101': { right: 0, wrong: 1 } })
+    resetQuizStats(['CZ:Z-001'])
+    expect(JSON.parse(quizStatsSnapshot())).toEqual({ 'FCI:101': { right: 0, wrong: 1 } })
   })
 })

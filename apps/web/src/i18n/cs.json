@@ -42,7 +42,8 @@
     "showDescription": "Popis pod kartou",
     "start": "Zamíchat a začít",
     "browseCards": "Prohlédnout karty třídy",
-    "course": "Sestavit závodní parkur"
+    "course": "Sestavit závodní parkur",
+    "quiz": "Kvíz – poznáš karty?"
   },
   "deck": {
     "close": "Zpět na nastavení",
@@ -171,5 +172,21 @@
     "copied": "Odkaz zkopírován",
     "walk": "Projít jako balíček",
     "shareTitle": "ROTA – závodní parkur {{cls}}"
+  },
+  "quiz": {
+    "title": "Kvíz – {{cls}}",
+    "back": "Nastavení",
+    "summary": "Umíš {{mastered}} z {{total}} karet",
+    "reset": "Začít znovu",
+    "modeRecall": "Vybavím si",
+    "modePick": "Tři možnosti",
+    "recallHint": "Co přesně se u téhle karty dělá?",
+    "reveal": "Ukázat",
+    "know": "Vím",
+    "dontKnow": "Nevím",
+    "pickHint": "Který popis patří ke kartě?",
+    "correct": "Správně!",
+    "wrong": "Vedle – správná odpověď je zvýrazněná.",
+    "next": "Další karta"
   }
 }

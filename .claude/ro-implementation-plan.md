@@ -31,7 +31,7 @@ committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 | R5  | PWA: offline + install                        | ✅ 2026-09-27               |
 | R6  | Deploy + open-source release                  | 🚧 live; repo still private |
 | R7  | Competition-course generator                  | ✅ 2026-09-27               |
-| R8  | Quiz                                          | ⏳                          |
+| R8  | Quiz                                          | ✅ 2026-09-27               |
 | R9  | Voice: cards read aloud                       | ⏳                          |
 
 > **Order:** R3 is built before R2 so the national classes are usable end to end first;
@@ -398,10 +398,10 @@ gesture for audio).
 
 ### R8 — Quiz
 
-- [ ] `lib/quiz.ts`: weighted next card, distractor descriptions, answer stats (local storage); tests
-- [ ] Recall mode (reveal, "Vím / Nevím")
-- [ ] Pick mode (three descriptions)
-- [ ] Progress summary + reset; entry point on the setup screen
+- [x] `lib/quiz.ts`: weighted next card, distractor descriptions, answer stats (local storage); tests
+- [x] Recall mode (reveal, "Vím / Nevím")
+- [x] Pick mode (three descriptions)
+- [x] Progress summary + reset; entry point on the setup screen
 
 ### R9 — Voice
 

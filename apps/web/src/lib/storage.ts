@@ -1,6 +1,8 @@
 import { CLASS_IDS, EQUIPMENT, type ClassId, type RoClass } from '@rota/content'
 import { z } from 'zod/v4'
 
+import type { QuizStats } from './quiz'
+
 /**
  * Everything ROTA remembers lives here, in the browser's local storage (plan D2): the
  * last setup per class. One versioned key; anything unreadable falls back to defaults.
@@ -19,6 +21,10 @@ export type Setup = z.infer<typeof setupSchema>
 const storedSchema = z.object({
   setups: z.partialRecord(z.enum(CLASS_IDS), setupSchema),
   installHintDismissed: z.boolean().optional(),
+  /** Quiz answers per card (`lib/quiz.ts` `statKey`). */
+  quiz: z
+    .record(z.string(), z.object({ right: z.number().int(), wrong: z.number().int() }))
+    .optional(),
 })
 type Stored = z.infer<typeof storedSchema>
 
@@ -77,4 +83,19 @@ export const isInstallHintDismissed = () => read().installHintDismissed === true
 
 export function dismissInstallHint(): void {
   write({ ...read(), installHintDismissed: true })
+}
+
+/** Stable snapshot for `useSyncExternalStore` (a new object each call would loop). */
+export const quizStatsSnapshot = () => JSON.stringify(read().quiz ?? {})
+
+export function saveQuizStats(stats: QuizStats): void {
+  write({ ...read(), quiz: stats })
+}
+
+/** Forget the answers for some cards (one class) and keep the rest. */
+export function resetQuizStats(keys: string[]): void {
+  const stored = read()
+  const quiz = { ...stored.quiz }
+  for (const key of keys) delete quiz[key]
+  write({ ...stored, quiz })
 }
