@@ -67,6 +67,19 @@ bun test
 bun run format
 ```
 
+## Deployment (rock8.cloud)
+
+rock8.cloud builds the image from `apps/web/Dockerfile` (context = repo root): Bun builds
+the static export, `nginxinc/nginx-unprivileged` serves `apps/web/out` on **port 3030**.
+No runtime env vars. Health check: `GET /healthz` → `ok`.
+
+- nginx config: `apps/web/docker/nginx.conf`; security headers (CSP etc.) in
+  `apps/web/docker/security-headers.conf` — every `location` must `include` it, because
+  a location's own `add_header` drops all inherited ones.
+- Caching: `/_next/static/` immutable, `/cards/` one day, pages and `/sw.js` `no-cache`.
+- CI builds the image on every push (verification only, not pushed anywhere).
+- Local check: `docker build -f apps/web/Dockerfile -t rota . && docker run -p 3030:3030 rota`
+
 ## Conventions
 
 - Prettier: no semicolons, single quotes, trailing commas, width 100 (same as Malibo).

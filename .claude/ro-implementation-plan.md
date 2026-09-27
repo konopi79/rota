@@ -21,17 +21,17 @@ dog** (§5), and every card must be readable in one glance.
 Source material: `podklady/` (downloaded from the author's Google Drive, **not
 committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 
-| #   | Phase                                         | Status        |
-| --- | --------------------------------------------- | ------------- |
-| R0  | Scaffold (monorepo, tooling, CLAUDE.md)       | ✅ 2026-09-27 |
-| R1  | Content pipeline + national ruleset (CZ 2026) | ⏳            |
-| R2  | FCI ruleset                                   | ⏳            |
-| R3  | Random cards mode (rule-aware dealing)        | ⏳            |
-| R4  | Card catalogue                                | ⏳            |
-| R5  | PWA: offline + install                        | ⏳            |
-| R6  | Deploy + open-source release                  | ⏳            |
-| R7  | Full competition-course generator             | 💭 post-MVP   |
-| R8  | Quiz                                          | 💭 post-MVP   |
+| #   | Phase                                         | Status              |
+| --- | --------------------------------------------- | ------------------- |
+| R0  | Scaffold (monorepo, tooling, CLAUDE.md)       | ✅ 2026-09-27       |
+| R1  | Content pipeline + national ruleset (CZ 2026) | ⏳                  |
+| R2  | FCI ruleset                                   | ⏳                  |
+| R3  | Random cards mode (rule-aware dealing)        | ⏳                  |
+| R4  | Card catalogue                                | ⏳                  |
+| R5  | PWA: offline + install                        | ⏳                  |
+| R6  | Deploy + open-source release                  | 🚧 Dockerfile ready |
+| R7  | Full competition-course generator             | 💭 post-MVP         |
+| R8  | Quiz                                          | 💭 post-MVP         |
 
 > **Keeping this current:** tick the checklist items as they land and the phase to ✅
 > with a date when it ships. A phase or item that turns out to be a bad idea gets ⏭️ plus
@@ -335,7 +335,8 @@ plochu" hint with the Safari share-sheet steps.
 
 ### R6 — Deploy + open-source release
 
-- [ ] rock8.cloud deploy: Dockerfile serving `out/` (nginx/Caddy) with security headers, domain, HTTPS
+- [x] Dockerfile: Bun build → `nginx-unprivileged` serving `out/` on **port 3030**, security headers, `/healthz`, verified in CI
+- [ ] rock8.cloud service, domain, HTTPS
 - [ ] About page: unofficial training aid, sources and regulation versions, credits, link to the repo
 - [ ] Make `konopi79/rota` public
 

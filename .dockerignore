@@ -1,0 +1,38 @@
+# Dependencies
+node_modules
+**/node_modules
+
+# Build output (the image builds its own)
+**/.next
+**/out
+**/dist
+**/build
+*.tsbuildinfo
+
+# Source PDFs (~120 MB) — never part of the image
+podklady
+
+# Git
+.git
+.gitignore
+
+# Environment
+.env
+.env.*
+
+# IDE / OS
+.vscode
+.idea
+*.swp
+.DS_Store
+
+# Tooling and docs not needed for the build
+.claude
+.github
+*.md
+!README.md
+LICENSE
+lefthook.yml
+.lefthookrc
+.prettierrc
+.prettierignore
