@@ -21,18 +21,18 @@ dog** (§5), and every card must be readable in one glance.
 Source material: `podklady/` (downloaded from the author's Google Drive, **not
 committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 
-| #   | Phase                                         | Status                      |
-| --- | --------------------------------------------- | --------------------------- |
-| R0  | Scaffold (monorepo, tooling, CLAUDE.md)       | ✅ 2026-09-27               |
-| R1  | Content pipeline + national ruleset (CZ 2026) | ✅ 2026-09-27               |
-| R2  | FCI ruleset                                   | ✅ 2026-09-27               |
-| R3  | Random cards mode (rule-aware dealing)        | ✅ 2026-09-27               |
-| R4  | Card catalogue                                | ✅ 2026-09-27               |
-| R5  | PWA: offline + install                        | ✅ 2026-09-27               |
-| R6  | Deploy + open-source release                  | 🚧 live; repo still private |
-| R7  | Competition-course generator                  | ✅ 2026-09-27               |
-| R8  | Quiz                                          | ✅ 2026-09-27               |
-| R9  | Voice: cards read aloud                       | ✅ 2026-09-27               |
+| #   | Phase                                         | Status        |
+| --- | --------------------------------------------- | ------------- |
+| R0  | Scaffold (monorepo, tooling, CLAUDE.md)       | ✅ 2026-09-27 |
+| R1  | Content pipeline + national ruleset (CZ 2026) | ✅ 2026-09-27 |
+| R2  | FCI ruleset                                   | ✅ 2026-09-27 |
+| R3  | Random cards mode (rule-aware dealing)        | ✅ 2026-09-27 |
+| R4  | Card catalogue                                | ✅ 2026-09-27 |
+| R5  | PWA: offline + install                        | ✅ 2026-09-27 |
+| R6  | Deploy + open-source release                  | ✅ 2026-09-27 |
+| R7  | Competition-course generator                  | ✅ 2026-09-27 |
+| R8  | Quiz                                          | ✅ 2026-09-27 |
+| R9  | Voice: cards read aloud                       | ✅ 2026-09-27 |
 
 > **Order:** R3 is built before R2 so the national classes are usable end to end first;
 > FCI plugs into the same dealer afterwards.
@@ -387,8 +387,8 @@ gesture for audio).
 - [x] Dockerfile: Bun build → `nginx-unprivileged` serving `out/` on **port 3030**, security headers, `/healthz`, verified in CI
 - [x] rock8.cloud service, HTTPS — live at https://rota.rock8cloud.app (2026-09-27; the first deploys failed on a rock8 registry outage, fixed by rock8 support)
 - [x] About page (`/o-aplikaci`): unofficial training aid, sources and regulation versions, credits, privacy, offline, link to the repo
-- [x] Ready for public: history checked (no PDFs, secrets or service IDs ever committed), README (live link, how to report a card error, MIT covers the code only — not the card graphics), CI `permissions: contents: read`, issue form "Chyba v kartě nebo pravidle"; GitHub: homepage + topics, `main` ruleset (no force push / deletion), Dependabot alerts, secret scanning + push protection, private vulnerability reporting (2026-09-27)
-- [ ] Make `konopi79/rota` public
+- [x] Ready for public: history checked (no PDFs, secrets or service IDs ever committed), README (live link, how to report a card error, MIT covers the code only — not the card graphics), CI `permissions: contents: read`, issue form "Chyba v kartě nebo pravidle"; GitHub: homepage + topics, `main` ruleset (no force push / deletion), Dependabot alerts, secret scanning + push protection, private vulnerability reporting (2026-09-27; the last three need a public repo — done right after the switch)
+- [x] `konopi79/rota` made public (2026-09-27); the ruleset, secret scanning and private vulnerability reporting could only be switched on after that
 
 ### R7 — Competition-course generator
 
