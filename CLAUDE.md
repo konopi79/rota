@@ -118,7 +118,9 @@ No Next/Turbopack plugin.
   they are still prerendered to HTML by the static export.
 - **Feature list** (`apps/web/src/content/features.ts`, shown on `/o-aplikaci` — the link
   the author sends when someone asks what ROTA does): every user-visible feature that
-  ships gets an item there, and `LATEST_FEATURE_ID` moves to it (the "Nové" badge).
+  ships gets an item there, and `LATEST_FEATURE_ID` moves to it (the "Nové" badge). Next
+  to it, `content/guide.ts` is the install-and-use guide (`/o-aplikaci#navod`) — update it
+  when installing, the deck controls or the voice change; its test checks the quoted labels.
 
 ## Static export (`output: 'export'`)
 

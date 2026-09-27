@@ -152,12 +152,11 @@
     "cards": "Grafika karet i texty cviků pocházejí z uvedených řádů a patří jejich autorům.",
     "privacyTitle": "Soukromí",
     "privacy": "Žádné přihlašování, žádné sledování. Aplikace si pamatuje jen tvoje poslední nastavení, a to jen v tvém prohlížeči. Nic se nikam neodesílá.",
-    "offlineTitle": "Bez signálu",
-    "offline": "Po prvním otevření funguje aplikace i offline. Nejpohodlnější je přidat si ji na plochu telefonu.",
     "codeTitle": "Otevřený kód",
     "code": "Zdrojový kód je k dispozici pod licencí MIT:",
     "featuresTitle": "Co ROTA umí",
-    "new": "Nové"
+    "new": "Nové",
+    "guideTitle": "Jak si ROTA uložit a používat"
   },
   "course": {
     "title": "Závodní parkur – {{cls}}",

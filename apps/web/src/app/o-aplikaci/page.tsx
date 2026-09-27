@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { FEATURE_GROUPS, LATEST_FEATURE_ID } from '@/content/features'
+import { GUIDE } from '@/content/guide'
 
 const REPO_URL = 'https://github.com/konopi79/rota'
 
@@ -56,6 +57,21 @@ export default function AboutPage() {
           </div>
         ))}
       </section>
+      <section id="navod" className="scroll-mt-6 space-y-3">
+        <h2 className="text-xl font-semibold">{t('about.guideTitle')}</h2>
+        {GUIDE.map((part) => (
+          <div key={part.id} className="bg-card space-y-3 rounded-lg border p-4">
+            <h3 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
+              {part.title}
+            </h3>
+            <ol className="list-decimal space-y-2 pl-5 text-sm">
+              {part.steps.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
+          </div>
+        ))}
+      </section>
       {section(t('about.unofficialTitle'), <p>{t('about.unofficial')}</p>)}
       {section(
         t('about.sourcesTitle'),
@@ -66,7 +82,6 @@ export default function AboutPage() {
         </ul>,
       )}
       {section(t('about.privacyTitle'), <p>{t('about.privacy')}</p>)}
-      {section(t('about.offlineTitle'), <p>{t('about.offline')}</p>)}
       {section(
         t('about.codeTitle'),
         <p>
