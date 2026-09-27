@@ -31,6 +31,12 @@ RUN cd apps/web && bun run build
 # listen on 3030, not a privileged port.
 FROM nginxinc/nginx-unprivileged:alpine AS runner
 
+# One worker: the service gets a fraction of a vCPU, and `worker_processes auto` would
+# start one worker per CPU of the *host* (quotas don't change what nginx sees).
+USER root
+RUN sed -i 's/^worker_processes .*/worker_processes 1;/' /etc/nginx/nginx.conf
+USER 101
+
 COPY apps/web/docker/nginx.conf /etc/nginx/conf.d/default.conf
 COPY apps/web/docker/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=builder /app/apps/web/out /usr/share/nginx/html
