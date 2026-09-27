@@ -11,3 +11,14 @@ export {
   type RulesetId,
 } from './schema'
 export { CZ_CARDS, CZ_CLASSES, CZ_RULESET } from './cz'
+export { CLASSES, getCard, getClass } from './registry'
+export {
+  dealDeck,
+  randomSeed,
+  validateDeck,
+  type Deck,
+  type DeckEntry,
+  type DealOptions,
+  type Pace,
+  type Side,
+} from './deal'

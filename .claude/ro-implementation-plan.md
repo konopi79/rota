@@ -213,11 +213,14 @@ regulations:
   dealt class are ignored (RO2 decks never contain 3-3xx follow-ups).
 - **After a static exercise.** 2-218 and 3-314 ("z poslední pozice") must follow a card
   that ends static (`afterStatic`).
-- **Dog's side.** "Psovod vede psa standardně po své levé straně" (§4.2), but a start can
-  be "na pravou ruku" and the side-change cards 1-123–1-125, 2-232, 3-325–3-327 switch
-  it (`sideChange`). A change **holds until another card changes it**, and the team goes
-  to the finish on whatever side it is on — no rule to end on the left (confirmed by the
-  author, 2026-09-27). The dealer tracks the side and shows it.
+- **Dog's side.** §4.2: "Psovod vede psa standardně po své levé straně, pokud není řádem
+  nebo rozhodčím stanoveno jinak" — so only a card or the judge (a start "na pravou
+  ruku", marked "R") sets it. The side-change cards 1-123–1-125, 2-232, 3-325–3-327 switch
+  it ("Strana vedení je změněna", 1-125), and příloha 2 penalises "Pes svévolně změní
+  stranu u nohy" and "Provedení cviku na špatné straně u nohy" — so a change **holds
+  until another card changes it**. Nothing requires ending on the left; the team goes to
+  the finish on its current side (also confirmed by the author, 2026-09-27). The dealer
+  tracks the side (`sideChange`) and shows it.
 - **Last card only.** RO-V: Z-016 and 1-110 only as the last card.
 - **Tracked changes in the PDF.** The 2026 regulation was published with struck-through
   text still in it; `pdftotext` returns deleted and new wording side by side. Found with
@@ -325,7 +328,7 @@ plochu" hint with the Safari share-sheet steps.
 
 ### R3 — Random cards mode
 
-- [ ] `dealDeck` + `validateDeck` with seeded PRNG; unit tests per rule + property tests per class
+- [x] `dealDeck` + `validateDeck` with seeded PRNG; unit tests per rule + property tests per class (`packages/content/src/deal/`)
 - [ ] Setup screen (class, whole / new-only, count, equipment, start side, description)
 - [ ] Deck screen: full-screen card, main + D0 pairing, swipe + tap + buttons, progress, pace/side badges, reshuffle
 - [ ] Description toggle, wake lock
