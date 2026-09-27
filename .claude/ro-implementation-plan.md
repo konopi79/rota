@@ -362,7 +362,7 @@ plochu" hint with the Safari share-sheet steps.
 
 - [x] Dockerfile: Bun build → `nginx-unprivileged` serving `out/` on **port 3030**, security headers, `/healthz`, verified in CI
 - [ ] rock8.cloud service, domain, HTTPS
-- [ ] About page: unofficial training aid, sources and regulation versions, credits, link to the repo
+- [x] About page (`/o-aplikaci`): unofficial training aid, sources and regulation versions, credits, privacy, offline, link to the repo
 - [ ] Make `konopi79/rota` public
 
 Each phase ends green on `bun run format && bun run typecheck && bun run lint` plus its

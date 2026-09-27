@@ -57,6 +57,12 @@ export default function HomePage() {
           })}
         </div>
       </section>
+
+      <footer className="text-muted-foreground mt-auto text-center text-sm">
+        <Link href="/o-aplikaci" className="underline underline-offset-4">
+          {t('home.about')}
+        </Link>
+      </footer>
     </main>
   )
 }

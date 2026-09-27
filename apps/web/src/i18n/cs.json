@@ -9,7 +9,8 @@
     "comingSoon": "Připravujeme",
     "cardCount_one": "{{count}} karta",
     "cardCount_few": "{{count}} karty",
-    "cardCount_other": "{{count}} karet"
+    "cardCount_other": "{{count}} karet",
+    "about": "O aplikaci"
   },
   "classes": {
     "RO-Z": "RO-Z – začátečníci",
@@ -133,5 +134,22 @@
     "button": "Nainstalovat",
     "dismiss": "Zavřít",
     "offline": "Pak funguje i na cvičišti bez signálu."
+  },
+  "about": {
+    "title": "O aplikaci",
+    "back": "Třídy",
+    "intro": "ROTA (Rally Obedience Training App) je bezplatná pomůcka pro trénink rally obedience. Vybereš třídu a aplikace ti rozdá karty cviků v náhodném pořadí – vždy tak, aby se daly se psem skutečně provést.",
+    "unofficialTitle": "Neoficiální pomůcka",
+    "unofficial": "ROTA není oficiální aplikace žádné kynologické organizace. Závazné je vždy aktuální znění zkušebních řádů. Když najdeš chybu v kartě nebo pravidle, založ prosím issue na GitHubu (odkaz níže).",
+    "sourcesTitle": "Zdroje",
+    "cz": "Zkušební řád Rally Obedience v ČR, účinný od {{date}} – karty RO-Z, RO1, RO2, RO3 a RO-V, jejich popisy a pravidla řazení.",
+    "fci": "FCI Rally Obedience – zkušební řád a směrnice pro mezinárodní soutěže, český překlad účinný od {{date}} – karty FCI-ROB.",
+    "cards": "Grafika karet i texty cviků pocházejí z uvedených řádů a patří jejich autorům.",
+    "privacyTitle": "Soukromí",
+    "privacy": "Žádné přihlašování, žádné sledování. Aplikace si pamatuje jen tvoje poslední nastavení, a to jen v tvém prohlížeči. Nic se nikam neodesílá.",
+    "offlineTitle": "Bez signálu",
+    "offline": "Po prvním otevření funguje aplikace i offline. Nejpohodlnější je přidat si ji na plochu telefonu.",
+    "codeTitle": "Otevřený kód",
+    "code": "Zdrojový kód je k dispozici pod licencí MIT:"
   }
 }
