@@ -20,17 +20,12 @@ import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { classSlug } from '@/lib/classes'
 import { encodeDeckParams } from '@/lib/deck-url'
-import { defaultSetup, loadSetup, saveSetup, type Setup } from '@/lib/storage'
+import { defaultSetup, loadSetup, saveSetup, subscribeStorage, type Setup } from '@/lib/storage'
 
 const EQUIPMENT_LABEL: Record<Equipment, string> = {
   cones: 'setup.cones',
   bowls: 'setup.bowls',
   jump: 'setup.jump',
-}
-
-const subscribe = (onChange: () => void) => {
-  window.addEventListener('storage', onChange)
-  return () => window.removeEventListener('storage', onChange)
 }
 
 /**
@@ -42,7 +37,7 @@ export function SetupForm({ classId }: { classId: ClassId }) {
   const cls = getClass(classId)
   if (!cls) throw new Error(`No content for ${classId}`)
   const stored = useSyncExternalStore(
-    subscribe,
+    subscribeStorage,
     () => JSON.stringify(loadSetup(cls)),
     () => JSON.stringify(defaultSetup(cls)),
   )

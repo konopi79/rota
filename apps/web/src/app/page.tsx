@@ -5,6 +5,7 @@ import { ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
+import { InstallHint } from '@/components/pwa'
 import { Button } from '@/components/ui/button'
 import { classSlug } from '@/lib/classes'
 
@@ -17,6 +18,8 @@ export default function HomePage() {
         <h1 className="text-4xl font-bold tracking-tight">{t('app.name')}</h1>
         <p className="text-muted-foreground">{t('app.tagline')}</p>
       </header>
+
+      <InstallHint />
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">{t('home.chooseClass')}</h2>

@@ -28,7 +28,7 @@ committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 | R2  | FCI ruleset                                   | ✅ 2026-09-27       |
 | R3  | Random cards mode (rule-aware dealing)        | ✅ 2026-09-27       |
 | R4  | Card catalogue                                | ✅ 2026-09-27       |
-| R5  | PWA: offline + install                        | ⏳                  |
+| R5  | PWA: offline + install                        | ✅ 2026-09-27       |
 | R6  | Deploy + open-source release                  | 🚧 Dockerfile ready |
 | R7  | Full competition-course generator             | 💭 post-MVP         |
 | R8  | Quiz                                          | 💭 post-MVP         |
@@ -354,9 +354,9 @@ plochu" hint with the Safari share-sheet steps.
 
 ### R5 — PWA
 
-- [ ] Manifest + icons
-- [ ] Service worker precaching shell, content and all card images; offline tested in airplane mode
-- [ ] iOS "add to home screen" hint (shown once)
+- [x] Manifest + icons (`app/manifest.ts`, icon drawn in `app/icon.svg`, PNGs by `apps/web/scripts/icons.ts`; square variants for iOS and maskable)
+- [x] Service worker precaching shell, content and all card images (1 611 files, 17.6 MB) — tested offline on the production image by stopping the server: fresh page loads, a deck from its URL and card images all work. On a real phone: still to try.
+- [x] Install hint on the home screen until dismissed: iOS Safari steps, Chrome/Android install button (`beforeinstallprompt`)
 
 ### R6 — Deploy + open-source release
 

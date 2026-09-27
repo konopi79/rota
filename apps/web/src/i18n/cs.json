@@ -125,5 +125,13 @@
     "cones": "kužely",
     "bowls": "misky",
     "jump": "překážka"
+  },
+  "install": {
+    "title": "Přidej si ROTA na plochu",
+    "iosBefore": "V Safari klepni na",
+    "iosAfter": "a vyber „Přidat na plochu“.",
+    "button": "Nainstalovat",
+    "dismiss": "Zavřít",
+    "offline": "Pak funguje i na cvičišti bez signálu."
   }
 }

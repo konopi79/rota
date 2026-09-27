@@ -42,8 +42,7 @@ Same stack as Malibo and Zkofno, minus the backend (plan D1):
 - **UI**: React 19, Tailwind CSS 4, shadcn/ui v4 (`base-nova` style on `@base-ui/react`), lucide icons
 - **i18n**: i18next + react-i18next, strings in `apps/web/src/i18n/cs.json`
 - **Validation**: Zod 4
-- **Offline (R5)**: Serwist via `@serwist/build` `injectManifest` run **after** `next build`
-  over `out/` — bundler-independent, verified in R0; no Next/Turbopack plugin needed
+- **Offline (R5)**: Serwist — see "Offline (service worker)" below
 
 ## Monorepo Structure
 
@@ -79,6 +78,23 @@ No runtime env vars. Health check: `GET /healthz` → `ok`.
 - Caching: `/_next/static/` immutable, `/cards/` one day, pages and `/sw.js` `no-cache`.
 - CI builds the image on every push (verification only, not pushed anywhere).
 - Local check: `docker build -f apps/web/Dockerfile -t rota . && docker run -p 3030:3030 rota`
+
+## Offline (service worker)
+
+`bun run build` in `apps/web` = `next build` **then** `scripts/build-sw.ts`: Bun bundles
+`src/sw.ts` into `out/sw.js` and `@serwist/build` injects the precache manifest of
+everything in `out/` (pages, their `.txt` RSC payloads, JS, CSS, card images — ~18 MB).
+No Next/Turbopack plugin.
+
+- The SW precaches with `cleanURLs` (`/trida/ro1` → `trida/ro1.html`) and **ignores all
+  query parameters** — the deck lives in `?trida=…&seed=…`, client navigations add
+  `?_rsc=…`. A page whose _content_ depended on the query would need a different rule.
+- Registered only in production (`components/pwa.tsx`); dev has no `sw.js`.
+- `skipWaiting` + `clientsClaim`: a new deploy takes over on the next load. nginx serves
+  `/sw.js` and the manifest `no-cache`, the manifest with its proper MIME type.
+- Test offline for real: build the Docker image, run it, open it, wait until
+  `caches` holds everything, **stop the container**, navigate (see the R5 checklist).
+- Keep the precache under the plan's 25 MB budget — `build-sw.ts` prints the size.
 
 ## Conventions
 

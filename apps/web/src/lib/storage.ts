@@ -18,6 +18,7 @@ export type Setup = z.infer<typeof setupSchema>
 
 const storedSchema = z.object({
   setups: z.partialRecord(z.enum(CLASS_IDS), setupSchema),
+  installHintDismissed: z.boolean().optional(),
 })
 type Stored = z.infer<typeof storedSchema>
 
@@ -44,12 +45,36 @@ export function loadSetup(cls: RoClass): Setup {
   return read().setups[cls.id] ?? defaultSetup(cls)
 }
 
-export function saveSetup(classId: ClassId, setup: Setup): void {
-  const stored = read()
-  stored.setups[classId] = setup
+function write(stored: Stored): void {
   try {
     globalThis.localStorage?.setItem(KEY, JSON.stringify(stored))
   } catch {
     // Not being remembered is fine; failing to start a deck is not.
   }
+  // The `storage` event only reaches *other* tabs; tell this one's subscribers too.
+  for (const listener of listeners) listener()
+}
+
+const listeners = new Set<() => void>()
+
+/** For `useSyncExternalStore`: changes from this tab and from other tabs. */
+export function subscribeStorage(onChange: () => void) {
+  listeners.add(onChange)
+  window.addEventListener('storage', onChange)
+  return () => {
+    listeners.delete(onChange)
+    window.removeEventListener('storage', onChange)
+  }
+}
+
+export function saveSetup(classId: ClassId, setup: Setup): void {
+  const stored = read()
+  stored.setups[classId] = setup
+  write(stored)
+}
+
+export const isInstallHintDismissed = () => read().installHintDismissed === true
+
+export function dismissInstallHint(): void {
+  write({ ...read(), installHintDismissed: true })
 }

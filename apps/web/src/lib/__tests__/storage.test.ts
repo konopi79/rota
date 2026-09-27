@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { getClass, type RoClass } from '@rota/content'
 
-import { defaultSetup, loadSetup, saveSetup } from '../storage'
+import {
+  defaultSetup,
+  dismissInstallHint,
+  isInstallHintDismissed,
+  loadSetup,
+  saveSetup,
+} from '../storage'
 
 class MemoryStorage {
   private data = new Map<string, string>()
@@ -47,5 +53,13 @@ describe('setup storage', () => {
     delete (globalThis as { localStorage?: unknown }).localStorage
     expect(loadSetup(ro1)).toEqual(defaultSetup(ro1))
     expect(() => saveSetup('RO1', defaultSetup(ro1))).not.toThrow()
+  })
+
+  test('remembers a dismissed install hint without touching the setups', () => {
+    saveSetup('RO1', { ...defaultSetup(ro1), count: 5 })
+    expect(isInstallHintDismissed()).toBe(false)
+    dismissInstallHint()
+    expect(isInstallHintDismissed()).toBe(true)
+    expect(loadSetup(ro1).count).toBe(5)
   })
 })

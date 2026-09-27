@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- ROTA: the "go forward" arrow of the rally obedience cards, yellow on a dark tile. -->
+  <rect width="512" height="512" rx="112" fill="#1c1f26"/>
+  <path d="M256 70 L420 214 L336 214 L336 300 L420 300 L420 442 L92 442 L92 300 L176 300 L176 214 L92 214 Z"
+        fill="#ffe600" stroke="#1c1f26" stroke-width="10" stroke-linejoin="round"/>
+</svg>
