@@ -26,13 +26,16 @@ committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 | R0  | Scaffold (monorepo, tooling, CLAUDE.md)       | ✅ 2026-09-27       |
 | R1  | Content pipeline + national ruleset (CZ 2026) | ✅ 2026-09-27       |
 | R2  | FCI ruleset                                   | ⏳                  |
-| R3  | Random cards mode (rule-aware dealing)        | ⏳                  |
+| R3  | Random cards mode (rule-aware dealing)        | 🚧 before R2        |
 | R4  | Card catalogue                                | ⏳                  |
 | R5  | PWA: offline + install                        | ⏳                  |
 | R6  | Deploy + open-source release                  | 🚧 Dockerfile ready |
 | R7  | Full competition-course generator             | 💭 post-MVP         |
 | R8  | Quiz                                          | 💭 post-MVP         |
 
+> **Order:** R3 is built before R2 so the national classes are usable end to end first;
+> FCI plugs into the same dealer afterwards.
+>
 > **Keeping this current:** tick the checklist items as they land and the phase to ✅
 > with a date when it ships. A phase or item that turns out to be a bad idea gets ⏭️ plus
 > the reason — the record of why we didn't is worth as much as the record of what we did.
@@ -163,7 +166,7 @@ the class) — then:
 - **how many:** all, or N (default = the class's max course size);
 - **equipment I have with me:** cones / bowls / jump — cards needing missing equipment
   are left out (default: none checked, i.e. field practice with nothing but the dog);
-- **FCI-ROB:** starting side of the dog (left / right / random);
+- **starting side of the dog:** left (default) / right / random — a national start can be "na pravou ruku", FCI states it on every course plan;
 - **show description under the card** — default off.
 
 Last used options are remembered (D2).
@@ -212,7 +215,9 @@ regulations:
   that ends static (`afterStatic`).
 - **Dog's side.** "Psovod vede psa standardně po své levé straně" (§4.2), but a start can
   be "na pravou ruku" and the side-change cards 1-123–1-125, 2-232, 3-325–3-327 switch
-  it (`sideChange`). The dealer tracks and shows the side (see §10 for an open question).
+  it (`sideChange`). A change **holds until another card changes it**, and the team goes
+  to the finish on whatever side it is on — no rule to end on the left (confirmed by the
+  author, 2026-09-27). The dealer tracks the side and shows it.
 - **Last card only.** RO-V: Z-016 and 1-110 only as the last card.
 - **Tracked changes in the PDF.** The 2026 regulation was published with struck-through
   text still in it; `pdftotext` returns deleted and new wording side by side. Found with
@@ -284,9 +289,6 @@ plochu" hint with the Safari share-sheet steps.
 
 ## 10. Open items
 
-- **National side changes** — after a side-change card, does the course continue with the
-  dog on the right until another side change, and must it end on the left? (Asked
-  2026-09-27.)
 - Domain (hosting: rock8.cloud).
 - English UI for FCI-ROB — later, i18n is ready (D6).
 
@@ -324,7 +326,7 @@ plochu" hint with the Safari share-sheet steps.
 ### R3 — Random cards mode
 
 - [ ] `dealDeck` + `validateDeck` with seeded PRNG; unit tests per rule + property tests per class
-- [ ] Setup screen (class, whole / new-only, count, equipment, FCI start side, description)
+- [ ] Setup screen (class, whole / new-only, count, equipment, start side, description)
 - [ ] Deck screen: full-screen card, main + D0 pairing, swipe + tap + buttons, progress, pace/side badges, reshuffle
 - [ ] Description toggle, wake lock
 - [ ] Deck state in the URL (class + options + seed)
