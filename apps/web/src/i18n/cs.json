@@ -151,7 +151,7 @@
     "fci": "FCI Rally Obedience – zkušební řád a směrnice pro mezinárodní soutěže, český překlad účinný od {{date}} – karty FCI-ROB.",
     "cards": "Grafika karet i texty cviků pocházejí z uvedených řádů a patří jejich autorům.",
     "privacyTitle": "Soukromí",
-    "privacy": "Žádné přihlašování, žádné sledování. Aplikace si pamatuje jen tvoje poslední nastavení, a to jen v tvém prohlížeči. Nic se nikam neodesílá.",
+    "privacy": "Žádné přihlašování, žádné cookies. Nastavení a výsledky kvízu si aplikace pamatuje jen v tvém prohlížeči. Kolik lidí ROTA používá, počítá anonymní počítadlo GoatCounter: dozví se navštívenou stránku (u balíčku jen třídu), ze které stránky návštěva přišla, šířku displeje a jestli aplikace běží z plochy. IP adresu a prohlížeč vidí jako každý web, ale neukládá je a do telefonu se nic neukládá.",
     "codeTitle": "Otevřený kód",
     "code": "Zdrojový kód je k dispozici pod licencí MIT:",
     "featuresTitle": "Co ROTA umí",

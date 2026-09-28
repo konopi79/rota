@@ -113,8 +113,8 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
       },
       {
         id: 'privacy',
-        title: 'Bez registrace a sledování',
-        desc: 'Nic se nikam neodesílá; nastavení a výsledky kvízu zůstávají jen v tvém telefonu.',
+        title: 'Bez registrace a cookies',
+        desc: 'Nastavení a výsledky kvízu zůstávají jen v tvém telefonu. Návštěvy počítá jen anonymní počítadlo bez cookies.',
       },
       {
         id: 'free',

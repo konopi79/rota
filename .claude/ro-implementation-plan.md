@@ -52,7 +52,11 @@ to add `packages/db` + tRPC later exactly as in Malibo if something ever needs a
 **D2 — No accounts; local storage only.** Last used settings, and later anything like
 "cards I struggle with", live in `localStorage` behind one small typed module
 (`lib/storage.ts`, Zod-validated, versioned key, falls back to defaults on bad data).
-Nothing is sent anywhere. No analytics.
+Nothing personal is sent anywhere. ~~No analytics.~~ **Changed 2026-09-28:** the author
+wants to know how many people use ROTA, so a cookieless counter (GoatCounter,
+`lib/analytics.ts`) sends the visited page — a deck or course by class only — the
+referrer, the screen width and once per launch whether it runs from the home screen.
+Nothing is stored on the device, hence no consent banner; the About page says so.
 
 **D3 — Static output.** With no server features the app builds with `output: 'export'`
 and is served as static files (small nginx/Caddy image, or any static host).
@@ -390,6 +394,8 @@ gesture for audio).
 - [x] About page (`/o-aplikaci`): unofficial training aid, sources and regulation versions, credits, privacy, offline, link to the repo
 - [x] Ready for public: history checked (no PDFs, secrets or service IDs ever committed), README (live link, how to report a card error, MIT covers the code only — not the card graphics), CI `permissions: contents: read`, issue form "Chyba v kartě nebo pravidle"; GitHub: homepage + topics, `main` ruleset (no force push / deletion), Dependabot alerts, secret scanning + push protection, private vulnerability reporting (2026-09-27; the last three need a public repo — done right after the switch)
 - [x] `konopi79/rota` made public (2026-09-27); the ruleset, secret scanning and private vulnerability reporting could only be switched on after that
+- [x] Visit counter (2026-09-28): GoatCounter `rotapp`, cookieless, own `/count` requests instead of count.js (client-side navigation, decks counted by class only, launches from the home screen vs. browser), CSP allows `rotapp.goatcounter.com`, privacy texts and D2 updated (`lib/analytics.ts`, tested)
+- [ ] Own domain `rotapp.cz` (+ www) on rock8 — waiting for Blueboard's `ns2` to sync, then TLS and switch the canonical URL
 
 ### R7 — Competition-course generator
 

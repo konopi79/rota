@@ -6,7 +6,7 @@ exercise cards in random order, one at a time, full screen on your phone. The or
 always one you can actually perform with your dog: supplementary cards stay with their
 exercise, a leave is followed by a recall, pace changes and the dog's side are respected.
 
-**Try it: [rota.rock8cloud.app](https://rota.rock8cloud.app)** — no account, no tracking;
+**Try it: [rota.rock8cloud.app](https://rota.rock8cloud.app)** — no account, no cookies, only an anonymous visit counter;
 add it to your home screen and it works offline on the training field. Everything it can
 do is listed on its [About page](https://rota.rock8cloud.app/o-aplikaci) (Czech).
 
