@@ -5,7 +5,7 @@ import { ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
-import { InstallHint } from '@/components/pwa'
+import { InstallHint, MovedHint } from '@/components/pwa'
 import { Button } from '@/components/ui/button'
 import { classSlug } from '@/lib/classes'
 
@@ -19,6 +19,7 @@ export default function HomePage() {
         <p className="text-muted-foreground">{t('app.tagline')}</p>
       </header>
 
+      <MovedHint />
       <InstallHint />
 
       <section className="space-y-3">

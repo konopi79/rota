@@ -48,3 +48,13 @@ export async function promptInstall() {
   deferred = null
   notify()
 }
+
+/**
+ * ROTA moved to its own domain on 2026-09-28. The original address keeps serving the app
+ * — home-screen apps installed from it would stop updating behind a redirect — but tells
+ * its users about the new one. Local storage belongs to one origin and does not move.
+ */
+export const CANONICAL_URL = 'https://rotapp.cz'
+const OLD_HOSTS = ['rota.rock8cloud.app']
+
+export const isOldHost = (hostname: string) => OLD_HOSTS.includes(hostname)

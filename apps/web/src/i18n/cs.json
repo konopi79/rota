@@ -140,6 +140,11 @@
     "dismiss": "Zavřít",
     "offline": "Pak funguje i na cvičišti bez signálu."
   },
+  "moved": {
+    "title": "ROTA má novou adresu: rotapp.cz",
+    "body": "Tahle adresa ještě nějakou dobu poběží, ale přidej si ROTA na plochu znovu z rotapp.cz. Nastavení a výsledky kvízu se na novou adresu nepřenesou.",
+    "open": "Otevřít rotapp.cz"
+  },
   "about": {
     "title": "O aplikaci",
     "back": "Třídy",

@@ -332,7 +332,7 @@ gesture for audio).
 
 ## 10. Open items
 
-- Own domain — not now (rota.cz and rota.app are taken); `rota.rock8cloud.app` is enough to spread the MVP in the community.
+- ~~Own domain — not now~~ **`rotapp.cz`** since 2026-09-28 (rota.cz and rota.app were taken). Open: what to do with `rota.rock8cloud.app` — it keeps serving the app, because home-screen apps installed from it would stop updating behind a redirect (and local storage does not move to a new origin).
 - English UI for FCI-ROB — later, i18n is ready (D6).
 
 ## 11. Checklist
@@ -395,7 +395,7 @@ gesture for audio).
 - [x] Ready for public: history checked (no PDFs, secrets or service IDs ever committed), README (live link, how to report a card error, MIT covers the code only — not the card graphics), CI `permissions: contents: read`, issue form "Chyba v kartě nebo pravidle"; GitHub: homepage + topics, `main` ruleset (no force push / deletion), Dependabot alerts, secret scanning + push protection, private vulnerability reporting (2026-09-27; the last three need a public repo — done right after the switch)
 - [x] `konopi79/rota` made public (2026-09-27); the ruleset, secret scanning and private vulnerability reporting could only be switched on after that
 - [x] Visit counter (2026-09-28): GoatCounter `rotapp`, cookieless, own `/count` requests instead of count.js (client-side navigation, decks counted by class only, launches from the home screen vs. browser), CSP allows `rotapp.goatcounter.com`, privacy texts and D2 updated (`lib/analytics.ts`, tested)
-- [ ] Own domain `rotapp.cz` (+ www) on rock8 — waiting for Blueboard's `ns2` to sync, then TLS and switch the canonical URL
+- [x] Own domain `rotapp.cz` (2026-09-28): Blueboard DNS (A + AAAA per rock8, DNSSEC), rock8 custom domains `rotapp.cz` + `www.rotapp.cz` with Let's Encrypt; `www` → 301 to the apex in nginx (an explicit `www` A/AAAA was needed — the rock8 challenge TXT under `www` stops the `*` wildcard from answering for it); guide, README, GitHub homepage point to `rotapp.cz`
 
 ### R7 — Competition-course generator
 

@@ -13,7 +13,7 @@ export interface GuideSection {
   steps: string[]
 }
 
-export const APP_URL = 'rota.rock8cloud.app'
+export const APP_URL = 'rotapp.cz'
 
 export const GUIDE: GuideSection[] = [
   {

@@ -1,11 +1,17 @@
 'use client'
 
-import { Download, Share, X } from 'lucide-react'
+import { ArrowRight, Download, Share, X } from 'lucide-react'
 import { useEffect, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
-import { installMode, promptInstall, subscribeInstall } from '@/lib/install'
+import {
+  CANONICAL_URL,
+  installMode,
+  isOldHost,
+  promptInstall,
+  subscribeInstall,
+} from '@/lib/install'
 import { watchForUpdates } from '@/lib/sw-update'
 import { dismissInstallHint, isInstallHintDismissed, subscribeStorage } from '@/lib/storage'
 
@@ -57,6 +63,30 @@ export function InstallHint() {
         </Button>
       )}
       <p className="text-muted-foreground">{t('install.offline')}</p>
+    </aside>
+  )
+}
+
+const noSubscription = () => () => {}
+
+/** On the original address only: "ROTA moved to rotapp.cz — save it again". */
+export function MovedHint() {
+  const { t } = useTranslation()
+  const old = useSyncExternalStore(
+    noSubscription,
+    () => isOldHost(window.location.hostname),
+    () => false,
+  )
+  if (!old) return null
+
+  return (
+    <aside className="border-primary space-y-2 rounded-lg border-2 p-4 text-sm">
+      <p className="font-semibold">{t('moved.title')}</p>
+      <p>{t('moved.body')}</p>
+      <Button size="sm" render={<a href={CANONICAL_URL} />}>
+        {t('moved.open')}
+        <ArrowRight />
+      </Button>
     </aside>
   )
 }
