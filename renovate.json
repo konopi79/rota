@@ -1,0 +1,48 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Every push to main deploys rotapp.cz, so nothing is automerged — each PR waits for green CI and a human.",
+  "extends": ["config:recommended", ":semanticCommitsDisabled"],
+  "timezone": "Europe/Prague",
+  "schedule": ["before 6am on monday"],
+  "labels": ["dependencies"],
+  "rangeStrategy": "bump",
+  "automerge": false,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on the first day of the month"]
+  },
+  "packageRules": [
+    {
+      "description": "Small dev-tooling updates in one PR; the named groups below win (later rules override earlier ones)",
+      "groupName": "dev dependencies (non-major)",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"]
+    },
+    {
+      "description": "eslint-config-next is pinned to the same version as next",
+      "groupName": "Next.js",
+      "matchPackageNames": ["next", "eslint-config-next"]
+    },
+    {
+      "groupName": "React",
+      "matchPackageNames": ["react", "react-dom", "@types/react", "@types/react-dom"]
+    },
+    {
+      "groupName": "Tailwind CSS",
+      "matchPackageNames": ["tailwindcss", "@tailwindcss/**", "prettier-plugin-tailwindcss"]
+    },
+    {
+      "groupName": "Serwist",
+      "matchPackageNames": ["serwist", "@serwist/**"]
+    },
+    {
+      "groupName": "ESLint",
+      "matchPackageNames": ["eslint", "@typescript-eslint/**"]
+    },
+    {
+      "description": "Docker base images and GitHub Actions together",
+      "groupName": "CI and Docker",
+      "matchManagers": ["dockerfile", "github-actions"]
+    }
+  ]
+}
