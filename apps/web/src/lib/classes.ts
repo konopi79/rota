@@ -6,5 +6,8 @@ export const classSlug = (id: ClassId) => id.toLowerCase()
 export const classFromSlug = (slug: string): ClassId | undefined =>
   CLASS_IDS.find((id) => classSlug(id) === slug)
 
+/** The editor of a hand-made course (plan §12). */
+export const customCourseHref = (id: ClassId) => `/trida/${classSlug(id)}/vlastni`
+
 /** Card detail URL: `/karta/cz/z-001`, `/karta/fci/101` — the image stem is the slug. */
 export const cardHref = (card: Card) => `/karta/${card.ruleset.toLowerCase()}/${card.image}`

@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  dealDeck,
+  customDeckIssues,
   finishSide,
   getCard,
   getClass,
@@ -10,20 +10,31 @@ import {
   type DeckEntry,
   type RoClass,
 } from '@rota/content'
-import { ChevronLeft, Footprints, LayoutGrid, Printer, Share2, Shuffle } from 'lucide-react'
+import {
+  ChevronLeft,
+  CircleAlert,
+  Footprints,
+  LayoutGrid,
+  PencilLine,
+  Printer,
+  Share2,
+  Shuffle,
+} from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useOpenInEditor } from '@/components/course-editor'
 import { CourseGrid } from '@/components/course-grid'
 import { cardImageUrl } from '@/components/deck/card-image'
 import { FieldPlan } from '@/components/field-plan'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cardHref, classSlug } from '@/lib/classes'
-import { decodeDeckParams, encodeDeckParams, type DeckParams } from '@/lib/deck-url'
+import { issueMessage } from '@/lib/course-issues'
+import { decodeDeckParams, deckOf, encodeDeckParams, type DeckParams } from '@/lib/deck-url'
 
 /** Competition course (R7): the whole course as a numbered, printable list. */
 export function CourseView() {
@@ -38,11 +49,14 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   const [showGrid, setShowGrid] = useState(false)
-  const optionsKey = JSON.stringify(params.options)
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- recompute only when the options change
-  const deck = useMemo(() => dealDeck(params.options), [optionsKey])
+  const deckKey = JSON.stringify([params.options, params.order])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- recompute only when the deck changes
+  const deck = useMemo(() => deckOf(params), [deckKey])
   const card = (code: string) => getCard(cls.ruleset, code) as Card
   const layout = deck.layout
+  const custom = params.order !== undefined
+  const issues = useMemo(() => (custom ? customDeckIssues(deck) : []), [custom, deck])
+  const openInEditor = useOpenInEditor(cls)
 
   const byPoints = new Map<number, number>()
   for (const entry of deck.entries) {
@@ -58,7 +72,9 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
     )
   const share = async () => {
     const url = window.location.href
-    const title = t('course.shareTitle', { cls: t(`classes.${cls.id}`) })
+    const title = t(custom ? 'custom.shareTitle' : 'course.shareTitle', {
+      cls: t(`classes.${cls.id}`),
+    })
     if (navigator.share) {
       await navigator.share({ title, url }).catch(() => {})
       return
@@ -82,7 +98,7 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
           {t('course.back')}
         </Button>
         <h1 className="text-2xl font-bold tracking-tight">
-          {t('course.title', { cls: t(`classes.${cls.id}`) })}
+          {t(custom ? 'custom.courseTitle' : 'course.title', { cls: t(`classes.${cls.id}`) })}
         </h1>
         <p className="text-muted-foreground">
           {t('course.summary', {
@@ -102,9 +118,15 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
       </header>
 
       <div className="flex flex-wrap gap-2 print:hidden">
-        <Button onClick={newCourse}>
-          <Shuffle />
-          {t('course.new')}
+        {!custom && (
+          <Button onClick={newCourse}>
+            <Shuffle />
+            {t('course.new')}
+          </Button>
+        )}
+        <Button variant={custom ? 'default' : 'outline'} onClick={() => openInEditor(deck)}>
+          <PencilLine />
+          {t('custom.edit')}
         </Button>
         <Button variant="outline" onClick={() => setShowGrid(true)}>
           <LayoutGrid />
@@ -164,6 +186,9 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
             card={card(entry.code)}
             supplementary={entry.supplementary ? card(entry.supplementary) : undefined}
             sideChanged={i > 0 && deck.entries[i - 1]?.side !== entry.side}
+            warnings={issues
+              .filter((issue) => issue.index === i)
+              .map((issue) => issueMessage(issue, cls, t))}
           />
         ))}
         <Row
@@ -196,12 +221,15 @@ function CourseRow({
   card,
   supplementary,
   sideChanged,
+  warnings,
 }: {
   number: number
   entry: DeckEntry
   card: Card
   supplementary?: Card
   sideChanged: boolean
+  /** Broken sequencing rules of a hand-made course. */
+  warnings: string[]
 }) {
   const { t } = useTranslation()
   return (
@@ -234,6 +262,12 @@ function CourseRow({
             )}
           </div>
         )}
+        {warnings.map((warning) => (
+          <p key={warning} className="text-destructive flex gap-1.5 leading-tight">
+            <CircleAlert className="size-4 shrink-0" />
+            {warning}
+          </p>
+        ))}
       </div>
     </li>
   )

@@ -1,7 +1,6 @@
 'use client'
 
 import {
-  dealDeck,
   finishSide,
   getCard,
   getClass,
@@ -14,6 +13,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Map as MapIcon,
+  PencilLine,
+  RotateCcw,
   Settings2,
   Shuffle,
   Volume2,
@@ -25,13 +26,14 @@ import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useOpenInEditor } from '@/components/course-editor'
 import { FieldPlan } from '@/components/field-plan'
 import { SubParts } from '@/components/sub-parts'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { classSlug } from '@/lib/classes'
+import { classSlug, customCourseHref } from '@/lib/classes'
 import { announcement, type Screen } from '@/lib/announce'
-import { decodeDeckParams, encodeDeckParams, type DeckParams } from '@/lib/deck-url'
+import { decodeDeckParams, deckOf, encodeDeckParams, type DeckParams } from '@/lib/deck-url'
 import { speak, speechSupported, stopSpeaking } from '@/lib/speech'
 
 import { CardImage, cardImageUrl } from './card-image'
@@ -52,9 +54,11 @@ function Deck({ params, cls }: { params: DeckParams; cls: RoClass }) {
   const { t } = useTranslation()
   useWakeLock()
 
-  const optionsKey = JSON.stringify(params.options)
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- recompute only when the options change, not the position
-  const deck = useMemo(() => dealDeck(params.options), [optionsKey])
+  const deckKey = JSON.stringify([params.options, params.order])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- recompute only when the deck changes, not the position
+  const deck = useMemo(() => deckOf(params), [deckKey])
+  const custom = params.order !== undefined
+  const openInEditor = useOpenInEditor(cls)
   const total = deck.entries.length
   const position = Math.min(params.position, total + 1)
   const entry = position >= 1 && position <= total ? deck.entries[position - 1] : undefined
@@ -156,7 +160,8 @@ function Deck({ params, cls }: { params: DeckParams; cls: RoClass }) {
     }
   }
 
-  const setupHref = `/trida/${classSlug(cls.id)}`
+  // A hand-made course goes back to its editor rather than the setup.
+  const setupHref = custom ? customCourseHref(cls.id) : `/trida/${classSlug(cls.id)}`
   const side = entry?.side ?? (position > total ? finishSide(deck) : params.options.startSide)
 
   return (
@@ -257,7 +262,17 @@ function Deck({ params, cls }: { params: DeckParams; cls: RoClass }) {
           <ChevronLeft />
           {t('deck.previous')}
         </Button>
-        {position > total ? (
+        {custom ? (
+          // A hand-made course is not reshuffled; it is edited.
+          <Button
+            variant="ghost"
+            className="h-14"
+            aria-label={t('deck.edit')}
+            onClick={() => openInEditor(deck)}
+          >
+            <PencilLine />
+          </Button>
+        ) : position > total ? (
           <Button
             variant="ghost"
             className="h-14"
@@ -276,7 +291,12 @@ function Deck({ params, cls }: { params: DeckParams; cls: RoClass }) {
             <Shuffle />
           </Button>
         )}
-        {position > total ? (
+        {position > total && custom ? (
+          <Button className="h-14 text-base" onClick={() => go(0)}>
+            <RotateCcw />
+            {t('deck.restart')}
+          </Button>
+        ) : position > total ? (
           <Button className="h-14 text-base" onClick={reshuffle}>
             <Shuffle />
             {t('deck.reshuffle')}

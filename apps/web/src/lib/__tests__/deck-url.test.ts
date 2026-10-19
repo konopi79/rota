@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 
-import { decodeDeckParams, encodeDeckParams, type DeckParams } from '../deck-url'
+import { customDeck } from '@rota/content'
+
+import { decodeDeckParams, deckOf, encodeDeckParams, type DeckParams } from '../deck-url'
 
 const params: DeckParams = {
   options: {
@@ -61,5 +63,44 @@ describe('deck URL', () => {
     expect(encoded).toEndWith('&parkur=1')
     expect(decodeDeckParams(new URLSearchParams(encoded))).toEqual(course)
     expect(encodeDeckParams(params)).not.toContain('parkur')
+  })
+})
+
+describe('hand-made course URL', () => {
+  const order = [{ code: '2-211' }, { code: '2-214', supplementary: 'D0c' }, { code: 'Z-001' }]
+  const custom: DeckParams = {
+    options: customDeck('RO2', 'right', order).options,
+    order,
+    showDescription: false,
+    speak: true,
+    position: 2,
+  }
+
+  test('carries the cards instead of a seed, and round-trips', () => {
+    const encoded = encodeDeckParams(custom)
+    expect(encoded).toBe(
+      'trida=RO2&poradi=2-211%2C2-214.D0c%2CZ-001&strana=P&popis=0&karta=2&hlas=1',
+    )
+    expect(decodeDeckParams(new URLSearchParams(encoded))).toEqual(custom)
+    expect(deckOf(custom).entries.map((e) => e.code)).toEqual(['2-211', '2-214', 'Z-001'])
+  })
+
+  test('keeps an order that breaks the rules — the warnings say so, not the URL', () => {
+    const decoded = decodeDeckParams(new URLSearchParams('trida=RO1&poradi=2-213,2-213'))
+    expect(decoded?.order).toEqual([{ code: '2-213' }, { code: '2-213' }])
+  })
+
+  test('rejects unknown cards and malformed lists', () => {
+    for (const bad of [
+      'trida=RO1&poradi=',
+      'trida=RO1&poradi=Z-999',
+      'trida=RO1&poradi=D0a',
+      'trida=RO1&poradi=Z-014.Z-001',
+      'trida=RO1&poradi=Z-014.D0a.D0b',
+      'trida=FCI-ROB&poradi=Z-001',
+      `trida=RO1&poradi=${Array(101).fill('Z-001').join(',')}`,
+    ]) {
+      expect(decodeDeckParams(new URLSearchParams(bad))).toBeNull()
+    }
   })
 })

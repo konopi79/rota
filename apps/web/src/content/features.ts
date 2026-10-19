@@ -20,7 +20,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'course-grid'
+export const LATEST_FEATURE_ID = 'custom-course'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -110,6 +110,11 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
         id: 'national-course',
         title: 'Národní parkur podle směrnic pro rozhodčí',
         desc: 'Parkur RO-Z až RO3 a RO-V obsahuje povinné cviky své třídy, opakuje jen karty, které se opakovat smí (Stop, obraty, D0…), a psa vede vpravo jen tak, jak to směrnice dovolují – v RO1 od startu „R“ k první kartě nebo od poslední karty do cíle.',
+      },
+      {
+        id: 'custom-course',
+        title: 'Vlastní parkur',
+        desc: 'Poskládej karty ve vlastním pořadí – třeba podle plánku z tréninku nebo ze závodu – nebo uprav vygenerovaný parkur. Aplikace pořadí hned kontroluje podle pravidel řazení a u karty řekne, co nesedí; parkur pak projdeš jako balíček, vytiskneš nebo pošleš odkazem.',
       },
       {
         id: 'quiz',

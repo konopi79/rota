@@ -44,7 +44,67 @@
     "browseCards": "Prohlédnout karty třídy",
     "course": "Sestavit tréninkový parkur",
     "quiz": "Kvíz – poznáš karty?",
-    "speak": "Číst karty nahlas"
+    "speak": "Číst karty nahlas",
+    "custom": "Vlastní parkur"
+  },
+  "custom": {
+    "title": "Vlastní parkur – {{cls}}",
+    "back": "Nastavení",
+    "intro": "Poskládej karty v pořadí parkuru – třeba podle plánku z tréninku nebo ze závodu. ROTA pořadí hned kontroluje podle pravidel řazení; upozornění tě ale nezastaví.",
+    "startSide": "Pes na startu",
+    "empty": "Zatím žádná karta. První najdeš podle čísla nebo názvu.",
+    "add": "Přidat kartu – číslo nebo název",
+    "noMatch": "Žádná karta třídy neodpovídá.",
+    "followUps": "Navazující karty:",
+    "ok": "Pořadí odpovídá pravidlům řazení.",
+    "warnings": "Upozornění: {{count}} – parkur můžeš použít i tak.",
+    "moveUp": "Posunout výš",
+    "moveDown": "Posunout níž",
+    "remove": "Odebrat",
+    "supplementary": "Doplňková karta",
+    "walk": "Projít jako balíček",
+    "show": "Parkur k tisku a sdílení",
+    "clear": "Vymazat parkur",
+    "clearConfirm": "Opravdu vymazat všechny karty parkuru?",
+    "replaceConfirm": "Nahradit tímhle parkurem tvůj rozpracovaný vlastní parkur?",
+    "edit": "Upravit",
+    "courseTitle": "Vlastní parkur – {{cls}}",
+    "shareTitle": "ROTA – vlastní parkur {{cls}}"
+  },
+  "issues": {
+    "or": "nebo",
+    "notExercise": "Tohle není karta cviku.",
+    "notInClass": "Karta nepatří do třídy {{cls}}.",
+    "equipment": "Potřebuje pomůcky, které nemáš.",
+    "twiceInRow": "Stejná karta dvakrát za sebou.",
+    "notFollowUp": "Po kartě {{leave}} musí následovat {{codes}}.",
+    "followUpWithoutLeave": "Patří hned za kartu, kde pes zůstal odložený: {{codes}}.",
+    "dealtTwice": "Karta už v parkuru je.",
+    "notNew": "Není to nová karta třídy {{cls}}.",
+    "afterStatic": "Smí následovat jen po statickém cviku (končí v klidu).",
+    "samePace": {
+      "slow": "Pomalé tempo už platí.",
+      "fast": "Rychlé tempo už platí.",
+      "normal": "Tempo už je normální – normální tempo má smysl jen po pomalém nebo rychlém."
+    },
+    "paceIncompatible": {
+      "slow": "V pomalém tempu jde jen plynulý jednobodový cvik (105–113) nebo změna tempa.",
+      "fast": "V rychlém tempu jde jen plynulý jednobodový cvik (105–113) nebo změna tempa.",
+      "normal": "V tomhle tempu cvik provést nejde."
+    },
+    "sideOnly": {
+      "left": "Jen se psem vlevo – tady jde pes vpravo.",
+      "right": "Jen se psem vpravo – tady jde pes vlevo."
+    },
+    "maxRepeats": "Jedna karta smí být v parkuru nejvýš {{max}}×.",
+    "lastOnly": "Ve třídě {{cls}} jen jako poslední karta.",
+    "leaveWithoutFollowUp": "Pes zůstal odložený – musí následovat {{codes}}.",
+    "missingSupplementary": "Chybí doplňková karta D0.",
+    "supplementaryNotAllowed": "{{d0}} se ve třídě {{cls}} nepoužívá.",
+    "unexpectedSupplementary": "Tahle karta se s doplňkovou kartou nepoužívá.",
+    "sideMismatch": "Nesedí strana psa.",
+    "paceMismatch": "Nesedí tempo.",
+    "supplementaryChangesSide": "Doplňková karta vrátí psa k levé noze – tady to směrnice nedovolují."
   },
   "deck": {
     "close": "Zpět na nastavení",
@@ -72,7 +132,9 @@
     "newRound": "Nové kolo – začni znovu od kraje plochy.",
     "closePlan": "Klepni kamkoli pro zavření.",
     "speakOn": "Zapnout čtení nahlas",
-    "speakOff": "Vypnout čtení nahlas"
+    "speakOff": "Vypnout čtení nahlas",
+    "edit": "Upravit parkur",
+    "restart": "Znovu od startu"
   },
   "catalogue": {
     "title": "Karty – {{cls}}",
@@ -175,7 +237,9 @@
   "course": {
     "title": "Tréninkový parkur – {{cls}}",
     "back": "Nastavení",
-    "summary": "{{count}} karet · pes na startu {{side}}",
+    "summary_one": "{{count}} karta · pes na startu {{side}}",
+    "summary_few": "{{count}} karty · pes na startu {{side}}",
+    "summary_other": "{{count}} karet · pes na startu {{side}}",
     "left": "vlevo",
     "right": "vpravo",
     "pointsGroup": "{{points}} b.: {{count}}",

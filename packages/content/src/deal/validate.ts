@@ -14,8 +14,51 @@ import {
   turnsOf,
   type Shape,
 } from './geometry'
-import { endsStatic, hasEquipment, paceAfter, sideAfter } from './rules'
+import { endsStatic, followUpsOf, hasEquipment, paceAfter, sideAfter } from './rules'
 import type { Deck, DeckEntry, Layout, Pace, Point, Pose, Round, Side } from './types'
+
+/** What can be wrong at one card of a deck. */
+export type CardProblem =
+  | { rule: 'not-exercise' }
+  | { rule: 'not-in-class' }
+  | { rule: 'equipment' }
+  | { rule: 'twice-in-row' }
+  /** After a leave card only one of its follow-ups may come (`oneOf`: those in the class). */
+  | { rule: 'not-follow-up'; leave: string; oneOf: string[] }
+  /** A recall / return card without its leave card (`leaveCards`: those in the class). */
+  | { rule: 'follow-up-without-leave'; leaveCards: string[] }
+  | { rule: 'dealt-twice' }
+  | { rule: 'not-new' }
+  | { rule: 'after-static' }
+  | { rule: 'same-pace'; pace: Pace }
+  | { rule: 'pace-incompatible'; pace: Pace }
+  | { rule: 'side-only'; side: Side }
+  | { rule: 'max-repeats'; max: number }
+  | { rule: 'last-only' }
+  | { rule: 'leave-without-follow-up'; oneOf: string[] }
+  | { rule: 'missing-supplementary' }
+  | { rule: 'supplementary-not-allowed'; supplementary: string }
+  | { rule: 'unexpected-supplementary' }
+  | { rule: 'side-mismatch'; expected: Side }
+  | { rule: 'pace-mismatch'; expected: Pace }
+  /** National competition course: on the right, a D0 card brings the dog back left. */
+  | { rule: 'supplementary-changes-side' }
+
+/** A broken rule at one card: `index` into the deck's entries. */
+export type CardIssue = { index: number; code: string } & CardProblem
+
+/** A broken rule of a whole competition course. */
+export type CourseIssue =
+  | { rule: 'course-size'; count: number; min: number; max: number }
+  | { rule: 'points-mix'; points: number; have: number; min: number }
+  /**
+   * The judges' guidelines for national competition courses (repeats, required exercises,
+   * static/dynamic balance, right-hand stretches) — only dealt courses are checked against
+   * them, so they carry their English message only.
+   */
+  | { rule: 'guidelines'; message: string }
+
+export type DeckIssue = CardIssue | CourseIssue
 
 /**
  * Independent check of a dealt deck against the rules of plan §5. Returns one message
@@ -23,11 +66,32 @@ import type { Deck, DeckEntry, Layout, Pace, Point, Pose, Round, Side } from './
  * candidate logic, so a bug in one is caught by the other in the property tests.
  */
 export function validateDeck(deck: Deck): string[] {
-  const { options, entries } = deck
-  const cls = getClass(options.classId)
-  if (!cls) return [`unknown class ${options.classId}`]
+  const cls = getClass(deck.options.classId)
+  if (!cls) return [`unknown class ${deck.options.classId}`]
+  const errors = deckIssues(cls, deck).map((issue) => describeIssue(cls, issue))
+  if (cls.course.field) errors.push(...validateLayout(cls, deck))
+  else if (deck.layout || deck.entries.some((e) => e.at)) errors.push(`${cls.id} is not laid out`)
+  return errors
+}
 
-  const errors: string[] = []
+/**
+ * The check of a course put together by hand (plan §12): the sequencing rules of the
+ * regulations, shown to the user as warnings. "Dealt twice" is left out — no regulation
+ * forbids a card twice on a national course (§5.4 only sets the size and the card range),
+ * the dealer just draws without replacement; FCI has its own limit (`max-repeats`). The
+ * field layout is not checked: a hand-made FCI course is not laid out.
+ */
+export function customDeckIssues(deck: Deck): CardIssue[] {
+  const cls = getClass(deck.options.classId)
+  if (!cls) throw new Error(`No content for class ${deck.options.classId}`)
+  return deckIssues(cls, deck).filter(
+    (issue): issue is CardIssue => 'index' in issue && issue.rule !== 'dealt-twice',
+  )
+}
+
+function deckIssues(cls: RoClass, deck: Deck): DeckIssue[] {
+  const { options, entries } = deck
+  const issues: DeckIssue[] = []
   const inClass = new Set(cls.cardCodes)
   const newOnly = options.scope === 'new' && cls.newCardCodes.length > 0
   const seenMain = new Set<string>()
@@ -43,70 +107,68 @@ export function validateDeck(deck: Deck): string[] {
   /** Positions (0-based) of the cards after which the dog is on the other side. */
   const sideChanges: number[] = []
 
-  entries.forEach((entry, i) => {
-    const at = `#${i + 1} ${entry.code}`
+  entries.forEach((entry, index) => {
+    const add = (problem: CardProblem) => issues.push({ index, code: entry.code, ...problem })
     const card = getCard(cls.ruleset, entry.code)
     if (!card || card.kind !== 'exercise') {
-      errors.push(`${at}: not an exercise card`)
+      add({ rule: 'not-exercise' })
       return
     }
     const seq = card.sequencing
 
-    if (!inClass.has(card.code)) errors.push(`${at}: not in class ${cls.id}`)
-    if (!hasEquipment(card, options)) errors.push(`${at}: needs equipment not at hand`)
-    if (card.code === prevCode) errors.push(`${at}: same card twice in a row`)
+    if (!inClass.has(card.code)) add({ rule: 'not-in-class' })
+    if (!hasEquipment(card, options)) add({ rule: 'equipment' })
+    if (card.code === prevCode) add({ rule: 'twice-in-row' })
 
-    if (prevRequired && !prevRequired.includes(card.code)) {
-      errors.push(`${at}: not a follow-up of the leave card`)
+    if (prevRequired && prevCode && !prevRequired.includes(card.code)) {
+      const oneOf = prevRequired.filter((c) => inClass.has(c))
+      add({ rule: 'not-follow-up', leave: prevCode, oneOf })
     }
     if (seq.onlyAfterLeave) {
       if (!prevRequired?.includes(card.code) && !prevOptional.includes(card.code)) {
-        errors.push(`${at}: follow-up card without a leave card`)
+        const leaveCards = cls.cardCodes.filter((c) =>
+          followUpsOf(getCard(cls.ruleset, c)).includes(card.code),
+        )
+        add({ rule: 'follow-up-without-leave', leaveCards })
       }
     } else {
-      if (seenMain.has(card.code) && !repeats) errors.push(`${at}: dealt twice`)
-      if (newOnly && !cls.newCardCodes.includes(card.code)) {
-        errors.push(`${at}: not a new card of ${cls.id}`)
-      }
+      if (seenMain.has(card.code) && !repeats) add({ rule: 'dealt-twice' })
+      if (newOnly && !cls.newCardCodes.includes(card.code)) add({ rule: 'not-new' })
       seenMain.add(card.code)
     }
 
-    if (seq.afterStatic && !prevStatic) errors.push(`${at}: must follow a static exercise`)
-    if (seq.pace && seq.pace === pace) errors.push(`${at}: pace is already ${pace}`)
+    if (seq.afterStatic && !prevStatic) add({ rule: 'after-static' })
+    if (seq.pace && seq.pace === pace) add({ rule: 'same-pace', pace })
     if (cls.course.paceCompatibleOnly && pace !== 'normal' && !seq.pace && !seq.paceCompatible) {
-      errors.push(`${at}: cannot be performed in ${pace} pace`)
+      add({ rule: 'pace-incompatible', pace })
     }
-    if (seq.sideOnly && seq.sideOnly !== side)
-      errors.push(`${at}: only with the dog ${seq.sideOnly}`)
+    if (seq.sideOnly && seq.sideOnly !== side) add({ rule: 'side-only', side: seq.sideOnly })
     counts.set(card.code, (counts.get(card.code) ?? 0) + 1)
-    if (cls.course.maxRepeats && (counts.get(card.code) ?? 0) > cls.course.maxRepeats) {
-      errors.push(`${at}: more than ${cls.course.maxRepeats} times`)
-    }
-    if (seq.lastOnly?.includes(cls.id) && i !== entries.length - 1) {
-      errors.push(`${at}: allowed only as the last card in ${cls.id}`)
-    }
-    if (seq.nextOneOf && i === entries.length - 1) {
-      errors.push(`${at}: leave card without follow-up`)
+    const max = cls.course.maxRepeats
+    if (max && (counts.get(card.code) ?? 0) > max) add({ rule: 'max-repeats', max })
+    if (seq.lastOnly?.includes(cls.id) && index !== entries.length - 1) add({ rule: 'last-only' })
+    if (seq.nextOneOf && index === entries.length - 1) {
+      add({ rule: 'leave-without-follow-up', oneOf: seq.nextOneOf.filter((c) => inClass.has(c)) })
     }
 
     if (seq.requiresSupplementary) {
-      if (!entry.supplementary) errors.push(`${at}: missing its D0 card`)
+      if (!entry.supplementary) add({ rule: 'missing-supplementary' })
       else if (!cls.course.supplementary.includes(entry.supplementary)) {
-        errors.push(`${at}: ${entry.supplementary} not allowed in ${cls.id}`)
+        add({ rule: 'supplementary-not-allowed', supplementary: entry.supplementary })
       }
     } else if (entry.supplementary) {
-      errors.push(`${at}: has a D0 card it does not take`)
+      add({ rule: 'unexpected-supplementary' })
     }
 
-    if (entry.side !== side) errors.push(`${at}: side should be ${side}`)
-    if (entry.pace !== pace) errors.push(`${at}: pace should be ${pace}`)
+    if (entry.side !== side) add({ rule: 'side-mismatch', expected: side })
+    if (entry.pace !== pace) add({ rule: 'pace-mismatch', expected: pace })
 
     const static_ = endsStatic(cls, card, entry.supplementary)
     pace = paceAfter(card, pace, static_)
     const sideNext = sideAfter(cls, card, side, entry.supplementary)
-    if (sideNext !== side) sideChanges.push(i)
+    if (sideNext !== side) sideChanges.push(index)
     if (options.competition && cls.course.rightHand && sideNext !== side && !seq.sideChange) {
-      errors.push(`${at}: its D0 card changes the side`)
+      add({ rule: 'supplementary-changes-side' })
     }
     side = sideNext
     prevStatic = static_
@@ -118,22 +180,80 @@ export function validateDeck(deck: Deck): string[] {
   if (options.competition) {
     const { minCards, maxCards, minByPoints = {} } = cls.course
     if (entries.length < minCards || entries.length > maxCards) {
-      errors.push(`course of ${entries.length} cards, ${cls.id} needs ${minCards}–${maxCards}`)
+      issues.push({ rule: 'course-size', count: entries.length, min: minCards, max: maxCards })
     }
     for (const [points, min] of Object.entries(minByPoints)) {
       const have = entries.filter(
         (e) => getCard(cls.ruleset, e.code)?.points === Number(points),
       ).length
-      if (have < min) errors.push(`only ${have} ${points}-point cards, at least ${min} needed`)
+      if (have < min) issues.push({ rule: 'points-mix', points: Number(points), have, min })
     }
+    const guidelines = [
+      ...(cls.course.rightHand
+        ? validateRightHand(cls, options.startSide, sideChanges, entries.length)
+        : []),
+      ...validateNationalCourse(cls, entries),
+    ]
+    for (const message of guidelines) issues.push({ rule: 'guidelines', message })
   }
-  if (options.competition && cls.course.rightHand) {
-    errors.push(...validateRightHand(cls, options.startSide, sideChanges, entries.length))
+  return issues
+}
+
+/** An issue as the plain English message the tests and the console read. */
+function describeIssue(cls: RoClass, issue: DeckIssue): string {
+  switch (issue.rule) {
+    case 'course-size':
+      return `course of ${issue.count} cards, ${cls.id} needs ${issue.min}–${issue.max}`
+    case 'points-mix':
+      return `only ${issue.have} ${issue.points}-point cards, at least ${issue.min} needed`
+    case 'guidelines':
+      return issue.message
   }
-  if (options.competition) errors.push(...validateNationalCourse(cls, entries))
-  if (cls.course.field) errors.push(...validateLayout(cls, deck))
-  else if (deck.layout || entries.some((e) => e.at)) errors.push(`${cls.id} is not laid out`)
-  return errors
+  const at = `#${issue.index + 1} ${issue.code}`
+  switch (issue.rule) {
+    case 'not-exercise':
+      return `${at}: not an exercise card`
+    case 'not-in-class':
+      return `${at}: not in class ${cls.id}`
+    case 'equipment':
+      return `${at}: needs equipment not at hand`
+    case 'twice-in-row':
+      return `${at}: same card twice in a row`
+    case 'not-follow-up':
+      return `${at}: not a follow-up of the leave card`
+    case 'follow-up-without-leave':
+      return `${at}: follow-up card without a leave card`
+    case 'dealt-twice':
+      return `${at}: dealt twice`
+    case 'not-new':
+      return `${at}: not a new card of ${cls.id}`
+    case 'after-static':
+      return `${at}: must follow a static exercise`
+    case 'same-pace':
+      return `${at}: pace is already ${issue.pace}`
+    case 'pace-incompatible':
+      return `${at}: cannot be performed in ${issue.pace} pace`
+    case 'side-only':
+      return `${at}: only with the dog ${issue.side}`
+    case 'max-repeats':
+      return `${at}: more than ${issue.max} times`
+    case 'last-only':
+      return `${at}: allowed only as the last card in ${cls.id}`
+    case 'leave-without-follow-up':
+      return `${at}: leave card without follow-up`
+    case 'missing-supplementary':
+      return `${at}: missing its D0 card`
+    case 'supplementary-not-allowed':
+      return `${at}: ${issue.supplementary} not allowed in ${cls.id}`
+    case 'unexpected-supplementary':
+      return `${at}: has a D0 card it does not take`
+    case 'side-mismatch':
+      return `${at}: side should be ${issue.expected}`
+    case 'pace-mismatch':
+      return `${at}: pace should be ${issue.expected}`
+    case 'supplementary-changes-side':
+      return `${at}: its D0 card changes the side`
+  }
 }
 
 /**
