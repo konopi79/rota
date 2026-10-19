@@ -241,7 +241,9 @@ regulations:
   - RO3: the same with a start "R" up to card 2, the change to the finish on the
     second-to-last card at the earliest, and at most one exercise on the right mid-course
     (return-to-dog cards excepted — the dealer simply never puts a leave card there).
-  - RO-Z, RO-V: no side-change cards; the guidelines say nothing.
+  - RO-Z, RO-V: no side-change cards; the guidelines say nothing. A start "R" is fine in
+    RO-Z (author, 2026-10-19): the dog stays on the right until a D0 card brings it to
+    the left leg — no pattern applies, `course.rightHand` stays unset.
 
   Only **competition courses** follow them (`course.rightHand`; the dealer plans the
   change positions up front in `deal/side-plan.ts`, the validator re-reads them off the
