@@ -10,13 +10,14 @@ import {
   type DeckEntry,
   type RoClass,
 } from '@rota/content'
-import { ChevronLeft, Footprints, Printer, Share2, Shuffle } from 'lucide-react'
+import { ChevronLeft, Footprints, LayoutGrid, Printer, Share2, Shuffle } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { CourseGrid } from '@/components/course-grid'
 import { cardImageUrl } from '@/components/deck/card-image'
 import { FieldPlan } from '@/components/field-plan'
 import { Badge } from '@/components/ui/badge'
@@ -36,6 +37,7 @@ export function CourseView() {
 function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
+  const [showGrid, setShowGrid] = useState(false)
   const optionsKey = JSON.stringify(params.options)
   // eslint-disable-next-line react-hooks/exhaustive-deps -- recompute only when the options change
   const deck = useMemo(() => dealDeck(params.options), [optionsKey])
@@ -104,6 +106,10 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
           <Shuffle />
           {t('course.new')}
         </Button>
+        <Button variant="outline" onClick={() => setShowGrid(true)}>
+          <LayoutGrid />
+          {t('course.grid')}
+        </Button>
         <Button variant="outline" render={<Link href={deckHref} />}>
           <Footprints />
           {t('course.walk')}
@@ -117,6 +123,16 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
           {copied ? t('course.copied') : t('course.share')}
         </Button>
       </div>
+
+      {showGrid && (
+        <CourseGrid
+          title={`${t('course.title', { cls: t(`classes.${cls.id}`) })} · ${t('catalogue.count', { count: deck.entries.length })}`}
+          entries={deck.entries}
+          card={card}
+          onNew={newCourse}
+          onClose={() => setShowGrid(false)}
+        />
+      )}
 
       {layout?.rounds.map((round, i) => (
         <figure key={round.first} className="break-inside-avoid space-y-1">
