@@ -20,7 +20,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'main-parts'
+export const LATEST_FEATURE_ID = 'course-grid'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -100,6 +100,11 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
         id: 'course',
         title: 'Tréninkový parkur',
         desc: 'Parkur o velikosti jako na závodech – u FCI s nejméně sedmi čtyřbodovými a pěti tříbodovými kartami a s plánkem rozmístění na ploše. Číslovaný seznam k vytištění, sdílení nebo projití jako balíček.',
+      },
+      {
+        id: 'course-grid',
+        title: 'Celý parkur na jedné obrazovce',
+        desc: 'Tlačítkem „Na jednu obrazovku“ zobrazíš všechny karty parkuru najednou, očíslované a co největší – telefon můžeš postavit opodál a nemusíš na něj sahat. Displej mezitím nezhasne.',
       },
       {
         id: 'national-course',

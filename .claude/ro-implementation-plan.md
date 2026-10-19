@@ -470,6 +470,7 @@ gesture for audio).
 - [x] Course page: numbered list start → cards (+ D0, side and pace notes) → finish, FCI points total
 - [x] Course in the URL (seed + options), new course, print stylesheet, share, "projít jako balíček"
 - [x] Entry point on the setup screen
+- [x] Whole course on one screen (user request, 2026-10-19): the phone stands a few metres away, so "Na jednu obrazovku" shows all cards numbered in a grid as big as the screen allows (`lib/grid.ts` picks the column count — two columns do not fit 20 cards on a phone), screen kept awake
 - [x] Dog's side on national courses (2026-10-19): D0a–d end on the left; right-hand stretches per the judges' guidelines §1.2.3–1.2.5 (RO1 one change, RO2/RO3 start/finish + one mid-course, `deal/side-plan.ts`, validator, property test); finish side shown and spoken; guidelines credited on `/o-aplikaci`
 - [x] National courses per the guidelines (2026-10-19): card repeats (§1.2.1), required exercises per class (§1.2.2–1.2.6, matched in the validator), RO-Z static/dynamic balance (§1.1.1) — `deal/course.ts`; feature item `national-course`
 

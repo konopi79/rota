@@ -188,6 +188,8 @@
     "share": "Sdílet",
     "copied": "Odkaz zkopírován",
     "walk": "Projít jako balíček",
+    "grid": "Na jednu obrazovku",
+    "closeGrid": "Zavřít",
     "shareTitle": "ROTA – tréninkový parkur {{cls}}"
   },
   "plan": {
