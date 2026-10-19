@@ -9,12 +9,22 @@ import {
   type DeckEntry,
   type RoClass,
 } from '@rota/content'
-import { ChevronLeft, ChevronRight, Settings2, Shuffle, Volume2, VolumeX, X } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Map as MapIcon,
+  Settings2,
+  Shuffle,
+  Volume2,
+  VolumeX,
+  X,
+} from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { FieldPlan } from '@/components/field-plan'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { classSlug } from '@/lib/classes'
@@ -48,6 +58,15 @@ function Deck({ params, cls }: { params: DeckParams; cls: RoClass }) {
   const entry = position >= 1 && position <= total ? deck.entries[position - 1] : undefined
 
   const canSpeak = useSyncExternalStore(noSubscribe, speechSupported, () => false)
+  const [showPlan, setShowPlan] = useState(false)
+
+  // FCI decks are laid out on a field; longer ones in rounds, each from the edge again.
+  const rounds = deck.layout?.rounds ?? []
+  const round = Math.max(
+    0,
+    rounds.findLastIndex((r) => r.first <= Math.max(0, Math.min(position, total) - 1)),
+  )
+  const roundStarts = rounds.length > 1 && round > 0 && rounds[round]?.first === position - 1
 
   /** What is read aloud for a screen of this deck (R9). */
   const screenAt = useCallback(
@@ -166,6 +185,21 @@ function Deck({ params, cls }: { params: DeckParams; cls: RoClass }) {
               {params.speak ? <Volume2 /> : <VolumeX />}
             </Button>
           )}
+          {deck.layout && (
+            <Button
+              variant="ghost"
+              size="icon-lg"
+              aria-label={t('deck.plan')}
+              onClick={() => setShowPlan(true)}
+            >
+              <MapIcon />
+            </Button>
+          )}
+          {entry && rounds.length > 1 && (
+            <Badge variant="outline">
+              {t('deck.round', { current: round + 1, total: rounds.length })}
+            </Badge>
+          )}
           {entry?.pace === 'slow' && <Badge variant="secondary">{t('deck.paceSlow')}</Badge>}
           {entry?.pace === 'fast' && <Badge variant="secondary">{t('deck.paceFast')}</Badge>}
           {position <= total && (
@@ -183,10 +217,33 @@ function Deck({ params, cls }: { params: DeckParams; cls: RoClass }) {
       >
         {position === 0 && <StartScreen cls={cls} params={params} dealt={total} />}
         {entry && <EntryCards cls={cls} entry={entry} />}
+        {roundStarts && <p className="text-center font-medium">{t('deck.newRound')}</p>}
         {position > total && <FinishScreen cls={cls} count={total} />}
       </div>
 
       {entry && params.showDescription && <Description cls={cls} entry={entry} />}
+
+      {showPlan && deck.layout && (
+        <div
+          className="bg-background/95 fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 p-4"
+          onClick={() => setShowPlan(false)}
+        >
+          <FieldPlan
+            layout={deck.layout}
+            entries={deck.entries}
+            card={(code) => requireCard(cls, code)}
+            round={round}
+            current={entry ? position - 1 : undefined}
+            title={t('plan.title')}
+            className="max-h-[80dvh] max-w-[80dvh]"
+          />
+          <p className="text-muted-foreground text-center text-sm">
+            {rounds.length > 1 &&
+              `${t('deck.round', { current: round + 1, total: rounds.length })} · `}
+            {t('deck.closePlan')}
+          </p>
+        </div>
+      )}
 
       <footer className="grid grid-cols-[1fr_auto_1fr] gap-2 p-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
         <Button

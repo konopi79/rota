@@ -33,6 +33,7 @@ committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 | R7  | Competition-course generator                  | ✅ 2026-09-27 |
 | R8  | Quiz                                          | ✅ 2026-09-27 |
 | R9  | Voice: cards read aloud                       | ✅ 2026-09-27 |
+| R10 | FCI decks laid out on the field               | ✅ 2026-10-19 |
 
 > **Order:** R3 is built before R2 so the national classes are usable end to end first;
 > FCI plugs into the same dealer afterwards.
@@ -253,6 +254,29 @@ regulations:
   (`maxRepeats: 2`; main cards are dealt at most once anyway, recall cards can repeat).
 - **Point mix** (≥ 7 four-point, ≥ 5 three-point) is a competition-course rule — R7.
 
+**FCI field layout (R10).** A sequence can be valid card by card and still walk the team
+off the field — five "straight on" cards in a row (user feedback, 2026-10-19). FCI decks
+are therefore laid out on the field while they are dealt:
+
+- Field 20 × 20 m (§3.3, "minimálně"); the start anywhere on an edge, facing in.
+- Cards "přibližně 3-5 m" apart (§3.5), measured from where the previous exercise ends;
+  the recall cone 5 m ahead of the card and the next card 5 m past it (§3.5, §4.8);
+  recall cards at their stated distance straight ahead of the leave card (3–5 m, 421: 8 m).
+- Each card's `geometry`: its turn (107/108: 180–270°), where the team leaves it, and its
+  cones, bowls and jumps; jumps on the dog's side, at most two per field (§3.5).
+- Between cards the team may turn on its own — straight on preferred, then 90° corners,
+  rarely 45° — so courses stay on the grid the way judges draw them. Cards stand where
+  §4.3 puts them (A: right of the team, B: ahead) and stay ≥ 3 m apart; equipment ≥ 1.5 m
+  from other exercises (§3.5: not "nepřiměřeně" close to other cards).
+- After the recall cards 321–323, 421, 422 ("Psovod se otáčí čelem vzad … tým pokračuje
+  vpřed") the team carries on in the reversed direction — **confirmed** on four judges'
+  course plans (2024–2025, incl. the 2025 World Championship), which also follow nearly
+  every leave card with a recall card; the dealer now does so about half the time.
+- The field plan is drawn like those plans: 1 m grid labelled every 5 m, card images
+  turned to face the team, numbers in circles, cones as red dots. Two of the four plans
+  use a 30 × 20 m field.
+- National classes are not laid out: one station can hold several exercises there.
+
 **Both:** no card twice in a row; equipment filter (§3).
 
 **Implementation.**
@@ -416,6 +440,15 @@ gesture for audio).
 - [x] Announcement text (card, D0, pace, side change) as a pure function; tests (`lib/announce.ts`)
 - [x] Speech on the deck screen: setup option (remembered) + toggle in the deck header, `cs-CZ` voice (`lib/speech.ts`; `hlas=1` in the URL)
 - [x] Tried on an iPhone (home-screen app, speech included) by the author, 2026-09-27
+
+### R10 — FCI field layout
+
+- [x] Card `geometry` for every FCI exercise with a turn, a reach or equipment, with regulation pages; class `course.field` 20 × 20 m
+- [x] `FieldPlanner` lays the deck out while dealing (start on the edge, 3–5 m, recall cone / recall cards, ≤ 90° between cards, clearances, ≤ 2 jumps, room kept for the finish); decks longer than a course split into even rounds
+- [x] `validateDeck` checks the layout independently; property test over 600 FCI decks
+- [x] SVG field plan on the course page and behind a map button in the deck (current card highlighted, round badge, "Nové kolo" hint)
+- [x] Feedback from the same thread: the course is a "tréninkový parkur" (it cannot meet every judging rule) and shows no points total (points are difficulty, not a score)
+- [x] Recall-card direction confirmed on judges' course plans (author, 2026-10-19); recall card after a leave card about half the time; plan drawn in the judges' style (card images, 1 m grid), bends on a 90°/45° lattice, card spacing measured where the cards stand
 
 Each phase ends green on `bun run format && bun run typecheck && bun run lint` plus its
 own tests, and is committed separately.

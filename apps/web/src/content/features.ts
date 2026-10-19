@@ -20,7 +20,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'catalogue'
+export const LATEST_FEATURE_ID = 'field-plan'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -62,6 +62,11 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
         desc: 'Celá třída, nebo jen nové karty; počet karet; pomůcky, které máš s sebou (kužely, misky, překážka); strana psa na startu; popis pod kartou. Poslední nastavení si aplikace pamatuje.',
       },
       {
+        id: 'field-plan',
+        title: 'Parkur, který se vejde na plochu (FCI)',
+        desc: 'Karty FCI-ROB rozmístí aplikace na plochu 20 × 20 m: start na kraji, 3–5 m mezi kartami, místo pro kužely, přivolání i skoky. Plánek s vyznačenou aktuální kartou otevřeš ikonou mapy; delší balíček se rozdělí do kol.',
+      },
+      {
         id: 'badges',
         title: 'Tempo a strana psa na očích',
         desc: 'Štítky nahoře ukazují, jestli jdeš v pomalém či rychlém tempu a u které nohy je pes.',
@@ -84,12 +89,12 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
     ],
   },
   {
-    title: 'Závody a učení',
+    title: 'Parkur a učení',
     items: [
       {
         id: 'course',
-        title: 'Závodní parkur',
-        desc: 'Celý parkur podle pravidel třídy – u FCI i s nejméně sedmi čtyřbodovými a pěti tříbodovými kartami. Číslovaný seznam k vytištění, sdílení nebo projití jako balíček.',
+        title: 'Tréninkový parkur',
+        desc: 'Parkur o velikosti jako na závodech – u FCI s nejméně sedmi čtyřbodovými a pěti tříbodovými kartami a s plánkem rozmístění na ploše. Číslovaný seznam k vytištění, sdílení nebo projití jako balíček.',
       },
       {
         id: 'quiz',

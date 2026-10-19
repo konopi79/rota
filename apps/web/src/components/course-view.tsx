@@ -17,6 +17,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { cardImageUrl } from '@/components/deck/card-image'
+import { FieldPlan } from '@/components/field-plan'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cardHref, classSlug } from '@/lib/classes'
@@ -38,13 +39,13 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps -- recompute only when the options change
   const deck = useMemo(() => dealDeck(params.options), [optionsKey])
   const card = (code: string) => getCard(cls.ruleset, code) as Card
+  const layout = deck.layout
 
   const byPoints = new Map<number, number>()
   for (const entry of deck.entries) {
     const points = card(entry.code).points
     if (points) byPoints.set(points, (byPoints.get(points) ?? 0) + 1)
   }
-  const totalPoints = [...byPoints].reduce((sum, [points, n]) => sum + points * n, 0)
 
   const newCourse = () =>
     window.history.replaceState(
@@ -86,13 +87,13 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
             side: side(params.options.startSide),
           })}
         </p>
-        {totalPoints > 0 && (
+        {/* Points are the difficulty of a card, not a score to add up. */}
+        {byPoints.size > 0 && (
           <p className="text-muted-foreground text-sm">
             {[...byPoints]
               .sort(([a], [b]) => b - a)
               .map(([points, count]) => t('course.pointsGroup', { points, count }))
-              .join(' · ')}{' '}
-            · {t('course.pointsTotal', { total: totalPoints })}
+              .join(' · ')}
           </p>
         )}
       </header>
@@ -115,6 +116,22 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
           {copied ? t('course.copied') : t('course.share')}
         </Button>
       </div>
+
+      {layout?.rounds.map((round, i) => (
+        <figure key={round.first} className="break-inside-avoid space-y-1">
+          <FieldPlan
+            layout={layout}
+            entries={deck.entries}
+            card={card}
+            round={i}
+            title={t('plan.title')}
+            className="mx-auto max-w-md print:max-w-sm"
+          />
+          <figcaption className="text-muted-foreground text-center text-xs">
+            {t('plan.caption', { width: layout.width, height: layout.height })}
+          </figcaption>
+        </figure>
+      ))}
 
       <ol className="divide-y rounded-lg border">
         <Row label={t('course.start')} card={card('START')} />

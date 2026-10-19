@@ -29,9 +29,36 @@ export type DeckEntry = {
   side: Side
   /** The pace in effect when the team arrives at this card. */
   pace: Pace
+  /** Where the card stands on the field — only in classes laid out on one (FCI). */
+  at?: Placement
+}
+
+/** A point on the field in metres; x to the right, y down (as drawn). */
+export type Point = { x: number; y: number }
+/** Heading in degrees clockwise from "up" on the field plan. */
+export type Pose = Point & { heading: number }
+/** A card on the field: where it stands, the heading the team arrives in, the turn chosen. */
+export type Placement = Pose & { turn: number }
+
+/**
+ * A deck laid out on a field; the cards carry their own `at`. A deck longer than a course
+ * is split into rounds, each one starting again on the edge of an empty field.
+ */
+export type Layout = {
+  width: number
+  height: number
+  rounds: Round[]
+}
+
+export type Round = {
+  /** Index of the round's first card in `entries`. */
+  first: number
+  start: Pose
+  finish: Pose
 }
 
 export type Deck = {
   options: DealOptions
   entries: DeckEntry[]
+  layout?: Layout
 }

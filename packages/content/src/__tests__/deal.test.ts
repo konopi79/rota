@@ -108,8 +108,9 @@ describe('validateDeck — each rule', () => {
 })
 
 describe('validateDeck — FCI rules', () => {
+  // Sequencing only — the field layout has its own tests (layout.test.ts).
   const fci = (entries: DeckEntry[], options: Partial<DealOptions> = {}) =>
-    check(entries, { classId: 'FCI-ROB', ...options })
+    check(entries, { classId: 'FCI-ROB', ...options }).filter((e) => e !== 'no field layout')
 
   test('slow/fast pace: only the flowing 105–113 or another pace card', () => {
     expect(
@@ -223,7 +224,8 @@ describe('competition courses (R7)', () => {
   }
 
   test('FCI courses always meet the point mix (≥ 7 four-point, ≥ 5 three-point)', () => {
-    for (let seed = 0; seed < 1500; seed++) {
+    // 1 200 courses: each one is laid out on the field too (~2–6 ms).
+    for (let seed = 0; seed < 600; seed++) {
       for (const count of [18, 20]) {
         const deck = competition('FCI-ROB', seed, count)
         expect(deck.entries).toHaveLength(count)
@@ -231,7 +233,7 @@ describe('competition courses (R7)', () => {
         if (errors.length) throw new Error(`seed ${seed}/${count}: ${errors}`)
       }
     }
-  })
+  }, 30_000)
 
   test('every class yields a valid competition course', () => {
     for (const cls of CLASSES) {

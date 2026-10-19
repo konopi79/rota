@@ -58,6 +58,46 @@ export const sequencingSchema = z
   .strict()
 export type CardSequencing = z.infer<typeof sequencingSchema>
 
+/** FCI: a piece of equipment an exercise sets out, placed relative to its card. */
+export const propSchema = z
+  .object({
+    kind: z.enum(['cone', 'bowl', 'jump']),
+    /** Metres ahead of the card, along the direction the team arrives in. */
+    ahead: z.number(),
+    /** Metres to the side: positive towards the dog's side, negative away from it. */
+    side: z.number(),
+  })
+  .strict()
+export type Prop = z.infer<typeof propSchema>
+
+/**
+ * FCI: how much room an exercise takes and where it leaves the team, so the dealer can lay
+ * a dealt deck out on a real field (§3.3, §3.5). All distances are in metres and, like in
+ * the regulation ("Všechny vzdálenosti a úhly jsou přibližné"), approximate. A card
+ * without geometry is done on the spot and the team carries on straight.
+ */
+export const geometrySchema = z
+  .object({
+    /**
+     * Turn performed, in degrees, positive to the right (180 = about turn, 270 right =
+     * the new direction is 90° left). Several values: the course builder picks one.
+     */
+    turn: z.union([z.number(), z.array(z.number()).min(2)]).optional(),
+    /** Where the team leaves the exercise: metres ahead of the card (negative = behind). */
+    exit: z.number().optional(),
+    props: z.array(propSchema).min(1).optional(),
+    /**
+     * The recall at a cone 5 m ahead of the card is part of the exercise, and the next
+     * card stands 5 m past that cone (§3.5, §4.8). For the leave cards (319, 408, 409) only
+     * when no recall card follows.
+     */
+    recallCone: z.boolean().optional(),
+    /** Recall cards: placed this far straight ahead of the leave card before them. */
+    fromPrevious: z.number().positive().optional(),
+  })
+  .strict()
+export type CardGeometry = z.infer<typeof geometrySchema>
+
 export const subPartSchema = z
   .object({
     text: z.string().min(1),
@@ -92,6 +132,8 @@ export const cardSchema = z
     description: z.array(z.string().min(1)).min(1),
     subParts: z.array(subPartSchema).min(1).optional(),
     sequencing: sequencingSchema,
+    /** FCI only: room the exercise needs on the field (course layout). */
+    geometry: geometrySchema.optional(),
     /** Image file stem under `/cards/<ruleset>/`, e.g. `z-001`. */
     image: z.string().min(1),
     /** Execution diagram image stem, if the regulation has one. */
@@ -124,6 +166,14 @@ export const roClassSchema = z
          * (FCI §3.5: at least 7 four-point and 5 three-point cards). Keys are points.
          */
         minByPoints: z.record(z.string(), z.number().int().positive()).optional(),
+        /**
+         * The field a dealt deck is laid out on, in metres. Classes without it are dealt
+         * without a layout (national: several exercises can share one station).
+         */
+        field: z
+          .object({ width: z.number().positive(), height: z.number().positive() })
+          .strict()
+          .optional(),
       })
       .strict(),
     /** Every exercise card of the class, lower classes included where cumulative. */

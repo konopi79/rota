@@ -173,6 +173,8 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
       'Psovod se zastaví a pes si sedá u nohy psovoda. Pes zůstává sedět, zatímco psovod provede 1 krok vpřed, zastaví se, následně provede obrat vpravo v bok o 90° a udělá opět 1 krok vpřed v novém směru a zastaví se. Krok doprava může být proveden buď rovnou nebo se psovod otočí na místě a poté provede 1 krok. Následně psovod přivolává psa, který usedá u stejné nohy psovoda jako na začátku cviku (žádná změna strany vedení). Pes zůstává sedět, dokud tým nepokračuje vpřed.',
     ],
     sequencing: {},
+    // p. 23: "1 krok vpřed ... obrat vpravo v bok o 90° a udělá opět 1 krok vpřed"
+    geometry: { turn: 90, exit: 1 },
     image: '211',
     sourcePage: 23,
   },
@@ -188,6 +190,8 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
       'Psovod se zastaví a pes si sedá u nohy psovoda. Pes zůstává sedět, zatímco psovod provede 1 krok vpřed, zastaví se, následně provede obrat vlevo v bok o 90° a udělá opět 1 krok vpřed v novém směru a zastaví se. Krok doleva může být proveden buď rovnou nebo se psovod otočí na místě a poté provede 1 krok. Následně psovod přivolává psa, který usedá u stejné nohy psovoda jako na začátku cviku (žádná změna strany vedení). Pes zůstává sedět, dokud tým nepokračuje vpřed.',
     ],
     sequencing: {},
+    // p. 23: "1 krok vpřed ... obrat vlevo v bok o 90° a udělá opět 1 krok vpřed"
+    geometry: { turn: -90, exit: 1 },
     image: '212',
     sourcePage: 23,
   },
@@ -203,6 +207,8 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
       'Psovod se zastaví a pes si sedá u nohy psovoda. Tým provede na místě společně těsný obrat o 180° doprava a pokračuje vpřed v opačném směru.',
     ],
     sequencing: {},
+    // p. 24: "obrat o 180° doprava a pokračuje vpřed v opačném směru"
+    geometry: { turn: 180 },
     image: '213',
     sourcePage: 24,
   },
@@ -218,6 +224,8 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
       'Psovod se zastaví a pes si sedá u nohy psovoda. Tým provede na místě společně těsný obrat o 180° doleva a pokračuje vpřed v opačném směru.',
     ],
     sequencing: {},
+    // p. 24: "obrat o 180° doleva a pokračuje vpřed v opačném směru"
+    geometry: { turn: -180 },
     image: '214',
     sourcePage: 24,
   },
@@ -233,6 +241,8 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
       'Psovod se zastaví a pes si sedá u nohy psovoda. Tým provede na místě společně těsný obrat o 180° doprava, zastaví se a pes je velen do pozice sedni. Pes zůstává sedět, dokud tým nepokračuje vpřed.',
     ],
     sequencing: {},
+    // p. 24: "těsný obrat o 180° doprava"
+    geometry: { turn: 180 },
     image: '215',
     sourcePage: 24,
   },
@@ -248,6 +258,8 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
       'Psovod se zastaví a pes si sedá u nohy psovoda. Tým provede na místě společně těsný obrat o 180° doleva, zastaví se a pes je velen do pozice sedni. Pes zůstává sedět, dokud tým nepokračuje vpřed.',
     ],
     sequencing: {},
+    // p. 24: "těsný obrat o 180° doleva"
+    geometry: { turn: -180 },
     image: '216',
     sourcePage: 24,
   },
@@ -263,6 +275,8 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
       'Psovod se zastaví a pes si sedá u nohy psovoda. Psovod provede obrat vpravo o 90°, udělá 1 krok vpřed a zastaví se. Krok může být proveden buď přímo, nebo psovod nejprve provede obrat na místě a poté udělá jeden krok. Pes se pohybuje společně s psovodem a současně se zastavením se psovoda znovu zaujímá pozici sed. Pes zůstává sedět, dokud tým nepokračuje vpřed.',
     ],
     sequencing: {},
+    // p. 24: "obrat vpravo o 90°, udělá 1 krok vpřed"
+    geometry: { turn: 90, exit: 1 },
     image: '217',
     sourcePage: 24,
   },
@@ -278,6 +292,8 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
       'Psovod se zastaví a pes si sedá u nohy psovoda. Psovod provede obrat vlevo o 90°, udělá 1 krok vpřed a zastaví se. Krok může být proveden buď přímo, nebo psovod nejprve provede obrat na místě a poté udělá jeden krok. Pes se pohybuje společně s psovodem a současně se zastavením se psovoda znovu zaujímá pozici sed. Pes zůstává sedět, dokud tým nepokračuje vpřed.',
     ],
     sequencing: {},
+    // p. 24: "obrat vlevo o 90°, udělá 1 krok vpřed"
+    geometry: { turn: -90, exit: 1 },
     image: '218',
     sourcePage: 24,
   },
@@ -293,6 +309,8 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
       'Psovod se zastaví a pes si sedá u nohy psovoda. Následně psovod udělá 1 krok vpřed a zastaví se. Pes se pohybuje současně s psovodem a po zastavení psovoda je velen do pozice stůj. Psovod následně udělá dva kroky vpřed a zastaví se. Pes se pohybuje současně s psovodem a po zastavení psovoda je pes velen do pozice sedni. Následně provede psovod tři kroky vpřed a zastaví se. Pes se pohybuje současně s psovodem a po jeho zastavení je velen do pozice lehni. Pes zůstává ležet, dokud tým nepokračuje vpřed.',
     ],
     sequencing: {},
+    // p. 24: 1 + 2 + 3 steps forward.
+    geometry: { exit: 4 },
     image: '219',
     sourcePage: 24,
   },
@@ -325,6 +343,18 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
     sequencing: {
       equipment: ['cones', 'bowls'],
     },
+    // p. 25: "Dva kužely jsou umístěny 2,5 - 3 m od sebe. Vzdálenost dalších dvou rušivých
+    // prvků je 1,5 - 2 m od sebe." — the distractions between the cones, the figure eight
+    // leaves past the far cone.
+    geometry: {
+      props: [
+        { kind: 'cone', ahead: 2, side: 0 },
+        { kind: 'cone', ahead: 4.75, side: 0 },
+        { kind: 'bowl', ahead: 3.4, side: 0.9 },
+        { kind: 'bowl', ahead: 3.4, side: -0.9 },
+      ],
+      exit: 6,
+    },
     image: '221',
     sourcePage: 25,
   },
@@ -342,6 +372,9 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
     sequencing: {
       equipment: ['jump'],
     },
+    // §3.5 (p. 12): "karta je umístěna 2 m před překážkou, za kterou je 2 m plocha pro
+    // doskok"; "Všechny překážky musí být umístěny na straně vedení psa."
+    geometry: { props: [{ kind: 'jump', ahead: 2, side: 1 }], exit: 4 },
     image: '222',
     sourcePage: 25,
   },

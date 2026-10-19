@@ -42,7 +42,7 @@
     "showDescription": "Popis pod kartou",
     "start": "Zamíchat a začít",
     "browseCards": "Prohlédnout karty třídy",
-    "course": "Sestavit závodní parkur",
+    "course": "Sestavit tréninkový parkur",
     "quiz": "Kvíz – poznáš karty?",
     "speak": "Číst karty nahlas"
   },
@@ -67,6 +67,10 @@
     "points_one": "{{count}} bod",
     "points_few": "{{count}} body",
     "points_other": "{{count}} bodů",
+    "plan": "Plánek parkuru",
+    "round": "Kolo {{current}}/{{total}}",
+    "newRound": "Nové kolo – začni znovu od kraje plochy.",
+    "closePlan": "Klepni kamkoli pro zavření.",
     "speakOn": "Zapnout čtení nahlas",
     "speakOff": "Vypnout čtení nahlas"
   },
@@ -165,12 +169,11 @@
     "version": "Verze z {{date}}"
   },
   "course": {
-    "title": "Závodní parkur – {{cls}}",
+    "title": "Tréninkový parkur – {{cls}}",
     "back": "Nastavení",
     "summary": "{{count}} karet · pes na startu {{side}}",
     "left": "vlevo",
     "right": "vpravo",
-    "pointsTotal": "celkem {{total}} bodů",
     "pointsGroup": "{{points}} b.: {{count}}",
     "start": "Start",
     "finish": "Cíl",
@@ -181,7 +184,11 @@
     "share": "Sdílet",
     "copied": "Odkaz zkopírován",
     "walk": "Projít jako balíček",
-    "shareTitle": "ROTA – závodní parkur {{cls}}"
+    "shareTitle": "ROTA – tréninkový parkur {{cls}}"
+  },
+  "plan": {
+    "title": "Plánek parkuru",
+    "caption": "Plocha {{width}} × {{height}} m, karty 3–5 m od sebe. Vzdálenosti a úhly jsou přibližné."
   },
   "quiz": {
     "title": "Kvíz – {{cls}}",

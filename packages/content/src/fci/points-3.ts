@@ -77,6 +77,8 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       'Psovod se zastaví a pes si sedá u nohy psovoda. Psovod udělá jeden krok vzad a zastaví se. Pes se pohybuje současně a rovnoběžně s psovodem a jakmile psovod zastaví, pes zaujímá pozici sedni. Poté psovod udělá dva kroky vzad a zastaví se. Pes se pohybuje současně a rovnoběžně s psovodem a jakmile psovod zastaví, pes zaujímá pozici sedni. Pes zůstává sedět, dokud tým nepokračuje vpřed.',
     ],
     sequencing: {},
+    // p. 26: 1 + 2 steps back.
+    geometry: { exit: -2 },
     image: '305',
     sourcePage: 26,
   },
@@ -95,6 +97,8 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       // p. 26: "Návrat k vedení po levé straně."
       endSide: 'left',
     },
+    // p. 26: 1 + 2 + 3 steps back.
+    geometry: { exit: -4 },
     image: '306',
     sourcePage: 26,
   },
@@ -110,6 +114,8 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       'Psovod se zastaví a pes vedle psovoda zůstane v pozici stůj. Tým provede společně na místě obrat čelem vzad vpravo o 180°, zastavuje a pes zůstane v pozici stůj. Pes zůstává stát, dokud tým nepokračuje vpřed.',
     ],
     sequencing: {},
+    // p. 26: "obrat čelem vzad vpravo o 180°"
+    geometry: { turn: 180 },
     image: '307',
     sourcePage: 26,
   },
@@ -125,6 +131,8 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       'Psovod se zastaví a pes vedle psovoda zůstane v pozici stůj. Tým provede společně na místě obrat čelem vzad vlevo o 180°, zastavuje a pes zůstane v pozici stůj. Pes zůstává stát, dokud tým nepokračuje vpřed.',
     ],
     sequencing: {},
+    // p. 26: "obrat čelem vzad vlevo o 180°"
+    geometry: { turn: -180 },
     image: '308',
     sourcePage: 26,
   },
@@ -158,6 +166,8 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       // p. 26: "Tímto cvikem se mění strana vedení psa."
       sideChange: true,
     },
+    // p. 26: "otočku směrem proti sobě o 180° a pokračuje v opačném směru"
+    geometry: { turn: 180 },
     image: '310',
     sourcePage: 26,
   },
@@ -212,6 +222,8 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       // p. 27: "Tímto cvikem se mění strana vedení psa."
       sideChange: true,
     },
+    // p. 27: "těsný obrat o 180° doprava a pokračují v opačném směru"
+    geometry: { turn: 180 },
     image: '313',
     sourcePage: 27,
   },
@@ -230,6 +242,8 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       // p. 27: "Tímto cvikem se mění strana vedení psa."
       sideChange: true,
     },
+    // p. 27: "těsný obrat o 180° doleva a pokračují v opačném směru"
+    geometry: { turn: -180 },
     image: '314',
     sourcePage: 27,
   },
@@ -314,6 +328,8 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       // p. 28: the recall happens at a cone, or at a following recall card.
       mayBeFollowedBy: ['321', '322', '323', '421', '422'],
     },
+    // §3.5 (p. 13), §4.8 (p. 18): the recall cone 5 m ahead unless a recall card follows.
+    geometry: { recallCone: true },
     image: '319',
     sourcePage: 28,
   },
@@ -330,6 +346,15 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
     ],
     sequencing: {
       equipment: ['jump'],
+    },
+    // p. 28: the card 2 m before the first jump, the jumps at least 4 m apart; §3.5
+    // (p. 12): 2 m landing area, jumps on the dog's side.
+    geometry: {
+      props: [
+        { kind: 'jump', ahead: 2, side: 1 },
+        { kind: 'jump', ahead: 6, side: 1 },
+      ],
+      exit: 8,
     },
     image: '320',
     sourcePage: 28,
@@ -351,6 +376,8 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       // p. 28: "Tato karta může být použita pouze po kartách 319, 408 a 409".
       onlyAfterLeave: true,
     },
+    // p. 28: "ve vzdálenosti 3 - 5 m od předchozí karty. Psovod se otáčí čelem vzad"
+    geometry: { fromPrevious: 4, turn: 180 },
     image: '321',
     sourcePage: 28,
   },
@@ -371,6 +398,8 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       // p. 28: "Tato karta může být použita pouze po kartách 319, 408 a 409".
       onlyAfterLeave: true,
     },
+    // p. 28: "ve vzdálenosti 3 - 5 m od předchozí karty. Psovod se otáčí čelem vzad"
+    geometry: { fromPrevious: 4, turn: 180 },
     image: '322',
     sourcePage: 28,
   },
@@ -391,6 +420,8 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       // p. 28: "Tato karta může být použita pouze po kartách 319, 408 a 409".
       onlyAfterLeave: true,
     },
+    // p. 28: "ve vzdálenosti 3 - 5 m od předchozí karty. Psovod se otáčí čelem vzad"
+    geometry: { fromPrevious: 4, turn: 180 },
     image: '323',
     sourcePage: 28,
   },

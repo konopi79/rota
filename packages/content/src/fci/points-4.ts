@@ -80,6 +80,8 @@ export const FCI_FOUR_POINT_CARDS: Card[] = [
       // p. 29: "Tímto cvikem se mění strana vedení psa."
       sideChange: true,
     },
+    // p. 29: "těsnou otočku o 180° ... pokračují v opačném směru"
+    geometry: { turn: 180 },
     image: '405',
     sourcePage: 29,
   },
@@ -131,6 +133,8 @@ export const FCI_FOUR_POINT_CARDS: Card[] = [
       // p. 29: the recall happens at a cone, or at a following recall card.
       mayBeFollowedBy: ['321', '322', '323', '421', '422'],
     },
+    // §3.5 (p. 13), §4.8 (p. 18): the recall cone 5 m ahead unless a recall card follows.
+    geometry: { recallCone: true },
     image: '408',
     sourcePage: 29,
   },
@@ -149,6 +153,8 @@ export const FCI_FOUR_POINT_CARDS: Card[] = [
       // p. 30: the recall happens at a cone, or at a following recall card.
       mayBeFollowedBy: ['321', '322', '323', '421', '422'],
     },
+    // §3.5 (p. 13), §4.8 (p. 18): the recall cone 5 m ahead unless a recall card follows.
+    geometry: { recallCone: true },
     image: '409',
     sourcePage: 30,
   },
@@ -166,6 +172,9 @@ export const FCI_FOUR_POINT_CARDS: Card[] = [
     sequencing: {
       equipment: ['cones'],
     },
+    // p. 30: "Kužel je umístěn ve vzdálenosti 3 - 5 m v úhlu 90° vpravo nebo vlevo"; §4.8
+    // (p. 18): the recall cone 5 m straight ahead of the card.
+    geometry: { props: [{ kind: 'cone', ahead: 0, side: 4 }], recallCone: true },
     image: '410',
     sourcePage: 30,
   },
@@ -184,6 +193,8 @@ export const FCI_FOUR_POINT_CARDS: Card[] = [
       // p. 30: "Návrat k vedení po levé straně."
       endSide: 'left',
     },
+    // p. 30: the dog backs "nejméně o tři délky svého těla", the handler walks up to it.
+    geometry: { exit: 3 },
     image: '411',
     sourcePage: 30,
   },
@@ -199,6 +210,8 @@ export const FCI_FOUR_POINT_CARDS: Card[] = [
       'Za pohybu psovod udělá minimálně tři kroky vzad. Pes jej následuje a pohybuje se současně a rovnoběžně s ním. Jakmile tým dokončí cvik, pokračuje vpřed.',
     ],
     sequencing: {},
+    // p. 30: "minimálně tři kroky vzad"
+    geometry: { exit: -2 },
     image: '412',
     sourcePage: 30,
   },
@@ -214,6 +227,8 @@ export const FCI_FOUR_POINT_CARDS: Card[] = [
       'Psovod se zastaví a pes si sedá u nohy psovoda. Následně psovod udělá 1 krok vzad a zastaví. Pes se pohybuje současně a rovnoběžně s psovodem a jakmile psovod zastaví, pes zaujímá pozici stůj. Poté psovod provede 2 kroky vzad a zastaví se. Pes se pohybuje současně a rovnoběžně s psovodem a jakmile psovod zastaví, pes zaujímá pozici sedni. Poté psovod provede 3 kroky vzad a zastaví se. Pes se pohybuje současně a rovnoběžně s psovodem a jakmile psovod zastaví, pes zaujímá pozici lehni. Pes zůstává ležet, dokud tým nepokračuje vpřed.',
     ],
     sequencing: {},
+    // p. 30: 1 + 2 + 3 steps back.
+    geometry: { exit: -4 },
     image: '413',
     sourcePage: 30,
   },
@@ -229,6 +244,8 @@ export const FCI_FOUR_POINT_CARDS: Card[] = [
       'Psovod se zastaví a pes si sedá u nohy psovoda. Následně psovod provede na místě obrat o 90° vpravo a zastaví. Pes jej následuje a pohybuje se současně a rovnoběžně s ním, jakmile psovod zastaví, pes zaujímá pozici stůj. Poté psovod provede na místě obrat o 90° vpravo a zastaví se. Pes jej následuje a pohybuje se současně a rovnoběžně s ním, jakmile psovod zastaví, pes zaujímá pozici sedni. Poté psovod provede na místě obrat o 90° vpravo a zastaví se. Pes jej následuje a pohybuje se současně a rovnoběžně s ním, jakmile psovod zastaví, pes zaujímá pozici lehni. Pes zůstává ležet, dokud tým nepokračuje vpřed. Nový směr postupu je 90° vlevo od původního směru trasy.',
     ],
     sequencing: {},
+    // p. 31: "Nový směr postupu je 90° vlevo od původního směru trasy."
+    geometry: { turn: 270 },
     image: '414',
     sourcePage: 31,
   },
@@ -244,6 +261,8 @@ export const FCI_FOUR_POINT_CARDS: Card[] = [
       'Psovod se zastaví a pes si sedá u nohy psovoda. Následně psovod provede na místě obrat o 90° vlevo a zastaví. Pes jej následuje a pohybuje se současně a rovnoběžně s ním, jakmile psovod zastaví, pes zaujímá pozici stůj. Poté psovod provede na místě obrat o 90° vlevo a zastaví se. Pes jej následuje a pohybuje se současně a rovnoběžně s ním, jakmile psovod zastaví, pes zaujímá pozici sedni. Poté psovod provede na místě obrat o 90° vlevo a zastaví se. Pes jej následuje a pohybuje se současně a rovnoběžně s ním, jakmile psovod zastaví, pes zaujímá pozici lehni. Pes zůstává ležet, dokud tým nepokračuje vpřed. Nový směr postupu je 90° vpravo od původního směru trasy.',
     ],
     sequencing: {},
+    // p. 31: "Nový směr postupu je 90° vpravo od původního směru trasy."
+    geometry: { turn: -270 },
     image: '415',
     sourcePage: 31,
   },
@@ -282,6 +301,8 @@ export const FCI_FOUR_POINT_CARDS: Card[] = [
       endSide: 'right',
       equipment: ['cones'],
     },
+    // p. 31: "kužel, který se nachází 1 - 2 metry od zadní strany karty", "obrat o 90° vlevo"
+    geometry: { props: [{ kind: 'cone', ahead: 1.5, side: 0 }], turn: -90, exit: 1.5 },
     image: '417',
     sourcePage: 31,
   },
@@ -302,6 +323,8 @@ export const FCI_FOUR_POINT_CARDS: Card[] = [
       endSide: 'left',
       equipment: ['cones'],
     },
+    // p. 32: "kužel, který se nachází 1 - 2 metry od zadní strany karty", "obrat o 90° vpravo"
+    geometry: { props: [{ kind: 'cone', ahead: 1.5, side: 0 }], turn: 90, exit: 1.5 },
     image: '418',
     sourcePage: 32,
   },
@@ -334,6 +357,8 @@ export const FCI_FOUR_POINT_CARDS: Card[] = [
     sequencing: {
       equipment: ['jump'],
     },
+    // p. 32: "karty, která je umístěna 2 metry před překážkou"; §3.5 (p. 12): 2 m landing area.
+    geometry: { props: [{ kind: 'jump', ahead: 2, side: 1 }], exit: 4 },
     image: '420',
     sourcePage: 32,
   },
@@ -355,6 +380,10 @@ export const FCI_FOUR_POINT_CARDS: Card[] = [
       onlyAfterLeave: true,
       equipment: ['jump'],
     },
+    // p. 32: "musí být umístěna 8 metrů od předchozí karty. Překážka je umístěna přesně
+    // v poloviční vzdálenosti ... nejbližší bočnice překážky je umístěna 2 m vlevo nebo vpravo
+    // od středové linie"; the handler turns about.
+    geometry: { fromPrevious: 8, turn: 180, props: [{ kind: 'jump', ahead: -4, side: 2.5 }] },
     image: '421',
     sourcePage: 32,
   },
@@ -375,6 +404,8 @@ export const FCI_FOUR_POINT_CARDS: Card[] = [
       // p. 32: "Tato karta může být použita pouze po kartách 319, 408 a 409".
       onlyAfterLeave: true,
     },
+    // p. 32: "ve vzdálenosti 3 až 5 metrů od předchozí karty. Psovod se otáčí čelem vzad"
+    geometry: { fromPrevious: 4, turn: 180 },
     image: '422',
     sourcePage: 32,
   },

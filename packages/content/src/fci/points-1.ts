@@ -79,6 +79,8 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
       // pomalém nebo rychlém tempu."
       paceCompatible: true,
     },
+    // p. 20: "těsný obrat o 180° doprava"
+    geometry: { turn: 180 },
     image: '105',
     sourcePage: 20,
   },
@@ -96,6 +98,8 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
       // pomalém nebo rychlém tempu."
       paceCompatible: true,
     },
+    // p. 20: "těsný obrat o 180° doleva"
+    geometry: { turn: -180 },
     image: '106',
     sourcePage: 20,
   },
@@ -115,6 +119,8 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
       // pomalém nebo rychlém tempu."
       paceCompatible: true,
     },
+    // p. 20: "Úhel obratu (smyčky) musí být mezi 180° a 270°."
+    geometry: { turn: [180, 225, 270] },
     image: '107',
     sourcePage: 20,
   },
@@ -134,6 +140,8 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
       // pomalém nebo rychlém tempu."
       paceCompatible: true,
     },
+    // p. 20: "Úhel obratu (smyčky) musí být mezi 180° a 270°."
+    geometry: { turn: [-180, -225, -270] },
     image: '108',
     sourcePage: 20,
   },
@@ -153,6 +161,8 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
       // pomalém nebo rychlém tempu."
       paceCompatible: true,
     },
+    // p. 20: "Nový směr je 90° vlevo od původního směru trasy."
+    geometry: { turn: 270 },
     image: '109',
     sourcePage: 20,
   },
@@ -172,6 +182,8 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
       // pomalém nebo rychlém tempu."
       paceCompatible: true,
     },
+    // p. 20: "Nový směr je 90° vpravo od původního směru trasy."
+    geometry: { turn: -270 },
     image: '110',
     sourcePage: 20,
   },
@@ -191,6 +203,8 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
       // pomalém nebo rychlém tempu."
       paceCompatible: true,
     },
+    // p. 20: "pokračuje dále v přímém (původním) směru"
+    geometry: { turn: 360 },
     image: '111',
     sourcePage: 20,
   },
@@ -210,6 +224,8 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
       // pomalém nebo rychlém tempu."
       paceCompatible: true,
     },
+    // p. 20: "pokračuje v přímém (původním) směru"
+    geometry: { turn: -360 },
     image: '112',
     sourcePage: 20,
   },
@@ -229,6 +245,8 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
       // pomalém nebo rychlém tempu."
       paceCompatible: true,
     },
+    // p. 21: "společně pokračují v opačném směru"
+    geometry: { turn: 180 },
     image: '113',
     sourcePage: 21,
   },
@@ -244,6 +262,8 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
       'Psovod se zastaví a pes si sedá u nohy psovoda. Psovod provede na místě obrat vpravo v bok o 90° a zůstane stát. Pes se pohybuje společně s psovodem a současně se zastavením se psovoda znovu zaujímá pozici sed. Pes zůstává sedět, dokud tým nepokračuje vpřed.',
     ],
     sequencing: {},
+    // p. 21: "obrat vpravo v bok o 90°"
+    geometry: { turn: 90 },
     image: '114',
     sourcePage: 21,
   },
@@ -259,6 +279,8 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
       'Psovod se zastaví a pes usedá u nohy psovoda. Psovod provede na místě obrat vlevo v bok o 90° a zůstane stát. Pes se pohybuje společně s psovodem a současně se zastavením se psovoda znovu zaujímá pozici sed. Pes zůstává sedět, dokud tým nepokračuje vpřed.',
     ],
     sequencing: {},
+    // p. 21: "obrat vlevo v bok o 90°"
+    geometry: { turn: -90 },
     image: '115',
     sourcePage: 21,
   },
@@ -328,6 +350,16 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
     sequencing: {
       equipment: ['cones'],
     },
+    // p. 21: three cones 1.5–2 m apart; §3.5 (p. 13): the card 1.5–2 m before the first
+    // cone. The team leaves past the last cone.
+    geometry: {
+      props: [
+        { kind: 'cone', ahead: 2, side: 0 },
+        { kind: 'cone', ahead: 4, side: 0 },
+        { kind: 'cone', ahead: 6, side: 0 },
+      ],
+      exit: 7,
+    },
     image: '119',
     sourcePage: 21,
   },
@@ -344,6 +376,16 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
     ],
     sequencing: {
       equipment: ['cones'],
+    },
+    // p. 21: three cones 1.5–2 m apart; §3.5 (p. 13): the card 1.5–2 m before the first
+    // cone. The team leaves past the last cone.
+    geometry: {
+      props: [
+        { kind: 'cone', ahead: 2, side: 0 },
+        { kind: 'cone', ahead: 4, side: 0 },
+        { kind: 'cone', ahead: 6, side: 0 },
+      ],
+      exit: 7,
     },
     image: '120',
     sourcePage: 21,
@@ -362,6 +404,16 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
     sequencing: {
       equipment: ['cones'],
     },
+    // p. 21: four cones 1.5–2 m apart; §3.5 (p. 13): the card 1.5–2 m before the first cone.
+    geometry: {
+      props: [
+        { kind: 'cone', ahead: 2, side: 0 },
+        { kind: 'cone', ahead: 4, side: 0 },
+        { kind: 'cone', ahead: 6, side: 0 },
+        { kind: 'cone', ahead: 8, side: 0 },
+      ],
+      exit: 9,
+    },
     image: '121',
     sourcePage: 21,
   },
@@ -378,6 +430,17 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
     ],
     sequencing: {
       equipment: ['cones'],
+    },
+    // p. 22: "poslední kužel obejde a prochází mezi všemi čtyřmi kužely zpět" — the team
+    // comes back past the card in the opposite direction.
+    geometry: {
+      props: [
+        { kind: 'cone', ahead: 2, side: 0 },
+        { kind: 'cone', ahead: 4, side: 0 },
+        { kind: 'cone', ahead: 6, side: 0 },
+        { kind: 'cone', ahead: 8, side: 0 },
+      ],
+      turn: 180,
     },
     image: '122',
     sourcePage: 22,

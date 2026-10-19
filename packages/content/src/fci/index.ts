@@ -64,6 +64,8 @@ export const FCI_CLASSES: RoClass[] = [
       maxRepeats: 2,
       // §3.5: "Parkur musí obsahovat alespoň 7 čtyřbodových a alespoň 5 tříbodových karet."
       minByPoints: { '4': 7, '3': 5 },
+      // §3.3: "Velikost soutěžního prostoru ... by měla být minimálně 20 m x 20 m".
+      field: { width: 20, height: 20 },
     },
     cardCodes: EXERCISES.map((c) => c.code),
     newCardCodes: [],
