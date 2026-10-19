@@ -2,6 +2,7 @@ import { getClass } from '../registry'
 import type { Card, RoClass } from '../schema'
 import { mulberry32, pick, pickWeighted } from './prng'
 import { FieldPlanner } from './layout'
+import { planSideChanges } from './side-plan'
 import { cardOf, endsStatic, hasEquipment, paceAfter, sideAfter } from './rules'
 import type { Deck, DeckEntry, DealOptions, Layout, Pace, Round, Side } from './types'
 
@@ -98,6 +99,23 @@ function attemptDeal(
     byPoints: new Map(),
   }
   const quota = options.competition ? (cls.course.minByPoints ?? {}) : {}
+  // A national course changes sides only where the judges' guidelines allow it.
+  const rightHand = options.competition ? cls.course.rightHand : undefined
+  const sideChanges =
+    rightHand && planSideChanges(rightHand, options.count, options.startSide, random)
+  const fitsSidePlan = (card: Card): boolean => {
+    if (!sideChanges) return true
+    const at = entries.length
+    if (!!card.sequencing.sideChange !== sideChanges.has(at)) return false
+    // A leave card's follow-up is no side change, so none right before a planned one.
+    if (card.sequencing.nextOneOf && sideChanges.has(at + 1)) return false
+    // On the right, a D0 card would bring the dog back to the left — not a change the
+    // guidelines allow; nor may a leave card start there (its follow-up stays right).
+    if (state.side === 'right' && !card.sequencing.sideChange) {
+      return !card.sequencing.requiresSupplementary && !card.sequencing.nextOneOf
+    }
+    return true
+  }
   const missing = (points: number | undefined) =>
     points === undefined
       ? 0
@@ -123,7 +141,7 @@ function attemptDeal(
         : [...mains, ...optional.filter((c) => inClass.has(c))]
     )
       .map((c) => cardOf(cls, c))
-      .filter((card) => allowed(cls, card, state, remaining, inClass))
+      .filter((card) => allowed(cls, card, state, remaining, inClass) && fitsSidePlan(card))
 
     // Competition point mix: prefer cards whose points are still short; once the
     // remaining slots only just cover what is missing, allow nothing else.
@@ -178,7 +196,7 @@ function attemptDeal(
     state.counts.set(card.code, (state.counts.get(card.code) ?? 0) + 1)
     if (card.points) state.byPoints.set(card.points, (state.byPoints.get(card.points) ?? 0) + 1)
     state.pace = paceAfter(card, state.pace, static_)
-    state.side = sideAfter(card, state.side)
+    state.side = sideAfter(cls, card, state.side, supplementary)
     state.prevStatic = static_
     state.prev = card
   }

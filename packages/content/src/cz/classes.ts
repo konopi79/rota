@@ -8,6 +8,21 @@ const codes = (cards: { code: string }[]) => cards.map((c) => c.code)
 const D0_ALL = ['D0a', 'D0b', 'D0c', 'D0d']
 
 /**
+ * When a competition course leads the dog on the right — Směrnice pro posuzování 2025
+ * (Klub Obedience CZ), not the regulation. RO-Z and RO-V have no side-change cards and
+ * the guidelines say nothing about their sides.
+ */
+// §1.2.3 (p. 6): one of 1-123–1-125, "povolena pouze JEDNA změna strany" — from a start
+// "R" to the first card, or from the last card to the finish.
+const RO1_RIGHT_HAND = { startBy: 1, endWithin: 1 }
+// §1.2.4 (p. 6–7): the same, "plus jedna další změna … a následující cvik opět vrátí psa
+// od pravé k levé noze", or a start "R" and the last card to the finish.
+const RO2_RIGHT_HAND = { startBy: 1, endWithin: 1, midLength: 0 }
+// §1.2.5 (p. 7): start "R" "maximálně ke druhému cviku", the change to the finish
+// "maximálně na předposledním cviku", mid-course "maximálně jeden další cvik u pravé nohy".
+const RO3_RIGHT_HAND = { startBy: 2, endWithin: 2, midLength: 1 }
+
+/**
  * National classes — Zkušební řád Rally Obedience v ČR 2026, §5.4. RO-Z…RO3 are
  * cumulative: "Rozhodčí může vybírat cviky určené pro kategorii RO-Z a RO1 (karty číslo
  * 001–125)" etc.
@@ -26,7 +41,13 @@ export const CZ_CLASSES: RoClass[] = [
     id: 'RO1',
     ruleset: 'CZ',
     name: 'RO1',
-    course: { minCards: 18, maxCards: 20, leash: 'allowed', supplementary: D0_ALL },
+    course: {
+      minCards: 18,
+      maxCards: 20,
+      leash: 'allowed',
+      supplementary: D0_ALL,
+      rightHand: RO1_RIGHT_HAND,
+    },
     cardCodes: codes([...RO_Z_CARDS, ...RO1_CARDS]),
     newCardCodes: codes(RO1_CARDS),
     sourcePage: 11,
@@ -35,7 +56,13 @@ export const CZ_CLASSES: RoClass[] = [
     id: 'RO2',
     ruleset: 'CZ',
     name: 'RO2',
-    course: { minCards: 20, maxCards: 22, leash: 'off-leash', supplementary: D0_ALL },
+    course: {
+      minCards: 20,
+      maxCards: 22,
+      leash: 'off-leash',
+      supplementary: D0_ALL,
+      rightHand: RO2_RIGHT_HAND,
+    },
     cardCodes: codes([...RO_Z_CARDS, ...RO1_CARDS, ...RO2_CARDS]),
     newCardCodes: codes(RO2_CARDS),
     sourcePage: 11,
@@ -44,7 +71,13 @@ export const CZ_CLASSES: RoClass[] = [
     id: 'RO3',
     ruleset: 'CZ',
     name: 'RO3',
-    course: { minCards: 22, maxCards: 24, leash: 'off-leash', supplementary: D0_ALL },
+    course: {
+      minCards: 22,
+      maxCards: 24,
+      leash: 'off-leash',
+      supplementary: D0_ALL,
+      rightHand: RO3_RIGHT_HAND,
+    },
     cardCodes: codes([...RO_Z_CARDS, ...RO1_CARDS, ...RO2_CARDS, ...RO3_CARDS]),
     newCardCodes: codes(RO3_CARDS),
     sourcePage: 12,

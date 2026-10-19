@@ -167,6 +167,23 @@ export const roClassSchema = z
          */
         minByPoints: z.record(z.string(), z.number().int().positive()).optional(),
         /**
+         * National competition courses: where the dog may be led on the right (Směrnice
+         * pro posuzování 2025, §1.2.3–1.2.5). A course goes right from a start "R" until a
+         * side change on card `startBy` at the latest, or from a side change on one of the
+         * last `endWithin` cards to the finish. With `midLength` it also has one stretch
+         * mid-course — a change, at most `midLength` exercises on the right, a change back
+         * — and the patterns are: start or finish plus the mid-course stretch, or start and
+         * finish. Without it, exactly one of start or finish (RO1: "pouze JEDNA změna").
+         */
+        rightHand: z
+          .object({
+            startBy: z.number().int().positive(),
+            endWithin: z.number().int().positive(),
+            midLength: z.number().int().nonnegative().optional(),
+          })
+          .strict()
+          .optional(),
+        /**
          * The field a dealt deck is laid out on, in metres. Classes without it are dealt
          * without a layout (national: several exercises can share one station).
          */

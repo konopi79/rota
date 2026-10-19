@@ -38,6 +38,8 @@ export function validateDeck(deck: Deck): string[] {
   let prevOptional: string[] = []
   let prevCode: string | undefined
   const counts = new Map<string, number>()
+  /** Positions (0-based) of the cards after which the dog is on the other side. */
+  const sideChanges: number[] = []
 
   entries.forEach((entry, i) => {
     const at = `#${i + 1} ${entry.code}`
@@ -99,7 +101,12 @@ export function validateDeck(deck: Deck): string[] {
 
     const static_ = endsStatic(cls, card, entry.supplementary)
     pace = paceAfter(card, pace, static_)
-    side = sideAfter(card, side)
+    const sideNext = sideAfter(cls, card, side, entry.supplementary)
+    if (sideNext !== side) sideChanges.push(i)
+    if (options.competition && cls.course.rightHand && sideNext !== side && !seq.sideChange) {
+      errors.push(`${at}: its D0 card changes the side`)
+    }
+    side = sideNext
     prevStatic = static_
     prevRequired = seq.nextOneOf
     prevOptional = seq.mayBeFollowedBy ?? []
@@ -118,8 +125,60 @@ export function validateDeck(deck: Deck): string[] {
       if (have < min) errors.push(`only ${have} ${points}-point cards, at least ${min} needed`)
     }
   }
+  if (options.competition && cls.course.rightHand) {
+    errors.push(...validateRightHand(cls, options.startSide, sideChanges, entries.length))
+  }
   if (cls.course.field) errors.push(...validateLayout(cls, deck))
   else if (deck.layout || entries.some((e) => e.at)) errors.push(`${cls.id} is not laid out`)
+  return errors
+}
+
+/**
+ * National courses: the dog on the right only in the stretches the judges' guidelines
+ * allow (`course.rightHand`). Reads the side changes off the dealt sequence.
+ */
+function validateRightHand(
+  cls: RoClass,
+  startSide: Side,
+  sideChanges: number[],
+  count: number,
+): string[] {
+  const rule = cls.course.rightHand
+  if (!rule) return []
+  const errors: string[] = []
+  const changes = [...sideChanges]
+  let start = false
+  let end = false
+  let mids = 0
+  if (startSide === 'right') {
+    const first = changes.shift()
+    if (first === undefined || first >= rule.startBy) {
+      errors.push(`start "R": the side must change by card ${rule.startBy}`)
+    }
+    start = true
+  }
+  while (changes.length) {
+    const from = changes.shift() as number
+    const back = changes.shift()
+    if (back === undefined) {
+      if (from < count - rule.endWithin) {
+        errors.push(`#${from + 1}: to the finish on the right only from the last ${rule.endWithin}`)
+      }
+      end = true
+    } else if (rule.midLength === undefined) {
+      errors.push(`#${from + 1}: no stretch on the right mid-course in ${cls.id}`)
+    } else {
+      if (back - from - 1 > rule.midLength) {
+        errors.push(`#${from + 1}: more than ${rule.midLength} exercises on the right`)
+      }
+      mids++
+    }
+  }
+  const pattern =
+    rule.midLength === undefined
+      ? start !== end
+      : (start !== end && mids === 1) || (start && end && mids === 0)
+  if (!pattern) errors.push(`side changes do not follow the ${cls.id} pattern`)
   return errors
 }
 

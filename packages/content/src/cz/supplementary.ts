@@ -34,7 +34,8 @@ export const START_FINISH_CARDS: Card[] = [
 
 /**
  * Dealt only together with an exercise that `requiresSupplementary` — never on their own.
- * D0a/D0b end static (type A), D0c/D0d in motion (type B).
+ * D0a/D0b end static (type A), D0c/D0d in motion (type B). All four bring the dog to the
+ * handler's left leg ("u levé nohy", p. 17), so they end a right-hand stretch too.
  */
 export const SUPPLEMENTARY_CARDS: Card[] = [
   {
@@ -47,7 +48,7 @@ export const SUPPLEMENTARY_CARDS: Card[] = [
       'Pes z pozice před psovodem jej oběhne z pravé strany a přiřadí se do základní pozice u levé nohy. Během pohybu psa psovod nesmí hýbat nohama. Hodnocení je zahrnuto do bodového hodnocení cviku na hlavní kartě.',
     ],
     subParts: [{ text: 'přiřazení okolo - stop', main: false }],
-    sequencing: {},
+    sequencing: { endSide: 'left' },
     image: 'd0a',
     sourcePage: 17,
   },
@@ -61,7 +62,7 @@ export const SUPPLEMENTARY_CARDS: Card[] = [
       'Pes z pozice před psovodem se přiřazuje přímo k levé noze psovoda a zaujímá základní pozici. Během pohybu psa psovod nesmí hýbat nohama. Hodnocení je zahrnuto do bodového hodnocení hlavního cviku.',
     ],
     subParts: [{ text: 'přiřazení přímo - stop', main: false }],
-    sequencing: {},
+    sequencing: { endSide: 'left' },
     image: 'd0b',
     sourcePage: 17,
   },
@@ -76,7 +77,7 @@ export const SUPPLEMENTARY_CARDS: Card[] = [
       'Hodnocení je zahrnuto do bodového hodnocení cviku na hlavní kartě.',
     ],
     subParts: [{ text: 'přiřazení okolo - vpřed', main: false }],
-    sequencing: {},
+    sequencing: { endSide: 'left' },
     image: 'd0c',
     sourcePage: 18,
   },
@@ -91,7 +92,7 @@ export const SUPPLEMENTARY_CARDS: Card[] = [
       'Hodnocení je zahrnuto do bodového hodnocení cviku na hlavní kartě.',
     ],
     subParts: [{ text: 'přiřazení přímo - vpřed', main: false }],
-    sequencing: {},
+    sequencing: { endSide: 'left' },
     image: 'd0d',
     sourcePage: 18,
   },

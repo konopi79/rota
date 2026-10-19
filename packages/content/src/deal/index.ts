@@ -1,5 +1,6 @@
 export { dealDeck } from './deal'
 export { randomSeed } from './prng'
+export { finishSide } from './rules'
 export type {
   Deck,
   DeckEntry,

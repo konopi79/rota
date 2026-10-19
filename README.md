@@ -16,7 +16,9 @@ competition-course generator, a quiz, and cards read aloud.
 ROTA is an unofficial training aid. Card graphics and exercise descriptions come from the
 official regulations — the Czech national rally obedience regulations (Zkušební řád Rally
 Obedience v ČR, 2026) and the FCI Rally Obedience regulations (Czech translation valid from
-1 February 2025) — and remain the work of their authors. The regulations in force are
+1 February 2025) — and remain the work of their authors. National competition courses also
+follow the judges' guidelines (Směrnice pro posuzování Rally Obedience 2025, Klub Obedience
+CZ) on when the dog is led on the right. The regulations in force are
 always binding.
 
 ## Found a mistake?
