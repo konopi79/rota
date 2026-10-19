@@ -167,6 +167,31 @@ export const roClassSchema = z
          */
         minByPoints: z.record(z.string(), z.number().int().positive()).optional(),
         /**
+         * National competition courses: how often a card may appear (Směrnice pro posuzování
+         * 2025, §1.2.1) — every card not listed once, D0 cards and follow-ups included.
+         */
+        repeats: z.record(z.string(), z.number().int().min(2)).optional(),
+        /**
+         * National competition courses: the exercises a course must contain (Směrnice
+         * §1.2.2–1.2.6) — `count` distinct cards from `oneOf` per entry, a card counting
+         * for one entry only ("nejméně tři další libovolné cviky").
+         */
+        required: z
+          .array(
+            z
+              .object({
+                oneOf: z.array(z.string()).min(1),
+                count: z.number().int().min(2).optional(),
+              })
+              .strict(),
+          )
+          .optional(),
+        /**
+         * National competition courses: static (A) and dynamic (B) exercises "v poměru
+         * 50/50" (Směrnice §1.1.1, RO-Z) — the static count at most `tolerance` off half.
+         */
+        staticShare: z.object({ tolerance: z.number().int().nonnegative() }).strict().optional(),
+        /**
          * National competition courses: where the dog may be led on the right (Směrnice
          * pro posuzování 2025, §1.2.3–1.2.5). A course goes right from a start "R" until a
          * side change on card `startBy` at the latest, or from a side change on one of the

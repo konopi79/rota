@@ -20,7 +20,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'field-plan'
+export const LATEST_FEATURE_ID = 'national-course'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -95,6 +95,11 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
         id: 'course',
         title: 'Tréninkový parkur',
         desc: 'Parkur o velikosti jako na závodech – u FCI s nejméně sedmi čtyřbodovými a pěti tříbodovými kartami a s plánkem rozmístění na ploše. Číslovaný seznam k vytištění, sdílení nebo projití jako balíček.',
+      },
+      {
+        id: 'national-course',
+        title: 'Národní parkur podle směrnic pro rozhodčí',
+        desc: 'Parkur RO-Z až RO3 a RO-V obsahuje povinné cviky své třídy, opakuje jen karty, které se opakovat smí (Stop, obraty, D0…), a psa vede vpravo jen tak, jak to směrnice dovolují – v RO1 od startu „R“ k první kartě nebo od poslední karty do cíle.',
       },
       {
         id: 'quiz',

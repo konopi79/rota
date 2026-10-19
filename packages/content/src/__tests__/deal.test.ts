@@ -351,6 +351,58 @@ describe('competition courses (R7)', () => {
     )
   })
 
+  const courseErrors = (classId: ClassId, entries: DeckEntry[], about: RegExp) =>
+    check(entries, { classId, competition: true }).filter((m) => about.test(m))
+
+  test('national course: cards repeat only as often as the guidelines allow', () => {
+    const z = (code: string, supplementary?: string) => e(code, { supplementary })
+    const stops = [z('Z-001'), z('Z-006'), z('Z-001'), z('Z-007'), z('Z-001')]
+    expect(courseErrors('RO-Z', stops, /times/)).toEqual([])
+    expect(courseErrors('RO-Z', [...stops, z('Z-008'), z('Z-001')], /times/)).toEqual([
+      'Z-001: 4 times, at most 3',
+    ])
+    const sits = ['D0a', 'D0b', 'D0a', 'D0a'].flatMap((d) => [z('Z-014', d), z('Z-006')])
+    // Z-014 four times is fine in RO-Z; D0a three times and Z-006 four times are not.
+    expect(courseErrors('RO-Z', sits, /times/)).toEqual([
+      'D0a: 3 times, at most 2',
+      'Z-006: 4 times, at most 3',
+    ])
+    expect(courseErrors('RO1', [z('1-101'), z('Z-006'), z('1-101')], /times/)).toEqual([
+      '1-101: 2 times, at most 1',
+    ])
+  })
+
+  test('national course: required exercises, each filled by a different card', () => {
+    const missing = (classId: ClassId, codes: string[]) =>
+      courseErrors(
+        classId,
+        codes.map((c) => e(c)),
+        /required/,
+      ).length
+    // RO-Z: a figure, Z-004/Z-005, a předsednutí.
+    expect(missing('RO-Z', ['Z-018', 'Z-004'])).toBe(1)
+    // RO2: 2-225 is a turn and a stand — it cannot count for both…
+    const ro2 = ['2-213', '2-217', '2-201', '2-202']
+    expect(missing('RO2', [...ro2, '2-225'])).toBe(1)
+    // …but with 2-203 for the turn it is the stand (found whichever card comes first).
+    expect(missing('RO2', [...ro2, '2-225', '2-203'])).toBe(0)
+    expect(missing('RO2', [...ro2, '2-203', '2-225'])).toBe(0)
+  })
+
+  test('national course: RO-Z about half static', () => {
+    const dynamic = ['Z-006', 'Z-007', 'Z-008', 'Z-009', 'Z-011', 'Z-012'].map((c) => e(c))
+    expect(courseErrors('RO-Z', dynamic, /static/)).toEqual(['0 static of 6, about half needed'])
+    const mixed = [...dynamic.slice(0, 4), e('Z-001'), e('Z-002')]
+    expect(courseErrors('RO-Z', mixed, /static/)).toEqual([])
+  })
+
+  test('national courses use the repeats the guidelines allow', () => {
+    const repeated = Array.from({ length: 100 }, (_, seed) => competition('RO1', seed)).filter(
+      (deck) => new Set(deck.entries.map((x) => x.code)).size < deck.entries.length,
+    )
+    expect(repeated.length).toBeGreaterThan(10)
+  })
+
   test('national courses follow the side patterns of the guidelines (property test)', () => {
     for (const classId of ['RO1', 'RO2', 'RO3'] as const) {
       const shapes = new Set<string>()

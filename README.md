@@ -18,7 +18,7 @@ official regulations — the Czech national rally obedience regulations (Zkušeb
 Obedience v ČR, 2026) and the FCI Rally Obedience regulations (Czech translation valid from
 1 February 2025) — and remain the work of their authors. National competition courses also
 follow the judges' guidelines (Směrnice pro posuzování Rally Obedience 2025, Klub Obedience
-CZ) on when the dog is led on the right. The regulations in force are
+CZ): required exercises, cards that may repeat, when the dog is led on the right. The regulations in force are
 always binding.
 
 ## Found a mistake?

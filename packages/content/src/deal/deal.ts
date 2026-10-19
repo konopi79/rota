@@ -2,7 +2,7 @@ import { getClass } from '../registry'
 import type { Card, RoClass } from '../schema'
 import { mulberry32, pick, pickWeighted } from './prng'
 import { FieldPlanner } from './layout'
-import { planSideChanges } from './side-plan'
+import { NationalCourse } from './course'
 import { cardOf, endsStatic, hasEquipment, paceAfter, sideAfter } from './rules'
 import type { Deck, DeckEntry, DealOptions, Layout, Pace, Round, Side } from './types'
 
@@ -53,14 +53,16 @@ export function dealDeck(options: DealOptions): Deck {
   const random = mulberry32(options.seed)
   let best: Dealt = { entries: [] }
   for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-    const dealt = attemptDeal(cls, options, mainPool, inClass, random)
-    if (dealt.entries.length === options.count) return { options, ...dealt }
+    const { complete, ...dealt } = attemptDeal(cls, options, mainPool, inClass, random)
+    if (dealt.entries.length === options.count && complete !== false) return { options, ...dealt }
     if (dealt.entries.length > best.entries.length) best = dealt
   }
   return { options, ...best }
 }
 
 type Dealt = { entries: DeckEntry[]; layout?: Layout }
+/** `complete`: a national course has every exercise the guidelines require. */
+type Attempt = Dealt & { complete?: boolean }
 
 function attemptDeal(
   cls: RoClass,
@@ -68,7 +70,7 @@ function attemptDeal(
   mainPool: string[],
   inClass: Set<string>,
   random: () => number,
-): Dealt {
+): Attempt {
   const entries: DeckEntry[] = []
   const field = cls.course.field
   const roundCount = Math.ceil(options.count / cls.course.maxCards)
@@ -99,23 +101,9 @@ function attemptDeal(
     byPoints: new Map(),
   }
   const quota = options.competition ? (cls.course.minByPoints ?? {}) : {}
-  // A national course changes sides only where the judges' guidelines allow it.
-  const rightHand = options.competition ? cls.course.rightHand : undefined
-  const sideChanges =
-    rightHand && planSideChanges(rightHand, options.count, options.startSide, random)
-  const fitsSidePlan = (card: Card): boolean => {
-    if (!sideChanges) return true
-    const at = entries.length
-    if (!!card.sequencing.sideChange !== sideChanges.has(at)) return false
-    // A leave card's follow-up is no side change, so none right before a planned one.
-    if (card.sequencing.nextOneOf && sideChanges.has(at + 1)) return false
-    // On the right, a D0 card would bring the dog back to the left — not a change the
-    // guidelines allow; nor may a leave card start there (its follow-up stays right).
-    if (state.side === 'right' && !card.sequencing.sideChange) {
-      return !card.sequencing.requiresSupplementary && !card.sequencing.nextOneOf
-    }
-    return true
-  }
+  // A national course follows the judges' guidelines: repeats, required exercises,
+  // RO-Z's static/dynamic balance, side changes.
+  const course = NationalCourse.of(cls, options, inClass, random)
   const missing = (points: number | undefined) =>
     points === undefined
       ? 0
@@ -133,7 +121,7 @@ function attemptDeal(
     const remaining = options.count - entries.length
     const required = state.prev?.sequencing.nextOneOf
     const optional = state.prev?.sequencing.mayBeFollowedBy ?? []
-    const mains = mainPool.filter((c) => !state.used.has(c))
+    const mains = mainPool.filter((c) => (course ? course.left(c) > 0 : !state.used.has(c)))
     // After a leave card the follow-up is required (national) or optional (FCI recall).
     const candidates = (
       required
@@ -141,21 +129,31 @@ function attemptDeal(
         : [...mains, ...optional.filter((c) => inClass.has(c))]
     )
       .map((c) => cardOf(cls, c))
-      .filter((card) => allowed(cls, card, state, remaining, inClass) && fitsSidePlan(card))
+      .filter(
+        (card) =>
+          allowed(cls, card, state, remaining, inClass) &&
+          (!course || course.fits(card, entries.length, state.side)),
+      )
 
     // Competition point mix: prefer cards whose points are still short; once the
     // remaining slots only just cover what is missing, allow nothing else.
     const short = Object.keys(quota).reduce((sum, p) => sum + missing(Number(p)), 0)
-    const eligible =
+    const quotaFit =
       short > 0 && remaining <= short ? candidates.filter((c) => missing(c.points) > 0) : candidates
+    // Required exercises of a national course: the same, preferred and then forced.
+    const eligible =
+      course && !required && course.mustHelp(entries.length)
+        ? quotaFit.filter((c) => course.helps(c))
+        : quotaFit
     // After a leave card whose recall card is optional (FCI), deal one about half the time —
     // judges' course plans nearly always have one there.
     const followUps = new Set(optional)
     const followUpCount = eligible.filter((c) => followUps.has(c.code)).length
     const followUpWeight = followUpCount ? (eligible.length - followUpCount) / followUpCount : 1
-    const weighted = short > 0 || followUpCount > 0
+    const weighted = short > 0 || followUpCount > 0 || !!course
     const weightOf = (c: Card) =>
       (short > 0 && missing(c.points) > 0 ? QUOTA_WEIGHT : 1) *
+      (course?.helps(c) ? QUOTA_WEIGHT : 1) *
       (followUps.has(c.code) ? followUpWeight : 1)
     const draw = (): { card: Card; at?: DeckEntry['at'] } | undefined => {
       let pool = eligible
@@ -181,7 +179,7 @@ function attemptDeal(
     const { card, at } = drawn
 
     const supplementary = card.sequencing.requiresSupplementary
-      ? pick(cls.course.supplementary, random)
+      ? pick(course ? course.supplementaries(card) : cls.course.supplementary, random)
       : undefined
     entries.push({
       code: card.code,
@@ -192,6 +190,7 @@ function attemptDeal(
     })
 
     const static_ = endsStatic(cls, card, supplementary)
+    course?.record(card, supplementary, static_)
     if (!card.sequencing.onlyAfterLeave) state.used.add(card.code)
     state.counts.set(card.code, (state.counts.get(card.code) ?? 0) + 1)
     if (card.points) state.byPoints.set(card.points, (state.byPoints.get(card.points) ?? 0) + 1)
@@ -200,9 +199,10 @@ function attemptDeal(
     state.prevStatic = static_
     state.prev = card
   }
-  if (!field) return { entries }
+  const complete = course?.complete
+  if (!field) return { entries, complete }
   if (!closeRound()) return { entries: [] }
-  return { entries, layout: { width: field.width, height: field.height, rounds } }
+  return { entries, layout: { width: field.width, height: field.height, rounds }, complete }
 }
 
 function allowed(

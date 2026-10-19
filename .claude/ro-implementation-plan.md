@@ -248,8 +248,24 @@ regulations:
   sequence). On the right a course deals no D0 exercise — the D0 would take the dog back
   to the left, a change the patterns do not allow. Training decks keep only the
   regulation: a whole class does not fit these patterns (RO1 has three side-change cards).
-  The same guidelines also list required exercises per class, cards allowed two to four
-  times and CNDC limits — not encoded yet.
+
+- **More course rules from the same guidelines** (competition courses only, tracked while
+  dealing by `deal/course.ts`, re-checked by `validateDeck`):
+  - **Repeats** (§1.2.1, p. 5): every card once, follow-ups and D0 cards included —
+    except D0a–d twice, Z-001/006/007/008/009/011/012/017/028/029 three times, Z-014 four
+    times in RO-Z (`course.repeats`). The "třikrát" list repeats D0a–d, a leftover: the
+    regulation's minimum card set (§5.4, p. 11) has two of each D0, three of the ten.
+  - **Required exercises** (§1.2.2–1.2.6, p. 6–8, `course.required`), e.g. RO2 a recall
+    2-213–2-216 (so a leave card before it), a jump, a turn, a stand and two more RO2
+    cards. Each requirement takes a different card (the validator matches them
+    bipartitely — 2-225 is a turn and a stand but counts once). The dealer prefers cards
+    that fill a missing one and only deals those once the remaining positions just cover
+    them, like the FCI point mix. RO-V's list names 1-114/1-115, which are not RO-V cards.
+  - **RO-Z about 50/50 static and dynamic** (§1.1.1, p. 2, "v podstatě"): within one of
+    half (`course.staticShare`); for "A nebo B" cards the D0 card is chosen to keep it.
+  - **CNDC limits** (§1.1.1, §1.1.6): ROTA builds every card as its own station, never a
+    CNDC, so the limits hold trivially. Distances and card placement (§1.1.2–1.1.4) need
+    a field plan, which national courses do not have.
 
 - **Last card only.** RO-V: Z-016 and 1-110 only as the last card.
 - **Tracked changes in the PDF.** The 2026 regulation was published with struck-through
@@ -452,6 +468,7 @@ gesture for audio).
 - [x] Course in the URL (seed + options), new course, print stylesheet, share, "projít jako balíček"
 - [x] Entry point on the setup screen
 - [x] Dog's side on national courses (2026-10-19): D0a–d end on the left; right-hand stretches per the judges' guidelines §1.2.3–1.2.5 (RO1 one change, RO2/RO3 start/finish + one mid-course, `deal/side-plan.ts`, validator, property test); finish side shown and spoken; guidelines credited on `/o-aplikaci`
+- [x] National courses per the guidelines (2026-10-19): card repeats (§1.2.1), required exercises per class (§1.2.2–1.2.6, matched in the validator), RO-Z static/dynamic balance (§1.1.1) — `deal/course.ts`; feature item `national-course`
 
 ### R8 — Quiz
 
