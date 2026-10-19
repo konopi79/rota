@@ -4,6 +4,7 @@ import { getClass, type ClassId } from '@rota/content'
 import { ChevronLeft, Search } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -12,16 +13,43 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Toggle } from '@/components/ui/toggle'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { catalogueCards, filterCards, NO_FILTERS, type CatalogueFilters } from '@/lib/catalogue'
+import {
+  catalogueCards,
+  catalogueQuery,
+  filterCards,
+  filtersFromParams,
+  filtersToParams,
+  type CatalogueFilters,
+} from '@/lib/catalogue'
 import { cardHref, classSlug } from '@/lib/classes'
 
-export function Catalogue({ classId }: { classId: ClassId }) {
+/** The catalogue with the filters of its URL; needs a Suspense boundary (static export). */
+export function CatalogueFromUrl({ classId }: { classId: ClassId }) {
+  // Read once: later changes come from the catalogue itself, which keeps the URL in sync.
+  const search = useSearchParams()
+  return <Catalogue classId={classId} initialFilters={filtersFromParams(search)} />
+}
+
+export function Catalogue({
+  classId,
+  initialFilters,
+}: {
+  classId: ClassId
+  initialFilters: CatalogueFilters
+}) {
   const { t } = useTranslation()
   const cls = getClass(classId)
   if (!cls) throw new Error(`No content for ${classId}`)
 
-  const [filters, setFilters] = useState<CatalogueFilters>(NO_FILTERS)
-  const update = (patch: Partial<CatalogueFilters>) => setFilters((f) => ({ ...f, ...patch }))
+  const [filters, setFilters] = useState(initialFilters)
+  // The filters live in the URL too (replaced, not pushed), so "Zpět" from a card detail
+  // comes back to the same list.
+  const update = (patch: Partial<CatalogueFilters>) => {
+    const next = { ...filters, ...patch }
+    setFilters(next)
+    const query = filtersToParams(next).toString()
+    window.history.replaceState(null, '', query ? `?${query}` : window.location.pathname)
+  }
   const all = useMemo(() => catalogueCards(cls), [cls])
   const cards = filterCards(cls, all, filters)
 
@@ -107,7 +135,7 @@ export function Catalogue({ classId }: { classId: ClassId }) {
           {cards.map((card) => (
             <li key={card.code}>
               <Link
-                href={cardHref(card)}
+                href={`${cardHref(card)}?${catalogueQuery(classId, filters)}`}
                 className="hover:bg-muted block space-y-1.5 rounded-lg border p-2 transition-colors"
               >
                 <Image

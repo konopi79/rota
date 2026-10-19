@@ -20,7 +20,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'voice'
+export const LATEST_FEATURE_ID = 'catalogue'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -39,7 +39,7 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
       {
         id: 'catalogue',
         title: 'Katalog karet',
-        desc: 'Hledání podle čísla nebo názvu (i bez diakritiky), filtry na nové karty třídy, typ cviku, body FCI nebo cviky bez pomůcek. U každé karty popis, dílčí části, nákres spirál a pravidla řazení.',
+        desc: 'Hledání podle čísla nebo názvu (i bez diakritiky), filtry na nové karty třídy, typ cviku, body FCI nebo cviky bez pomůcek. U každé karty popis, dílčí části, nákres spirál a pravidla řazení; tlačítky Předchozí a Další projdeš vyfiltrovaný seznam bez vracení na přehled.',
       },
     ],
   },

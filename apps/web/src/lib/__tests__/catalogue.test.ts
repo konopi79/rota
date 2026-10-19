@@ -3,8 +3,12 @@ import { getCard, getClass, type Card, type RoClass } from '@rota/content'
 
 import {
   catalogueCards,
+  catalogueFromQuery,
+  catalogueQuery,
   classesWith,
   filterCards,
+  filtersFromParams,
+  filtersToParams,
   fold,
   NO_FILTERS,
   sequencingNotes,
@@ -45,6 +49,27 @@ describe('catalogue', () => {
     expect(noGear.some((c) => c.sequencing.equipment)).toBe(false)
     const fci = cls('FCI-ROB')
     expect(filterCards(fci, catalogueCards(fci), { ...NO_FILTERS, group: '3' })).toHaveLength(23)
+  })
+
+  test('filters survive a round trip through the URL', () => {
+    expect(filtersToParams(NO_FILTERS).toString()).toBe('')
+    expect(filtersFromParams(new URLSearchParams())).toEqual(NO_FILTERS)
+    const filters = { query: 'obrat', newOnly: true, group: '4', equipment: [] }
+    expect(filtersFromParams(filtersToParams(filters))).toEqual(filters)
+  })
+
+  test('a card detail steps through the filtered list it was opened from', () => {
+    const filters = { query: ' předs ', newOnly: false, group: 'AB', equipment: [] }
+    const query = catalogueQuery('RO2', filters)
+    expect(query).toBe('trida=ro2&hledat=p%C5%99eds&skupina=AB&bez-pomucek=1')
+    const ro2 = cls('RO2')
+    expect(codes(catalogueFromQuery(new URLSearchParams(query)) ?? [])).toEqual(
+      codes(filterCards(ro2, catalogueCards(ro2), filters)),
+    )
+    expect(catalogueQuery('FCI-ROB', NO_FILTERS)).toBe('trida=fci-rob')
+    expect(catalogueFromQuery(new URLSearchParams('trida=fci-rob'))).toHaveLength(89)
+    expect(catalogueFromQuery(new URLSearchParams(''))).toBeNull()
+    expect(catalogueFromQuery(new URLSearchParams('trida=ro9'))).toBeNull()
   })
 
   test('the classes a card belongs to', () => {
