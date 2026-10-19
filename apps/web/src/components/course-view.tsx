@@ -2,6 +2,7 @@
 
 import {
   dealDeck,
+  finishSide,
   getCard,
   getClass,
   randomSeed,
@@ -134,7 +135,11 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
       ))}
 
       <ol className="divide-y rounded-lg border">
-        <Row label={t('course.start')} card={card('START')} />
+        <Row
+          label={t('course.start')}
+          card={card('START')}
+          dogRight={params.options.startSide === 'right'}
+        />
         {deck.entries.map((entry, i) => (
           <CourseRow
             key={`${i}-${entry.code}`}
@@ -145,18 +150,26 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
             sideChanged={i > 0 && deck.entries[i - 1]?.side !== entry.side}
           />
         ))}
-        <Row label={t('course.finish')} card={card('FINISH')} />
+        <Row
+          label={t('course.finish')}
+          card={card('FINISH')}
+          dogRight={finishSide(deck) === 'right'}
+        />
       </ol>
     </main>
   )
 }
 
-function Row({ label, card }: { label: string; card: Card }) {
+function Row({ label, card, dogRight }: { label: string; card: Card; dogRight?: boolean }) {
+  const { t } = useTranslation()
   return (
     <li className="flex break-inside-avoid items-center gap-3 p-2">
       <span className="w-8 text-center font-semibold" />
       <Thumb card={card} />
-      <span className="font-semibold">{label}</span>
+      <div className="space-y-1">
+        <p className="font-semibold">{label}</p>
+        {dogRight && <Badge>{t('course.dogRight')}</Badge>}
+      </div>
     </li>
   )
 }

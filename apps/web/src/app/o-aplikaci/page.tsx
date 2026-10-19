@@ -77,6 +77,7 @@ export default function AboutPage() {
         t('about.sourcesTitle'),
         <ul className="list-disc space-y-1 pl-5">
           <li>{t('about.cz', { date: czDate(CZ_RULESET.validFrom) })}</li>
+          <li>{t('about.czGuidelines')}</li>
           <li>{t('about.fci', { date: czDate(FCI_RULESET.validFrom) })}</li>
           <li className="text-muted-foreground">{t('about.cards')}</li>
         </ul>,

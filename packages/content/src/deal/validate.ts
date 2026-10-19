@@ -31,6 +31,8 @@ export function validateDeck(deck: Deck): string[] {
   const inClass = new Set(cls.cardCodes)
   const newOnly = options.scope === 'new' && cls.newCardCodes.length > 0
   const seenMain = new Set<string>()
+  // A national course may repeat some cards (`course.repeats`) — counted after the loop.
+  const repeats = options.competition ? cls.course.repeats : undefined
   let pace: Pace = 'normal'
   let side: Side = options.startSide
   let prevStatic = false
@@ -38,6 +40,8 @@ export function validateDeck(deck: Deck): string[] {
   let prevOptional: string[] = []
   let prevCode: string | undefined
   const counts = new Map<string, number>()
+  /** Positions (0-based) of the cards after which the dog is on the other side. */
+  const sideChanges: number[] = []
 
   entries.forEach((entry, i) => {
     const at = `#${i + 1} ${entry.code}`
@@ -60,7 +64,7 @@ export function validateDeck(deck: Deck): string[] {
         errors.push(`${at}: follow-up card without a leave card`)
       }
     } else {
-      if (seenMain.has(card.code)) errors.push(`${at}: dealt twice`)
+      if (seenMain.has(card.code) && !repeats) errors.push(`${at}: dealt twice`)
       if (newOnly && !cls.newCardCodes.includes(card.code)) {
         errors.push(`${at}: not a new card of ${cls.id}`)
       }
@@ -99,7 +103,12 @@ export function validateDeck(deck: Deck): string[] {
 
     const static_ = endsStatic(cls, card, entry.supplementary)
     pace = paceAfter(card, pace, static_)
-    side = sideAfter(card, side)
+    const sideNext = sideAfter(cls, card, side, entry.supplementary)
+    if (sideNext !== side) sideChanges.push(i)
+    if (options.competition && cls.course.rightHand && sideNext !== side && !seq.sideChange) {
+      errors.push(`${at}: its D0 card changes the side`)
+    }
+    side = sideNext
     prevStatic = static_
     prevRequired = seq.nextOneOf
     prevOptional = seq.mayBeFollowedBy ?? []
@@ -118,8 +127,112 @@ export function validateDeck(deck: Deck): string[] {
       if (have < min) errors.push(`only ${have} ${points}-point cards, at least ${min} needed`)
     }
   }
+  if (options.competition && cls.course.rightHand) {
+    errors.push(...validateRightHand(cls, options.startSide, sideChanges, entries.length))
+  }
+  if (options.competition) errors.push(...validateNationalCourse(cls, entries))
   if (cls.course.field) errors.push(...validateLayout(cls, deck))
   else if (deck.layout || entries.some((e) => e.at)) errors.push(`${cls.id} is not laid out`)
+  return errors
+}
+
+/**
+ * National courses, the rest of the judges' guidelines: how often a card appears
+ * (`course.repeats`, D0 cards included), the required exercises (`course.required`, each
+ * filled by a different card — a bipartite matching) and RO-Z's static/dynamic balance.
+ */
+function validateNationalCourse(cls: RoClass, entries: DeckEntry[]): string[] {
+  const { repeats, required, staticShare } = cls.course
+  const errors: string[] = []
+  if (repeats) {
+    const counts = new Map<string, number>()
+    for (const e of entries) {
+      for (const code of e.supplementary ? [e.code, e.supplementary] : [e.code]) {
+        counts.set(code, (counts.get(code) ?? 0) + 1)
+      }
+    }
+    for (const [code, n] of counts) {
+      const limit = repeats[code] ?? 1
+      if (n > limit) errors.push(`${code}: ${n} times, at most ${limit}`)
+    }
+  }
+  if (required) {
+    const slots = required.flatMap((r) => Array.from({ length: r.count ?? 1 }, () => r.oneOf))
+    // Kuhn's augmenting paths: an entry (position) → the required exercise it fills.
+    const fills = new Map<number, number>()
+    const assign = (slot: number, seen: Set<number>): boolean =>
+      entries.some((e, i) => {
+        if (seen.has(i) || !slots[slot]?.includes(e.code)) return false
+        seen.add(i)
+        const other = fills.get(i)
+        if (other !== undefined && !assign(other, seen)) return false
+        fills.set(i, slot)
+        return true
+      })
+    slots.forEach((oneOf, slot) => {
+      if (!assign(slot, new Set())) errors.push(`missing a required exercise: one of ${oneOf}`)
+    })
+  }
+  if (staticShare) {
+    const statics = entries.filter((e) => {
+      const card = getCard(cls.ruleset, e.code)
+      return card && endsStatic(cls, card, e.supplementary)
+    }).length
+    const { tolerance } = staticShare
+    const n = entries.length
+    if (statics < Math.floor(n / 2) - tolerance || statics > Math.ceil(n / 2) + tolerance) {
+      errors.push(`${statics} static of ${entries.length}, about half needed`)
+    }
+  }
+  return errors
+}
+
+/**
+ * National courses: the dog on the right only in the stretches the judges' guidelines
+ * allow (`course.rightHand`). Reads the side changes off the dealt sequence.
+ */
+function validateRightHand(
+  cls: RoClass,
+  startSide: Side,
+  sideChanges: number[],
+  count: number,
+): string[] {
+  const rule = cls.course.rightHand
+  if (!rule) return []
+  const errors: string[] = []
+  const changes = [...sideChanges]
+  let start = false
+  let end = false
+  let mids = 0
+  if (startSide === 'right') {
+    const first = changes.shift()
+    if (first === undefined || first >= rule.startBy) {
+      errors.push(`start "R": the side must change by card ${rule.startBy}`)
+    }
+    start = true
+  }
+  while (changes.length) {
+    const from = changes.shift() as number
+    const back = changes.shift()
+    if (back === undefined) {
+      if (from < count - rule.endWithin) {
+        errors.push(`#${from + 1}: to the finish on the right only from the last ${rule.endWithin}`)
+      }
+      end = true
+    } else if (rule.midLength === undefined) {
+      errors.push(`#${from + 1}: no stretch on the right mid-course in ${cls.id}`)
+    } else {
+      if (back - from - 1 > rule.midLength) {
+        errors.push(`#${from + 1}: more than ${rule.midLength} exercises on the right`)
+      }
+      mids++
+    }
+  }
+  const pattern =
+    rule.midLength === undefined
+      ? start !== end
+      : (start !== end && mids === 1) || (start && end && mids === 0)
+  if (!pattern) errors.push(`side changes do not follow the ${cls.id} pattern`)
   return errors
 }
 

@@ -128,4 +128,17 @@ describe('national classes', () => {
       }
     }
   })
+
+  test('guidelines: required exercises can be filled in their class, repeats name cards', () => {
+    for (const cls of CZ_CLASSES) {
+      const inClass = new Set(cls.cardCodes)
+      for (const { oneOf, count = 1 } of cls.course.required ?? []) {
+        expect(oneOf.every((c) => byCode.has(c))).toBe(true)
+        expect(oneOf.filter((c) => inClass.has(c)).length).toBeGreaterThanOrEqual(count)
+      }
+      for (const code of Object.keys(cls.course.repeats ?? {})) expect(byCode.has(code)).toBe(true)
+    }
+    expect(classOf('RO-Z').course.repeats?.['Z-014']).toBe(4)
+    expect(classOf('RO1').course.repeats?.['Z-014']).toBeUndefined()
+  })
 })

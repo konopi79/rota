@@ -2,6 +2,7 @@
 
 import {
   dealDeck,
+  finishSide,
   getCard,
   getClass,
   randomSeed,
@@ -73,7 +74,7 @@ function Deck({ params, cls }: { params: DeckParams; cls: RoClass }) {
     (pos: number): Screen => {
       if (pos === 0) return { kind: 'start', startSide: params.options.startSide }
       const at = deck.entries[pos - 1]
-      if (!at) return { kind: 'finish' }
+      if (!at) return { kind: 'finish', side: finishSide(deck) }
       const card = getCard(cls.ruleset, at.code) as Card
       const supplementary = at.supplementary ? getCard(cls.ruleset, at.supplementary) : undefined
       return {
@@ -155,7 +156,7 @@ function Deck({ params, cls }: { params: DeckParams; cls: RoClass }) {
   }
 
   const setupHref = `/trida/${classSlug(cls.id)}`
-  const side = entry?.side ?? params.options.startSide
+  const side = entry?.side ?? (position > total ? finishSide(deck) : params.options.startSide)
 
   return (
     <div className="bg-background flex h-dvh flex-col overflow-hidden">

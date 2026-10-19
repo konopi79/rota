@@ -16,6 +16,7 @@ export { FCI_CARDS, FCI_CLASSES, FCI_RULESET } from './fci'
 export { CLASSES, getCard, getClass } from './registry'
 export {
   dealDeck,
+  finishSide,
   randomSeed,
   validateDeck,
   geometry,

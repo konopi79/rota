@@ -1,7 +1,14 @@
 import { describe, expect, test } from 'bun:test'
 
 import type { ClassId } from '../classes'
-import { dealDeck, validateDeck, type Deck, type DealOptions, type DeckEntry } from '../deal'
+import {
+  dealDeck,
+  finishSide,
+  validateDeck,
+  type Deck,
+  type DealOptions,
+  type DeckEntry,
+} from '../deal'
 import { CLASSES } from '../registry'
 import { EQUIPMENT, type Equipment } from '../schema'
 
@@ -86,6 +93,19 @@ describe('validateDeck — each rule', () => {
     ).toEqual([])
     expect(check([e('1-125'), e('Z-006')])).toContain('#2 Z-006: side should be right')
     expect(check([e('Z-006', { side: 'right' })], { startSide: 'right' })).toEqual([])
+  })
+
+  test('side: every D0 card ends at the left leg', () => {
+    const right = { startSide: 'right' } as const
+    expect(check([e('Z-014', { side: 'right', supplementary: 'D0a' }), e('Z-006')], right)).toEqual(
+      [],
+    )
+    expect(
+      check(
+        [e('Z-014', { side: 'right', supplementary: 'D0c' }), e('Z-006', { side: 'right' })],
+        right,
+      ),
+    ).toContain('#2 Z-006: side should be left')
   })
 
   test('RO-V last-only cards', () => {
@@ -261,5 +281,141 @@ describe('competition courses (R7)', () => {
     expect(missesMix?.some((e) => e.includes('-point cards'))).toBe(true)
     const short = competition('RO1', 1, 10)
     expect(validateDeck(short)).toContain('course of 10 cards, RO1 needs 18–20')
+  })
+
+  const SIDE_CHANGES = new Set(['1-123', '1-124', '1-125', '2-232', '3-325', '3-326', '3-327'])
+  /**
+   * The side errors of a course of `count` cards: `at` puts cards at positions (1-based),
+   * the rest alternate Z-006 / Z-007 (their "dealt twice" errors are filtered out).
+   */
+  const sideErrors = (
+    classId: ClassId,
+    startSide: 'left' | 'right',
+    count: number,
+    at: Record<number, string>,
+  ) => {
+    let side = startSide
+    const entries = Array.from({ length: count }, (_, i): DeckEntry => {
+      const [code = '', supplementary] = (at[i + 1] ?? (i % 2 ? 'Z-007' : 'Z-006')).split('+')
+      const entry = e(code, { side, supplementary })
+      if (supplementary) side = 'left'
+      else if (SIDE_CHANGES.has(code)) side = side === 'left' ? 'right' : 'left'
+      return entry
+    })
+    return check(entries, { classId, startSide, competition: true }).filter((m) =>
+      /side|right|pattern|"R"/.test(m),
+    )
+  }
+  const RO1_PATTERN = 'side changes do not follow the RO1 pattern'
+
+  test('RO1: one side change — from a start "R" or to the finish', () => {
+    expect(sideErrors('RO1', 'right', 20, { 1: '1-124' })).toEqual([])
+    expect(sideErrors('RO1', 'left', 20, { 20: '1-125' })).toEqual([])
+    expect(sideErrors('RO1', 'left', 20, {})).toEqual([RO1_PATTERN])
+    expect(sideErrors('RO1', 'right', 20, { 2: '1-124' })).toEqual([
+      'start "R": the side must change by card 1',
+    ])
+    expect(sideErrors('RO1', 'left', 20, { 19: '1-125' })).toEqual([
+      '#19: to the finish on the right only from the last 1',
+    ])
+    expect(sideErrors('RO1', 'right', 20, { 1: '1-124', 20: '1-125' })).toEqual([RO1_PATTERN])
+    expect(sideErrors('RO1', 'left', 20, { 5: '1-125', 6: '1-124', 20: '1-123' })).toEqual([
+      '#5: no stretch on the right mid-course in RO1',
+    ])
+  })
+
+  test('RO2: start or finish plus a change straight back, or start and finish', () => {
+    const mid = { 5: '1-125', 6: '2-232' }
+    expect(sideErrors('RO2', 'left', 22, { ...mid, 22: '1-124' })).toEqual([])
+    expect(sideErrors('RO2', 'right', 22, { 1: '1-124', ...mid })).toEqual([])
+    expect(sideErrors('RO2', 'right', 22, { 1: '1-124', 22: '1-125' })).toEqual([])
+    expect(sideErrors('RO2', 'left', 22, { 22: '1-124' })).toEqual([
+      'side changes do not follow the RO2 pattern',
+    ])
+    expect(sideErrors('RO2', 'left', 22, { 5: '1-125', 7: '2-232', 22: '1-124' })).toEqual([
+      '#5: more than 0 exercises on the right',
+    ])
+  })
+
+  test('RO3: up to card 2 from the start, one exercise on the right mid-course', () => {
+    expect(sideErrors('RO3', 'right', 24, { 2: '3-327', 6: '1-125', 8: '2-232' })).toEqual([])
+    expect(sideErrors('RO3', 'left', 24, { 6: '1-125', 8: '2-232', 23: '3-327' })).toEqual([])
+    expect(sideErrors('RO3', 'right', 24, { 3: '3-327', 6: '1-125', 8: '2-232' })).toEqual([
+      'start "R": the side must change by card 2',
+    ])
+  })
+
+  test('on a national course a D0 card does not take the dog back to the left', () => {
+    expect(sideErrors('RO1', 'right', 20, { 1: 'Z-014+D0a' })).toContain(
+      '#1 Z-014: its D0 card changes the side',
+    )
+  })
+
+  const courseErrors = (classId: ClassId, entries: DeckEntry[], about: RegExp) =>
+    check(entries, { classId, competition: true }).filter((m) => about.test(m))
+
+  test('national course: cards repeat only as often as the guidelines allow', () => {
+    const z = (code: string, supplementary?: string) => e(code, { supplementary })
+    const stops = [z('Z-001'), z('Z-006'), z('Z-001'), z('Z-007'), z('Z-001')]
+    expect(courseErrors('RO-Z', stops, /times/)).toEqual([])
+    expect(courseErrors('RO-Z', [...stops, z('Z-008'), z('Z-001')], /times/)).toEqual([
+      'Z-001: 4 times, at most 3',
+    ])
+    const sits = ['D0a', 'D0b', 'D0a', 'D0a'].flatMap((d) => [z('Z-014', d), z('Z-006')])
+    // Z-014 four times is fine in RO-Z; D0a three times and Z-006 four times are not.
+    expect(courseErrors('RO-Z', sits, /times/)).toEqual([
+      'D0a: 3 times, at most 2',
+      'Z-006: 4 times, at most 3',
+    ])
+    expect(courseErrors('RO1', [z('1-101'), z('Z-006'), z('1-101')], /times/)).toEqual([
+      '1-101: 2 times, at most 1',
+    ])
+  })
+
+  test('national course: required exercises, each filled by a different card', () => {
+    const missing = (classId: ClassId, codes: string[]) =>
+      courseErrors(
+        classId,
+        codes.map((c) => e(c)),
+        /required/,
+      ).length
+    // RO-Z: a figure, Z-004/Z-005, a předsednutí.
+    expect(missing('RO-Z', ['Z-018', 'Z-004'])).toBe(1)
+    // RO2: 2-225 is a turn and a stand — it cannot count for both…
+    const ro2 = ['2-213', '2-217', '2-201', '2-202']
+    expect(missing('RO2', [...ro2, '2-225'])).toBe(1)
+    // …but with 2-203 for the turn it is the stand (found whichever card comes first).
+    expect(missing('RO2', [...ro2, '2-225', '2-203'])).toBe(0)
+    expect(missing('RO2', [...ro2, '2-203', '2-225'])).toBe(0)
+  })
+
+  test('national course: RO-Z about half static', () => {
+    const dynamic = ['Z-006', 'Z-007', 'Z-008', 'Z-009', 'Z-011', 'Z-012'].map((c) => e(c))
+    expect(courseErrors('RO-Z', dynamic, /static/)).toEqual(['0 static of 6, about half needed'])
+    const mixed = [...dynamic.slice(0, 4), e('Z-001'), e('Z-002')]
+    expect(courseErrors('RO-Z', mixed, /static/)).toEqual([])
+  })
+
+  test('national courses use the repeats the guidelines allow', () => {
+    const repeated = Array.from({ length: 100 }, (_, seed) => competition('RO1', seed)).filter(
+      (deck) => new Set(deck.entries.map((x) => x.code)).size < deck.entries.length,
+    )
+    expect(repeated.length).toBeGreaterThan(10)
+  })
+
+  test('national courses follow the side patterns of the guidelines (property test)', () => {
+    for (const classId of ['RO1', 'RO2', 'RO3'] as const) {
+      const shapes = new Set<string>()
+      for (let seed = 0; seed < 300; seed++) {
+        const deck = competition(classId, seed)
+        const errors = validateDeck(deck)
+        if (errors.length) throw new Error(`${classId}/seed ${seed}: ${errors}`)
+        expect(deck.entries).toHaveLength(deck.options.count)
+        const changes = deck.entries.filter((x) => SIDE_CHANGES.has(x.code)).length
+        shapes.add(`${deck.options.startSide}/${finishSide(deck)}/${changes}`)
+      }
+      // Every pattern comes up: RO1 start "R" or finish; RO2/RO3 also the mid-course ones.
+      expect(shapes.size).toBe(classId === 'RO1' ? 2 : 3)
+    }
   })
 })

@@ -17,13 +17,15 @@ export type Screen =
       /** The previous card's entry — pace and side are only announced when they change. */
       previous?: DeckEntry
     }
-  | { kind: 'finish' }
+  | { kind: 'finish'; side: Side }
 
 export function announcement(screen: Screen, t: T): string {
   if (screen.kind === 'start') {
     return t(screen.startSide === 'right' ? 'speech.startRight' : 'speech.start')
   }
-  if (screen.kind === 'finish') return t('speech.finish')
+  if (screen.kind === 'finish') {
+    return t(screen.side === 'right' ? 'speech.finishRight' : 'speech.finish')
+  }
 
   const { number, entry, card, supplementary, previous } = screen
   const parts = [t('speech.card', { number, name: card.name })]

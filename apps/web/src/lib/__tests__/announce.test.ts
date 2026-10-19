@@ -17,7 +17,10 @@ describe('announcement', () => {
   test('start and finish', () => {
     expect(announcement({ kind: 'start', startSide: 'left' }, t)).toBe('Start.')
     expect(announcement({ kind: 'start', startSide: 'right' }, t)).toBe('Start na pravou ruku.')
-    expect(announcement({ kind: 'finish' }, t)).toBe('Cíl. Hotovo.')
+    expect(announcement({ kind: 'finish', side: 'left' }, t)).toBe('Cíl. Hotovo.')
+    expect(announcement({ kind: 'finish', side: 'right' }, t)).toBe(
+      'Do cíle se psem vpravo. Hotovo.',
+    )
   })
 
   test('number and name, with the D0 card', () => {
