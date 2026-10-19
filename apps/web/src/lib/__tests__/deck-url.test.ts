@@ -85,6 +85,21 @@ describe('hand-made course URL', () => {
     expect(deckOf(custom).entries.map((e) => e.code)).toEqual(['2-211', '2-214', 'Z-001'])
   })
 
+  test('marks a course checked against the guidelines', () => {
+    const checked = { ...custom, guidelines: true }
+    const encoded = encodeDeckParams(checked)
+    expect(encoded).toContain('&smernice=1')
+    expect(decodeDeckParams(new URLSearchParams(encoded))).toEqual(checked)
+  })
+
+  test('marks a course without any checks (and then no guidelines either)', () => {
+    const unchecked = { ...custom, unchecked: true }
+    const encoded = encodeDeckParams({ ...unchecked, guidelines: true })
+    expect(encoded).toContain('&kontrola=0')
+    expect(encoded).not.toContain('smernice')
+    expect(decodeDeckParams(new URLSearchParams(encoded))).toEqual(unchecked)
+  })
+
   test('keeps an order that breaks the rules — the warnings say so, not the URL', () => {
     const decoded = decodeDeckParams(new URLSearchParams('trida=RO1&poradi=2-213,2-213'))
     expect(decoded?.order).toEqual([{ code: '2-213' }, { code: '2-213' }])

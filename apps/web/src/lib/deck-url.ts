@@ -22,6 +22,10 @@ export type DeckParams = {
   options: DealOptions
   /** A hand-made course: these cards in this order instead of a dealt deck. */
   order?: CustomCard[]
+  /** A hand-made course is checked against the judges' guidelines too (`smernice=1`). */
+  guidelines?: boolean
+  /** A hand-made course is not checked at all — a short sequence from a trainer (`kontrola=0`). */
+  unchecked?: boolean
   showDescription: boolean
   /** Read each card aloud (R9). */
   speak?: boolean
@@ -57,7 +61,11 @@ const paramsSchema = z.object({
 
 const customSchema = paramsSchema
   .pick({ trida: true, strana: true, popis: true, karta: true, hlas: true })
-  .extend({ poradi: z.string().min(1) })
+  .extend({
+    poradi: z.string().min(1),
+    smernice: z.enum(['0', '1']).default('0'),
+    kontrola: z.enum(['0', '1']).default('1'),
+  })
 
 /** `Z-014.D0a` — a card and its D0 card. */
 export const encodeOrder = (order: CustomCard[]) =>
@@ -66,6 +74,8 @@ export const encodeOrder = (order: CustomCard[]) =>
 export function encodeDeckParams({
   options,
   order,
+  guidelines,
+  unchecked,
   showDescription,
   speak,
   position,
@@ -92,6 +102,8 @@ export function encodeDeckParams({
       })
   // Only competition courses carry the flag, so training-deck URLs stay as they were.
   if (options.competition && !order) params.set('parkur', '1')
+  if (order && unchecked) params.set('kontrola', '0')
+  else if (order && guidelines) params.set('smernice', '1')
   if (speak) params.set('hlas', '1')
   return params.toString()
 }
@@ -145,6 +157,7 @@ function decodeCustom(entries: Record<string, string>): DeckParams | null {
   return {
     options: customDeck(p.trida, p.strana === 'P' ? 'right' : 'left', order).options,
     order,
+    ...(p.kontrola === '0' ? { unchecked: true } : p.smernice === '1' && { guidelines: true }),
     showDescription: p.popis === '1',
     ...(p.hlas === '1' && { speak: true }),
     position: p.karta,

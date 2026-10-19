@@ -114,7 +114,7 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
       {
         id: 'custom-course',
         title: 'Vlastní parkur',
-        desc: 'Poskládej karty ve vlastním pořadí – třeba podle plánku z tréninku nebo ze závodu – nebo uprav vygenerovaný parkur. Aplikace pořadí hned kontroluje podle pravidel řazení a u karty řekne, co nesedí; parkur pak projdeš jako balíček, vytiskneš nebo pošleš odkazem.',
+        desc: 'Poskládej celý parkur nebo jen krátkou sekvenci cviků – třeba podle plánku z tréninku – a pošli ji odkazem; příjemce ji projde jako balíček. Pořadí aplikace kontroluje podle pravidel řazení (u národních tříd na přání i podle směrnic pro rozhodčí), kontrolu jde i vypnout.',
       },
       {
         id: 'quiz',

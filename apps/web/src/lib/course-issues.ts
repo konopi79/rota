@@ -1,4 +1,4 @@
-import type { CardIssue, RoClass } from '@rota/content'
+import type { DeckIssue, RoClass } from '@rota/content'
 import type { TFunction } from 'i18next'
 
 /** A card code that does not wrap at its hyphen ("2-‑215" on two lines reads as two codes). */
@@ -12,11 +12,15 @@ const codeList = (codes: string[], t: TFunction) => {
     : (all[0] ?? '')
 }
 
+/** Required exercises with more cards than this are named by their label only. */
+const MAX_LISTED = 8
+
 /**
- * A broken sequencing rule of a hand-made course (plan §12) in plain Czech, with what
- * would fix it where the rule says so.
+ * A broken rule of a hand-made course (plan §12) in plain Czech, with what would fix it
+ * where the rule says so — sequencing rules of the regulations and, when asked for, the
+ * judges' guidelines.
  */
-export function issueMessage(issue: CardIssue, cls: RoClass, t: TFunction): string {
+export function issueMessage(issue: DeckIssue, cls: RoClass, t: TFunction): string {
   const cl = t(`classes.${cls.id}`)
   switch (issue.rule) {
     case 'not-follow-up':
@@ -59,7 +63,48 @@ export function issueMessage(issue: CardIssue, cls: RoClass, t: TFunction): stri
       return t('issues.sideMismatch')
     case 'pace-mismatch':
       return t('issues.paceMismatch')
+    // The judges' guidelines.
     case 'supplementary-changes-side':
       return t('issues.supplementaryChangesSide')
+    case 'too-often':
+      return t('issues.tooOften', { card: nb(issue.card), count: issue.count, max: issue.limit })
+    case 'right-to-finish-early':
+      return t('issues.rightToFinishEarly', { count: issue.within })
+    case 'right-mid-course':
+      return t('issues.rightMidCourse', { cls: cl })
+    case 'right-mid-too-long':
+      return t(issue.max === 0 ? 'issues.rightMidBack' : 'issues.rightMidTooLong', {
+        max: issue.max,
+      })
+    case 'required-missing':
+      return issue.oneOf.length <= MAX_LISTED
+        ? t('issues.requiredMissingCards', {
+            label: issue.label,
+            codes: codeList(issue.oneOf, t),
+          })
+        : t('issues.requiredMissing', { label: issue.label })
+    case 'static-share':
+      return t('issues.staticShare', { statics: issue.statics, count: issue.count })
+    case 'right-start-late':
+      return t('issues.rightStartLate', { by: issue.by })
+    case 'right-pattern':
+      // RO1 allows one change only; RO2 and RO3 also a stretch mid-course.
+      return t(
+        cls.course.rightHand?.midLength === undefined
+          ? 'issues.rightPattern.single'
+          : 'issues.rightPattern.withMid',
+        { cls: cl },
+      )
+    case 'course-size':
+      return t('issues.courseSize', { min: issue.min, max: issue.max })
+    case 'points-mix':
+      return t('issues.pointsMix', { points: issue.points, min: issue.min })
   }
+}
+
+/** Identical messages once, with how many times they came ("… (3×)."). */
+export function countedMessages(messages: string[]): string[] {
+  const counts = new Map<string, number>()
+  for (const m of messages) counts.set(m, (counts.get(m) ?? 0) + 1)
+  return [...counts].map(([m, n]) => (n > 1 ? `${m.replace(/\.$/, '')} (${n}×).` : m))
 }

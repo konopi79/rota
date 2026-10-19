@@ -5,12 +5,13 @@ import {
   customDeckIssues,
   getCard,
   getClass,
+  isCardIssue,
   type Card,
-  type CardIssue,
   type ClassId,
   type CustomCard,
   type Deck,
   type DeckEntry,
+  type DeckIssue,
   type RoClass,
 } from '@rota/content'
 import {
@@ -23,6 +24,7 @@ import {
   ListOrdered,
   Plus,
   Search,
+  Share2,
   Trash2,
   X,
 } from 'lucide-react'
@@ -36,13 +38,17 @@ import { cardImageUrl } from '@/components/deck/card-image'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { filterCards, NO_FILTERS } from '@/lib/catalogue'
 import { classSlug, customCourseHref } from '@/lib/classes'
-import { issueMessage } from '@/lib/course-issues'
-import { encodeDeckParams, MAX_CUSTOM_CARDS } from '@/lib/deck-url'
+import { countedMessages, issueMessage } from '@/lib/course-issues'
+import { encodeDeckParams, MAX_CUSTOM_CARDS, type DeckParams } from '@/lib/deck-url'
+import { shareLink } from '@/lib/share'
 import {
   adoptCustomCourse,
+  emptyCustomCourse,
   loadCustomCourse,
   loadSetup,
   saveCustomCourse,
@@ -64,7 +70,7 @@ export function CourseEditor({ classId }: { classId: ClassId }) {
   const stored = useSyncExternalStore(
     noSubscribe,
     () => JSON.stringify(loadCustomCourse(cls)),
-    () => JSON.stringify({ startSide: 'left', cards: [] } satisfies CustomCourse),
+    () => JSON.stringify(emptyCustomCourse()),
   )
   return <Editor key={stored} cls={cls} initial={JSON.parse(stored) as CustomCourse} />
 }
@@ -76,12 +82,14 @@ export function CourseEditor({ classId }: { classId: ClassId }) {
 export function useOpenInEditor(cls: RoClass) {
   const { t } = useTranslation()
   const router = useRouter()
-  return (deck: Deck) => {
+  return (deck: Deck, { guidelines, unchecked }: Pick<DeckParams, 'guidelines' | 'unchecked'>) => {
     const course: CustomCourse = {
       startSide: deck.options.startSide,
       cards: deck.entries.map(({ code, supplementary }) =>
         supplementary ? { code, supplementary } : { code },
       ),
+      checks: !unchecked,
+      guidelines: guidelines ?? false,
     }
     if (adoptCustomCourse(cls, course, () => window.confirm(t('custom.replaceConfirm')))) {
       router.push(customCourseHref(cls.id))
@@ -121,7 +129,16 @@ function Editor({ cls, initial }: { cls: RoClass; initial: CustomCourse }) {
   }
 
   const deck = useMemo(() => customDeck(cls.id, course.startSide, course.cards), [cls.id, course])
-  const issues = useMemo(() => customDeckIssues(deck), [deck])
+  // The judges' guidelines exist for the national classes only.
+  const hasGuidelines = cls.ruleset === 'CZ'
+  const guidelines = course.checks && hasGuidelines && course.guidelines
+  const issues = useMemo(
+    () => (course.checks ? customDeckIssues(deck, { guidelines }) : []),
+    [deck, course.checks, guidelines],
+  )
+  const courseMessages = countedMessages(
+    issues.filter((issue) => !isCardIssue(issue)).map((issue) => issueMessage(issue, cls, t)),
+  )
   const exercises = useMemo(
     () =>
       cls.cardCodes
@@ -141,18 +158,28 @@ function Editor({ cls, initial }: { cls: RoClass; initial: CustomCourse }) {
     .map((code) => getCard(cls.ruleset, code))
     .filter((card): card is Card => card !== undefined)
 
+  const courseQuery = (setup: Pick<DeckParams, 'showDescription' | 'speak'>) =>
+    encodeDeckParams({
+      options: deck.options,
+      order: course.cards,
+      guidelines,
+      unchecked: !course.checks,
+      ...setup,
+      position: 0,
+    })
   // The setup's description and voice options come along; read on the tap, not in render
   // (local storage is not there in the prerendered HTML).
   const open = (path: '/balicek' | '/parkur') => {
     const { showDescription, speak } = loadSetup(cls)
-    const query = encodeDeckParams({
-      options: deck.options,
-      order: course.cards,
-      showDescription,
-      speak,
-      position: 0,
-    })
-    router.push(`${path}?${query}`)
+    router.push(`${path}?${courseQuery({ showDescription, speak })}`)
+  }
+  // A shared course opens as its course page: the list, walk it, or take it into the editor.
+  // The sharer's own description and voice options stay at home.
+  const [copied, setCopied] = useState(false)
+  const share = async () => {
+    const url = `${window.location.origin}/parkur?${courseQuery({ showDescription: false })}`
+    const title = t('custom.shareTitle', { cls: t(`classes.${cls.id}`) })
+    if ((await shareLink(url, title)) === 'copied') setCopied(true)
   }
   const empty = course.cards.length === 0
 
@@ -190,19 +217,61 @@ function Editor({ cls, initial }: { cls: RoClass; initial: CustomCourse }) {
         </ToggleGroup>
       </section>
 
-      {!empty && (
-        <p
-          className={
-            issues.length ? 'text-destructive flex gap-2' : 'text-muted-foreground flex gap-2'
-          }
-        >
-          {issues.length ? (
-            <CircleAlert className="mt-0.5 size-5 shrink-0" />
-          ) : (
-            <CircleCheck className="mt-0.5 size-5 shrink-0" />
+      <section className="space-y-1">
+        <div className="flex items-center justify-between gap-4">
+          <Label htmlFor="checks" className="text-base">
+            {t('custom.checks')}
+          </Label>
+          <Switch
+            id="checks"
+            checked={course.checks}
+            onCheckedChange={(checked) => change({ ...course, checks: checked })}
+          />
+        </div>
+        <p className="text-muted-foreground text-sm">{t('custom.checksHint')}</p>
+      </section>
+
+      {course.checks && hasGuidelines && (
+        <section className="space-y-1">
+          <div className="flex items-center justify-between gap-4">
+            <Label htmlFor="guidelines" className="text-base">
+              {t('custom.guidelines')}
+            </Label>
+            <Switch
+              id="guidelines"
+              checked={course.guidelines}
+              onCheckedChange={(checked) => change({ ...course, guidelines: checked })}
+            />
+          </div>
+          <p className="text-muted-foreground text-sm">{t('custom.guidelinesHint')}</p>
+        </section>
+      )}
+
+      {!empty && course.checks && (
+        <div className="space-y-2">
+          <p
+            className={
+              issues.length ? 'text-destructive flex gap-2' : 'text-muted-foreground flex gap-2'
+            }
+          >
+            {issues.length ? (
+              <CircleAlert className="mt-0.5 size-5 shrink-0" />
+            ) : (
+              <CircleCheck className="mt-0.5 size-5 shrink-0" />
+            )}
+            {issues.length ? t('custom.warnings', { count: issues.length }) : t('custom.ok')}
+          </p>
+          {/* Rules of the whole course (the guidelines): not tied to one card. */}
+          {courseMessages.length > 0 && (
+            <ul className="text-destructive space-y-1 pl-7 text-sm">
+              {courseMessages.map((message) => (
+                <li key={message} className="list-disc">
+                  {message}
+                </li>
+              ))}
+            </ul>
           )}
-          {issues.length ? t('custom.warnings', { count: issues.length }) : t('custom.ok')}
-        </p>
+        </div>
       )}
 
       {empty ? (
@@ -218,7 +287,7 @@ function Editor({ cls, initial }: { cls: RoClass; initial: CustomCourse }) {
               number={i + 1}
               entry={entry}
               sideChanged={i > 0 && deck.entries[i - 1]?.side !== entry.side}
-              issues={issues.filter((issue) => issue.index === i)}
+              issues={issues.filter((issue) => isCardIssue(issue) && issue.index === i)}
               isFirst={i === 0}
               isLast={i === deck.entries.length - 1}
               onMove={(by) => move(i, by)}
@@ -303,6 +372,16 @@ function Editor({ cls, initial }: { cls: RoClass; initial: CustomCourse }) {
           <ListOrdered />
           {t('custom.show')}
         </Button>
+        <Button
+          variant="outline"
+          size="lg"
+          className="h-12 text-base"
+          disabled={empty}
+          onClick={() => void share()}
+        >
+          <Share2 />
+          {copied ? t('course.copied') : t('course.share')}
+        </Button>
         {!empty && (
           <Button
             variant="ghost"
@@ -335,7 +414,7 @@ function EditorRow({
   number: number
   entry: DeckEntry
   sideChanged: boolean
-  issues: CardIssue[]
+  issues: DeckIssue[]
   isFirst: boolean
   isLast: boolean
   onMove: (by: number) => void
@@ -408,8 +487,8 @@ function EditorRow({
       )}
       {issues.length > 0 && (
         <ul className="text-destructive space-y-1 pl-10 text-sm">
-          {issues.map((issue) => (
-            <li key={issue.rule} className="flex gap-1.5">
+          {issues.map((issue, j) => (
+            <li key={j} className="flex gap-1.5">
               <CircleAlert className="mt-0.5 size-4 shrink-0" />
               {issueMessage(issue, cls, t)}
             </li>

@@ -503,6 +503,8 @@ gesture for audio).
 - [x] `customDeck` (order → deck with side and pace) + `customDeckIssues` (regulation rules only, no "dealt twice", no layout); tests incl. every dealt deck replayed by hand
 - [x] Editor `/trida/<class>/vlastni`: search by code or name, D0 choice, move / remove, start side, follow-up chips after a leave card, warnings in Czech at each card; kept in local storage per class
 - [x] Course in the URL (`poradi=`): walk as a deck (edit instead of reshuffle), course page with the warnings, print, share; "Upravit" on a dealt course or a shared link opens it in the editor (asks before replacing a course in progress)
+- [x] Switch "Kontrolovat dle směrnic" for national classes (author, 2026-10-19): the guidelines' checks as structured issues with Czech messages (required exercises labelled in `cz/classes.ts`), course-wide warnings above the cards; test: every dealt national course replayed by hand passes
+- [x] Sharing from the editor ("Sdílet" → the course page) and "Kontrolovat pořadí" to switch the checks off for a short sequence (author, 2026-10-19; `kontrola=0`, `lib/share.ts`)
 - [ ] Tried on a phone by the author
 
 Each phase ends green on `bun run format && bun run typecheck && bun run lint` plus its
@@ -520,13 +522,20 @@ from a training or a competition — and walk it like a deck.
 - **Only regulation rules.** "Dealt twice" is the dealer's policy, not a rule: the national
   regulation (§5.4) only sets the course size and card range, so a card may come twice;
   FCI keeps its "maximálně dvakrát". Course size and the FCI point mix are not checked —
-  a training course can be any length. The judges' guidelines (repeats, required
-  exercises, RO-Z balance, right-hand stretches — §5) apply to competition courses only
-  and are not checked either; most of them only make sense on a full-length course. The
-  regulation's own side rule does apply: a D0 card brings the dog back to the left leg.
-  Possible later: an opt-in "check as a competition course" switch (the validator's
-  `guidelines` issues would then need Czech messages).
+  a training course can be any length. The regulation's own side rule applies: a D0
+  card brings the dog back to the left leg.
+- **"Kontrolovat dle směrnic"** (national classes, off by default, remembered with the
+  course, `smernice=1` in the URL) adds the judges' guidelines of §5: card repeats,
+  required exercises, RO-Z's balance, right-hand stretches. Course size stays out even
+  then. Never "závodní" in the label — the course is a training one (see R10 feedback).
+  The validator reports the guidelines as structured issues like the rest; each required
+  exercise has a short Czech `label` in `cz/classes.ts` for the warning.
 - **No field layout.** A hand-made FCI course is not laid out (the planner places cards
   while dealing; a fixed order may not fit). Possible later: lay out a given order.
+- **Shared by a trainer** (author, 2026-10-19): a whole course or just a sequence of a few
+  exercises. "Sdílet" in the editor sends the course page (`/parkur?poradi=…`) — the
+  recipient walks it, prints it or takes it into their own editor. "Kontrolovat pořadí"
+  (on by default, `kontrola=0` in the URL when off) silences every warning, for the
+  sender and the recipient: a five-card sequence needs no follow-up rules.
 - **Where it lives.** The course being edited is in local storage per class (D2); walking,
   printing and sharing put it into the URL (`poradi=Z-003,Z-014.D0a,2-211`) like a deck.

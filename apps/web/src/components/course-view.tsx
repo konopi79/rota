@@ -3,6 +3,7 @@
 import {
   customDeckIssues,
   finishSide,
+  isCardIssue,
   getCard,
   getClass,
   randomSeed,
@@ -33,7 +34,8 @@ import { FieldPlan } from '@/components/field-plan'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cardHref, classSlug } from '@/lib/classes'
-import { issueMessage } from '@/lib/course-issues'
+import { countedMessages, issueMessage } from '@/lib/course-issues'
+import { shareLink } from '@/lib/share'
 import { decodeDeckParams, deckOf, encodeDeckParams, type DeckParams } from '@/lib/deck-url'
 
 /** Competition course (R7): the whole course as a numbered, printable list. */
@@ -55,7 +57,17 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
   const card = (code: string) => getCard(cls.ruleset, code) as Card
   const layout = deck.layout
   const custom = params.order !== undefined
-  const issues = useMemo(() => (custom ? customDeckIssues(deck) : []), [custom, deck])
+  const guidelines = params.guidelines ?? false
+  // A hand-made course is checked unless whoever made it switched the checks off.
+  const checked = custom && !params.unchecked
+  const issues = useMemo(
+    () => (checked ? customDeckIssues(deck, { guidelines }) : []),
+    [checked, deck, guidelines],
+  )
+  // Rules of the whole course (the guidelines), listed above the cards.
+  const courseMessages = countedMessages(
+    issues.filter((issue) => !isCardIssue(issue)).map((issue) => issueMessage(issue, cls, t)),
+  )
   const openInEditor = useOpenInEditor(cls)
 
   const byPoints = new Map<number, number>()
@@ -71,16 +83,10 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
       `?${encodeDeckParams({ ...params, options: { ...params.options, seed: randomSeed() } })}`,
     )
   const share = async () => {
-    const url = window.location.href
     const title = t(custom ? 'custom.shareTitle' : 'course.shareTitle', {
       cls: t(`classes.${cls.id}`),
     })
-    if (navigator.share) {
-      await navigator.share({ title, url }).catch(() => {})
-      return
-    }
-    await navigator.clipboard.writeText(url)
-    setCopied(true)
+    if ((await shareLink(window.location.href, title)) === 'copied') setCopied(true)
   }
   const deckHref = `/balicek?${encodeDeckParams({ ...params, position: 0 })}`
   const side = (s: 'left' | 'right') => t(s === 'right' ? 'course.right' : 'course.left')
@@ -124,7 +130,7 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
             {t('course.new')}
           </Button>
         )}
-        <Button variant={custom ? 'default' : 'outline'} onClick={() => openInEditor(deck)}>
+        <Button variant={custom ? 'default' : 'outline'} onClick={() => openInEditor(deck, params)}>
           <PencilLine />
           {t('custom.edit')}
         </Button>
@@ -172,6 +178,16 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
         </figure>
       ))}
 
+      {courseMessages.length > 0 && (
+        <ul className="text-destructive space-y-1 pl-5 text-sm">
+          {courseMessages.map((message) => (
+            <li key={message} className="list-disc">
+              {message}
+            </li>
+          ))}
+        </ul>
+      )}
+
       <ol className="divide-y rounded-lg border">
         <Row
           label={t('course.start')}
@@ -187,7 +203,7 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
             supplementary={entry.supplementary ? card(entry.supplementary) : undefined}
             sideChanged={i > 0 && deck.entries[i - 1]?.side !== entry.side}
             warnings={issues
-              .filter((issue) => issue.index === i)
+              .filter((issue) => isCardIssue(issue) && issue.index === i)
               .map((issue) => issueMessage(issue, cls, t))}
           />
         ))}

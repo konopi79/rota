@@ -3,8 +3,8 @@ import { describe, expect, test } from 'bun:test'
 import { customDeck, customDeckIssues, dealDeck, validateDeck } from '../deal'
 import { EQUIPMENT } from '../schema'
 
-const rules = (deck: ReturnType<typeof customDeck>) =>
-  customDeckIssues(deck).map(({ index, rule }) => `${index} ${rule}`)
+const rules = (deck: ReturnType<typeof customDeck>, guidelines = false) =>
+  customDeckIssues(deck, { guidelines }).map((i) => `${'index' in i ? i.index : '-'} ${i.rule}`)
 
 describe('customDeck', () => {
   test('keeps the order and tracks pace and side like the dealer', () => {
@@ -124,5 +124,43 @@ describe('customDeckIssues', () => {
     expect(rules(customDeck('FCI-ROB', 'left', [{ code: '116' }, { code: '201' }]))).toEqual([
       '1 pace-incompatible',
     ])
+  })
+})
+
+describe('customDeckIssues with the guidelines', () => {
+  test('every dealt national course replayed by hand passes', () => {
+    for (const classId of ['RO-Z', 'RO1', 'RO2', 'RO3', 'RO-V'] as const) {
+      for (let seed = 1; seed <= 30; seed++) {
+        const dealt = dealDeck({
+          classId,
+          scope: 'all',
+          count: 18,
+          equipment: [...EQUIPMENT],
+          startSide: seed % 2 ? 'left' : 'right',
+          seed,
+          competition: true,
+        })
+        const deck = customDeck(classId, dealt.options.startSide, dealt.entries)
+        expect(customDeckIssues(deck, { guidelines: true })).toEqual([])
+      }
+    }
+  })
+
+  test('repeats, required exercises and side changes — not the course size', () => {
+    const order = ['1-101', 'Z-006', '1-101'].map((code) => ({ code }))
+    expect(rules(customDeck('RO1', 'left', order))).toEqual([])
+    const issues = rules(customDeck('RO1', 'left', order), true)
+    expect(issues).toContain('2 too-often')
+    expect(issues).toContain('- required-missing')
+    // No side change at all: RO1 needs one from a start "R" or to the finish.
+    expect(issues).toContain('- right-pattern')
+    expect(issues.some((i) => i.includes('course-size'))).toBe(false)
+  })
+
+  test('required exercises carry their label', () => {
+    const [missing] = customDeckIssues(customDeck('RO-Z', 'left', [{ code: 'Z-018' }]), {
+      guidelines: true,
+    }).filter((i) => i.rule === 'required-missing')
+    expect(missing).toMatchObject({ label: 'obejití psa', oneOf: ['Z-004', 'Z-005'] })
   })
 })

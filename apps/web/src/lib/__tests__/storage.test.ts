@@ -86,10 +86,17 @@ describe('setup storage', () => {
 
 describe('custom course storage', () => {
   test('is empty until saved, then kept per class next to the setups', () => {
-    expect(loadCustomCourse(ro1)).toEqual({ startSide: 'left', cards: [] })
+    expect(loadCustomCourse(ro1)).toEqual({
+      startSide: 'left',
+      cards: [],
+      checks: true,
+      guidelines: false,
+    })
     const course = {
       startSide: 'right' as const,
       cards: [{ code: 'Z-014', supplementary: 'D0a' }, { code: 'Z-001' }],
+      checks: false,
+      guidelines: true,
     }
     saveSetup('RO1', { ...defaultSetup(ro1), count: 5 })
     saveCustomCourse('RO1', course)
@@ -99,13 +106,17 @@ describe('custom course storage', () => {
   })
 
   test('adopting a course asks before replacing a different one in progress', () => {
-    const a = { startSide: 'left' as const, cards: [{ code: 'Z-001' }] }
-    const b = { startSide: 'left' as const, cards: [{ code: 'Z-006' }] }
+    const off = { checks: true, guidelines: false }
+    const a = { startSide: 'left' as const, cards: [{ code: 'Z-001' }], ...off }
+    const b = { startSide: 'left' as const, cards: [{ code: 'Z-006' }], ...off }
     let asked = 0
     const decline = () => (asked++, false)
     expect(adoptCustomCourse(ro1, a, decline)).toBe(true)
     expect(adoptCustomCourse(ro1, a, decline)).toBe(true)
+    // Only the check switches differ: nothing to lose, nothing to ask.
+    expect(adoptCustomCourse(ro1, { ...a, checks: false, guidelines: true }, decline)).toBe(true)
     expect(asked).toBe(0)
+    expect(adoptCustomCourse(ro1, a, decline)).toBe(true)
     expect(adoptCustomCourse(ro1, b, decline)).toBe(false)
     expect(asked).toBe(1)
     expect(loadCustomCourse(ro1)).toEqual(a)
@@ -113,10 +124,18 @@ describe('custom course storage', () => {
     expect(loadCustomCourse(ro1)).toEqual(b)
   })
 
+  test('courses saved before the check switches load checked, without the guidelines', () => {
+    const stored = { setups: {}, customCourses: { RO1: { startSide: 'left', cards: [] } } }
+    localStorage.setItem('rota:v1', JSON.stringify(stored))
+    expect(loadCustomCourse(ro1)).toMatchObject({ checks: true, guidelines: false })
+  })
+
   test('drops cards the ruleset does not know', () => {
     saveCustomCourse('RO1', {
       startSide: 'left',
       cards: [{ code: 'Z-001' }, { code: 'Z-999' }, { code: 'Z-014', supplementary: 'D0x' }],
+      checks: true,
+      guidelines: false,
     })
     expect(loadCustomCourse(ro1).cards).toEqual([{ code: 'Z-001' }])
   })

@@ -50,8 +50,12 @@
   "custom": {
     "title": "Vlastní parkur – {{cls}}",
     "back": "Nastavení",
-    "intro": "Poskládej karty v pořadí parkuru – třeba podle plánku z tréninku nebo ze závodu. ROTA pořadí hned kontroluje podle pravidel řazení; upozornění tě ale nezastaví.",
+    "intro": "Poskládej karty v pořadí parkuru – třeba podle plánku z tréninku nebo ze závodu – nebo jen krátkou sekvenci cviků. Hotové pořadí můžeš poslat odkazem.",
+    "checks": "Kontrolovat pořadí",
+    "checksHint": "Pravidla řazení z řádu – navazující karty, tempo, strana psa. Upozornění tě nezastaví; u krátké sekvence je můžeš vypnout.",
     "startSide": "Pes na startu",
+    "guidelines": "Kontrolovat dle směrnic",
+    "guidelinesHint": "Směrnice pro posuzování RO 2025: povinné cviky třídy, kolikrát smí být karta v parkuru a kdy smí jít pes vpravo.",
     "empty": "Zatím žádná karta. První najdeš podle čísla nebo názvu.",
     "add": "Přidat kartu – číslo nebo název",
     "noMatch": "Žádná karta třídy neodpovídá.",
@@ -63,7 +67,7 @@
     "remove": "Odebrat",
     "supplementary": "Doplňková karta",
     "walk": "Projít jako balíček",
-    "show": "Parkur k tisku a sdílení",
+    "show": "Parkur k tisku",
     "clear": "Vymazat parkur",
     "clearConfirm": "Opravdu vymazat všechny karty parkuru?",
     "replaceConfirm": "Nahradit tímhle parkurem tvůj rozpracovaný vlastní parkur?",
@@ -104,7 +108,24 @@
     "unexpectedSupplementary": "Tahle karta se s doplňkovou kartou nepoužívá.",
     "sideMismatch": "Nesedí strana psa.",
     "paceMismatch": "Nesedí tempo.",
-    "supplementaryChangesSide": "Doplňková karta vrátí psa k levé noze – tady to směrnice nedovolují."
+    "supplementaryChangesSide": "Doplňková karta vrátí psa k levé noze – tady to směrnice nedovolují.",
+    "tooOften": "{{card}} je v parkuru {{count}}×, směrnice dovolují nejvýš {{max}}×.",
+    "rightToFinishEarly_one": "Psa vpravo do cíle smí vést až poslední karta.",
+    "rightToFinishEarly_few": "Psa vpravo do cíle smí vést nejdřív {{count}}. karta od konce.",
+    "rightToFinishEarly_other": "Psa vpravo do cíle smí vést nejdřív {{count}}. karta od konce.",
+    "rightMidCourse": "Ve třídě {{cls}} nesmí jít pes vpravo uprostřed parkuru.",
+    "rightMidBack": "Uprostřed parkuru musí hned další cvik vrátit psa k levé noze.",
+    "rightMidTooLong": "Uprostřed parkuru smí jít pes vpravo nejvýš u {{max}} cviku.",
+    "requiredMissing": "Chybí povinný cvik: {{label}}.",
+    "requiredMissingCards": "Chybí povinný cvik: {{label}} – {{codes}}.",
+    "staticShare": "Statických cviků je {{statics}} z {{count}}, směrnice chtějí zhruba polovinu.",
+    "rightStartLate": "Po startu „R“ musí psa k levé noze vrátit nejpozději karta č. {{by}}.",
+    "rightPattern": {
+      "single": "Ve třídě {{cls}} směrnice dovolují jen jednu změnu strany: od startu „R“ k první kartě, nebo od poslední karty do cíle.",
+      "withMid": "Strana psa neodpovídá směrnicím pro {{cls}}: pes jde vpravo buď od startu „R“, nebo do cíle, k tomu jednou krátce uprostřed parkuru; anebo od startu „R“ i do cíle."
+    },
+    "courseSize": "Parkur má mít {{min}}–{{max}} karet.",
+    "pointsMix": "Málo karet za {{points}} b. – potřeba aspoň {{min}}."
   },
   "deck": {
     "close": "Zpět na nastavení",

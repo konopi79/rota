@@ -268,7 +268,7 @@ function Deck({ params, cls }: { params: DeckParams; cls: RoClass }) {
             variant="ghost"
             className="h-14"
             aria-label={t('deck.edit')}
-            onClick={() => openInEditor(deck)}
+            onClick={() => openInEditor(deck, params)}
           >
             <PencilLine />
           </Button>

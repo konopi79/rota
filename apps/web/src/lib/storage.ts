@@ -22,6 +22,10 @@ export type Setup = z.infer<typeof setupSchema>
 const customCourseSchema = z.object({
   startSide: z.enum(['left', 'right']),
   cards: z.array(z.object({ code: z.string(), supplementary: z.string().optional() })),
+  /** Check the order at all — off for a short sequence where the rules don't matter. */
+  checks: z.boolean().default(true),
+  /** Check against the judges' guidelines too (national classes). */
+  guidelines: z.boolean().default(false),
 })
 /** A course put together by hand (plan §12), being edited. */
 export type CustomCourse = z.infer<typeof customCourseSchema>
@@ -90,13 +94,20 @@ export function saveSetup(classId: ClassId, setup: Setup): void {
   write(stored)
 }
 
+export const emptyCustomCourse = (): CustomCourse => ({
+  startSide: 'left',
+  cards: [],
+  checks: true,
+  guidelines: false,
+})
+
 /**
  * The last hand-made course of a class, empty if there is none. Cards the ruleset no
  * longer knows (a later regulation) are dropped rather than failing the whole course.
  */
 export function loadCustomCourse(cls: RoClass): CustomCourse {
   const course = read().customCourses?.[cls.id]
-  if (!course) return { startSide: 'left', cards: [] }
+  if (!course) return emptyCustomCourse()
   const known = (code: string | undefined) => !code || getCard(cls.ruleset, code) !== undefined
   return {
     ...course,
@@ -119,7 +130,9 @@ export function adoptCustomCourse(
   confirmReplace: () => boolean,
 ): boolean {
   const current = loadCustomCourse(cls)
-  const differs = JSON.stringify(current) !== JSON.stringify(course)
+  // The cards and the start side are the course; the check switches are not worth asking.
+  const key = (c: CustomCourse) => JSON.stringify([c.startSide, c.cards])
+  const differs = key(current) !== key(course)
   if (current.cards.length > 0 && differs && !confirmReplace()) return false
   saveCustomCourse(cls.id, course)
   return true

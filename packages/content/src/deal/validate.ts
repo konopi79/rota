@@ -41,24 +41,37 @@ export type CardProblem =
   | { rule: 'unexpected-supplementary' }
   | { rule: 'side-mismatch'; expected: Side }
   | { rule: 'pace-mismatch'; expected: Pace }
-  /** National competition course: on the right, a D0 card brings the dog back left. */
+  // The judges' guidelines for national courses (plan §5), checked with `competition`:
+  /** On the right, a D0 card brings the dog back left — not a change the patterns allow. */
   | { rule: 'supplementary-changes-side' }
+  /** `card` (this one or its D0 card) appears `count` times on the course, `limit` allowed. */
+  | { rule: 'too-often'; card: string; count: number; limit: number }
+  /** The side changes to the finish here, earlier than the last `within` cards. */
+  | { rule: 'right-to-finish-early'; within: number }
+  /** The side changes here and back mid-course, which the class does not allow. */
+  | { rule: 'right-mid-course' }
+  /** The mid-course stretch on the right starting here is longer than `max` exercises. */
+  | { rule: 'right-mid-too-long'; max: number }
 
 /** A broken rule at one card: `index` into the deck's entries. */
 export type CardIssue = { index: number; code: string } & CardProblem
 
-/** A broken rule of a whole competition course. */
+/** A broken rule of a whole course. */
 export type CourseIssue =
   | { rule: 'course-size'; count: number; min: number; max: number }
   | { rule: 'points-mix'; points: number; have: number; min: number }
-  /**
-   * The judges' guidelines for national competition courses (repeats, required exercises,
-   * static/dynamic balance, right-hand stretches) — only dealt courses are checked against
-   * them, so they carry their English message only.
-   */
-  | { rule: 'guidelines'; message: string }
+  /** A required exercise of the guidelines is missing (`label` from `course.required`). */
+  | { rule: 'required-missing'; oneOf: string[]; label: string }
+  /** RO-Z: `statics` of `count` exercises end static — about half should. */
+  | { rule: 'static-share'; statics: number; count: number }
+  /** From a start "R" the side must change by card `by`. */
+  | { rule: 'right-start-late'; by: number }
+  /** The side changes do not form one of the class's patterns. */
+  | { rule: 'right-pattern' }
 
 export type DeckIssue = CardIssue | CourseIssue
+
+export const isCardIssue = (issue: DeckIssue): issue is CardIssue => 'index' in issue
 
 /**
  * Independent check of a dealt deck against the rules of plan §5. Returns one message
@@ -80,12 +93,18 @@ export function validateDeck(deck: Deck): string[] {
  * forbids a card twice on a national course (§5.4 only sets the size and the card range),
  * the dealer just draws without replacement; FCI has its own limit (`max-repeats`). The
  * field layout is not checked: a hand-made FCI course is not laid out.
+ *
+ * `guidelines` (national classes) adds the judges' guidelines: card repeats, required
+ * exercises, RO-Z's balance, right-hand stretches. Course size and the FCI point mix stay
+ * out — a course for training can be any length.
  */
-export function customDeckIssues(deck: Deck): CardIssue[] {
+export function customDeckIssues(deck: Deck, { guidelines = false } = {}): DeckIssue[] {
   const cls = getClass(deck.options.classId)
   if (!cls) throw new Error(`No content for class ${deck.options.classId}`)
-  return deckIssues(cls, deck).filter(
-    (issue): issue is CardIssue => 'index' in issue && issue.rule !== 'dealt-twice',
+  const checked = guidelines ? { ...deck, options: { ...deck.options, competition: true } } : deck
+  return deckIssues(cls, checked).filter(
+    (issue) =>
+      issue.rule !== 'dealt-twice' && issue.rule !== 'course-size' && issue.rule !== 'points-mix',
   )
 }
 
@@ -188,13 +207,10 @@ function deckIssues(cls: RoClass, deck: Deck): DeckIssue[] {
       ).length
       if (have < min) issues.push({ rule: 'points-mix', points: Number(points), have, min })
     }
-    const guidelines = [
-      ...(cls.course.rightHand
-        ? validateRightHand(cls, options.startSide, sideChanges, entries.length)
-        : []),
-      ...validateNationalCourse(cls, entries),
-    ]
-    for (const message of guidelines) issues.push({ rule: 'guidelines', message })
+    issues.push(
+      ...rightHandIssues(cls, options.startSide, sideChanges, entries),
+      ...nationalCourseIssues(cls, entries),
+    )
   }
   return issues
 }
@@ -206,8 +222,22 @@ function describeIssue(cls: RoClass, issue: DeckIssue): string {
       return `course of ${issue.count} cards, ${cls.id} needs ${issue.min}–${issue.max}`
     case 'points-mix':
       return `only ${issue.have} ${issue.points}-point cards, at least ${issue.min} needed`
-    case 'guidelines':
-      return issue.message
+    case 'required-missing':
+      return `missing a required exercise: one of ${issue.oneOf}`
+    case 'static-share':
+      return `${issue.statics} static of ${issue.count}, about half needed`
+    case 'right-start-late':
+      return `start "R": the side must change by card ${issue.by}`
+    case 'right-pattern':
+      return `side changes do not follow the ${cls.id} pattern`
+    case 'too-often':
+      return `${issue.card}: ${issue.count} times, at most ${issue.limit}`
+    case 'right-to-finish-early':
+      return `#${issue.index + 1}: to the finish on the right only from the last ${issue.within}`
+    case 'right-mid-course':
+      return `#${issue.index + 1}: no stretch on the right mid-course in ${cls.id}`
+    case 'right-mid-too-long':
+      return `#${issue.index + 1}: more than ${issue.max} exercises on the right`
   }
   const at = `#${issue.index + 1} ${issue.code}`
   switch (issue.rule) {
@@ -261,9 +291,9 @@ function describeIssue(cls: RoClass, issue: DeckIssue): string {
  * (`course.repeats`, D0 cards included), the required exercises (`course.required`, each
  * filled by a different card — a bipartite matching) and RO-Z's static/dynamic balance.
  */
-function validateNationalCourse(cls: RoClass, entries: DeckEntry[]): string[] {
+function nationalCourseIssues(cls: RoClass, entries: DeckEntry[]): DeckIssue[] {
   const { repeats, required, staticShare } = cls.course
-  const errors: string[] = []
+  const issues: DeckIssue[] = []
   if (repeats) {
     const counts = new Map<string, number>()
     for (const e of entries) {
@@ -271,13 +301,23 @@ function validateNationalCourse(cls: RoClass, entries: DeckEntry[]): string[] {
         counts.set(code, (counts.get(code) ?? 0) + 1)
       }
     }
-    for (const [code, n] of counts) {
-      const limit = repeats[code] ?? 1
-      if (n > limit) errors.push(`${code}: ${n} times, at most ${limit}`)
-    }
+    // Reported once per card, at the occurrence that goes over the limit.
+    const seen = new Map<string, number>()
+    entries.forEach((e, index) => {
+      for (const card of e.supplementary ? [e.code, e.supplementary] : [e.code]) {
+        const n = (seen.get(card) ?? 0) + 1
+        seen.set(card, n)
+        const limit = repeats[card] ?? 1
+        if (n === limit + 1) {
+          const count = counts.get(card) ?? n
+          issues.push({ index, code: e.code, rule: 'too-often', card, count, limit })
+        }
+      }
+    })
   }
   if (required) {
-    const slots = required.flatMap((r) => Array.from({ length: r.count ?? 1 }, () => r.oneOf))
+    const requirements = required.flatMap((r) => Array.from({ length: r.count ?? 1 }, () => r))
+    const slots = requirements.map((r) => r.oneOf)
     // Kuhn's augmenting paths: an entry (position) → the required exercise it fills.
     const fills = new Map<number, number>()
     const assign = (slot: number, seen: Set<number>): boolean =>
@@ -289,8 +329,8 @@ function validateNationalCourse(cls: RoClass, entries: DeckEntry[]): string[] {
         fills.set(i, slot)
         return true
       })
-    slots.forEach((oneOf, slot) => {
-      if (!assign(slot, new Set())) errors.push(`missing a required exercise: one of ${oneOf}`)
+    requirements.forEach(({ oneOf, label }, slot) => {
+      if (!assign(slot, new Set())) issues.push({ rule: 'required-missing', oneOf, label })
     })
   }
   if (staticShare) {
@@ -301,25 +341,26 @@ function validateNationalCourse(cls: RoClass, entries: DeckEntry[]): string[] {
     const { tolerance } = staticShare
     const n = entries.length
     if (statics < Math.floor(n / 2) - tolerance || statics > Math.ceil(n / 2) + tolerance) {
-      errors.push(`${statics} static of ${entries.length}, about half needed`)
+      issues.push({ rule: 'static-share', statics, count: n })
     }
   }
-  return errors
+  return issues
 }
 
 /**
  * National courses: the dog on the right only in the stretches the judges' guidelines
  * allow (`course.rightHand`). Reads the side changes off the dealt sequence.
  */
-function validateRightHand(
+function rightHandIssues(
   cls: RoClass,
   startSide: Side,
   sideChanges: number[],
-  count: number,
-): string[] {
+  entries: DeckEntry[],
+): DeckIssue[] {
   const rule = cls.course.rightHand
   if (!rule) return []
-  const errors: string[] = []
+  const issues: DeckIssue[] = []
+  const at = (index: number) => ({ index, code: entries[index]?.code ?? '' })
   const changes = [...sideChanges]
   let start = false
   let end = false
@@ -327,7 +368,7 @@ function validateRightHand(
   if (startSide === 'right') {
     const first = changes.shift()
     if (first === undefined || first >= rule.startBy) {
-      errors.push(`start "R": the side must change by card ${rule.startBy}`)
+      issues.push({ rule: 'right-start-late', by: rule.startBy })
     }
     start = true
   }
@@ -335,15 +376,15 @@ function validateRightHand(
     const from = changes.shift() as number
     const back = changes.shift()
     if (back === undefined) {
-      if (from < count - rule.endWithin) {
-        errors.push(`#${from + 1}: to the finish on the right only from the last ${rule.endWithin}`)
+      if (from < entries.length - rule.endWithin) {
+        issues.push({ ...at(from), rule: 'right-to-finish-early', within: rule.endWithin })
       }
       end = true
     } else if (rule.midLength === undefined) {
-      errors.push(`#${from + 1}: no stretch on the right mid-course in ${cls.id}`)
+      issues.push({ ...at(from), rule: 'right-mid-course' })
     } else {
       if (back - from - 1 > rule.midLength) {
-        errors.push(`#${from + 1}: more than ${rule.midLength} exercises on the right`)
+        issues.push({ ...at(from), rule: 'right-mid-too-long', max: rule.midLength })
       }
       mids++
     }
@@ -352,8 +393,8 @@ function validateRightHand(
     rule.midLength === undefined
       ? start !== end
       : (start !== end && mids === 1) || (start && end && mids === 0)
-  if (!pattern) errors.push(`side changes do not follow the ${cls.id} pattern`)
-  return errors
+  if (!pattern) issues.push({ rule: 'right-pattern' })
+  return issues
 }
 
 /** Rounding slack for distances (m) and angles (°). */

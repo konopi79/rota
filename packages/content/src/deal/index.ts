@@ -17,6 +17,7 @@ export type {
 export * as geometry from './geometry'
 export {
   customDeckIssues,
+  isCardIssue,
   validateDeck,
   type CardIssue,
   type CardProblem,
