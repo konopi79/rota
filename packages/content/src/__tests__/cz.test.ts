@@ -46,6 +46,28 @@ describe('national cards', () => {
     }
   })
 
+  test('main parts: marked on every exercise except the 14 the regulation leaves blank', () => {
+    // The "Hlavní cvik" column of these tables is empty in the 2026 regulation (checked on
+    // the rendered pages, e.g. Z-003 p. 19) — the app says so instead of guessing.
+    const unmarked = exercises.filter((c) => !c.subParts?.some((p) => p.main)).map((c) => c.code)
+    expect(unmarked).toEqual([
+      'Z-003',
+      'Z-024',
+      'Z-032',
+      '1-102',
+      '1-107',
+      '1-108',
+      '2-210',
+      '2-213',
+      '2-221',
+      '2-222',
+      '2-227',
+      '2-228',
+      '3-304',
+      '3-305',
+    ])
+  })
+
   test('exercises have a type; supplementary pairing ⇔ type decided by the D0 card', () => {
     for (const card of exercises) {
       expect(card.exerciseType).toBeDefined()

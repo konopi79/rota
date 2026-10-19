@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 
 import { cardImageUrl } from '@/components/deck/card-image'
 import { Badge } from '@/components/ui/badge'
+import { SubParts } from '@/components/sub-parts'
 import { Button } from '@/components/ui/button'
 import { catalogueFromQuery, classesWith, sequencingNotes } from '@/lib/catalogue'
 import { cardHref, classSlug } from '@/lib/classes'
@@ -82,14 +83,9 @@ export function CardDetail({ card }: { card: Card }) {
       {card.subParts && (
         <section className="space-y-2">
           <h2 className="font-semibold">{t('card.subParts')}</h2>
-          <ul className="divide-y rounded-md border">
-            {card.subParts.map((part, i) => (
-              <li key={i} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                <span>{part.text}</span>
-                {part.main && <Badge variant="secondary">{t('card.mainExercise')}</Badge>}
-              </li>
-            ))}
-          </ul>
+          <div className="text-sm">
+            <SubParts card={card} />
+          </div>
         </section>
       )}
 
