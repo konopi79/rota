@@ -20,7 +20,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'national-course'
+export const LATEST_FEATURE_ID = 'main-parts'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -40,6 +40,11 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
         id: 'catalogue',
         title: 'Katalog karet',
         desc: 'Hledání podle čísla nebo názvu (i bez diakritiky), filtry na nové karty třídy, typ cviku, body FCI nebo cviky bez pomůcek. U každé karty popis, dílčí části, nákres spirál a pravidla řazení; tlačítky Předchozí a Další projdeš vyfiltrovaný seznam bez vracení na přehled.',
+      },
+      {
+        id: 'main-parts',
+        title: 'Hlavní a vedlejší části cviku',
+        desc: 'U národních karet vidíš, která část cviku je hlavní a která vedlejší – v detailu karty i v popisu pod kartou v balíčku. Chybí-li hlavní část, vyplatí se cvik zopakovat; u vedlejší opakováním nic nezískáš.',
       },
     ],
   },

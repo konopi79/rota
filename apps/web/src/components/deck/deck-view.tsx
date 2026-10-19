@@ -26,6 +26,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { useTranslation } from 'react-i18next'
 
 import { FieldPlan } from '@/components/field-plan'
+import { SubParts } from '@/components/sub-parts'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { classSlug } from '@/lib/classes'
@@ -353,6 +354,7 @@ function Description({ cls, entry }: { cls: RoClass; entry: DeckEntry }) {
       {card.description.map((p) => (
         <p key={p}>{p}</p>
       ))}
+      <SubParts card={card} />
       {supplementary && (
         <p className="text-muted-foreground">
           {t('deck.supplementary')} {supplementary.code}: {supplementary.name}

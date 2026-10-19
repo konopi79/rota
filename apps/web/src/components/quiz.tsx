@@ -7,7 +7,7 @@ import { useMemo, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { CardImage } from '@/components/deck/card-image'
-import { Badge } from '@/components/ui/badge'
+import { SubParts } from '@/components/sub-parts'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { catalogueCards } from '@/lib/catalogue'
@@ -156,16 +156,7 @@ function Recall({
         {card.description.map((p) => (
           <p key={p}>{p}</p>
         ))}
-        {card.subParts && (
-          <ul className="space-y-1">
-            {card.subParts.map((part, i) => (
-              <li key={i} className="flex items-center gap-2">
-                <span>• {part.text}</span>
-                {part.main && <Badge variant="secondary">{t('card.mainExercise')}</Badge>}
-              </li>
-            ))}
-          </ul>
-        )}
+        <SubParts card={card} legend={false} />
       </section>
       <div className="grid grid-cols-2 gap-2">
         <Button variant="outline" className="h-14 text-base" onClick={() => onAnswer(false)}>

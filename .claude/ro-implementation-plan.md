@@ -445,6 +445,7 @@ gesture for audio).
 
 - [x] List with thumbnails, filters (new-in-class, type A/B/D0 or FCI points, without equipment), diacritics-insensitive search — `/trida/<class>/karty`
 - [x] Card detail (image, execution diagram, description, sub-parts, sequencing rules in words, equipment, classes, source page) — `/karta/<ruleset>/<card>`, all 215 prerendered
+- [x] Main and minor parts (handler feedback, 2026-10-19): every sub-part labelled "hlavní" / "vedlejší" with what a missing one costs — main 10 points, minor 5 (Směrnice §3.3–3.4, p. 10), a repeat 5 (řád p. 16), so a repeat pays off only for a main part (`components/sub-parts.tsx`); also in the deck's description panel. 14 tables have no main part marked in the 2026 regulation (Z-003, Z-024, Z-032, 1-102, 1-107, 1-108, 2-210, 2-213, 2-221, 2-222, 2-227, 2-228, 3-304, 3-305 — checked on the rendered pages); the app says so instead of guessing, and a data test pins the list
 
 ### R5 — PWA
 
