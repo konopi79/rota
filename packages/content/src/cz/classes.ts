@@ -37,48 +37,53 @@ const REPEATS: Record<string, number> = {
 
 // §1.2.2–1.2.6 (p. 6–8): "V parkuru … musí být zvoleny nejméně následující cviky".
 // §1.2.2 RO-Z: a figure, Z-004/Z-005, a předsednutí with its D0 card.
+// Each with a short Czech label for the warnings of a hand-made course.
 const RO_Z_REQUIRED = [
-  { oneOf: cards(18, 19, 20, 21, 22, 26, 27) },
-  { oneOf: cards(4, 5) },
-  { oneOf: cards(14, 25, 32) },
+  { oneOf: cards(18, 19, 20, 21, 22, 26, 27), label: 'obrazec (spirála, slalom, osmička)' },
+  { oneOf: cards(4, 5), label: 'obejití psa' },
+  { oneOf: cards(14, 25, 32), label: 'předsednutí' },
 ]
 // §1.2.3 RO1: a turn to the left, one of 103–106/119/120, a side change, "nejméně 3 další
 // libovolné cviky z karet 101 až 125".
 const RO1_REQUIRED = [
-  { oneOf: cards(9, 12, 101, 113) },
-  { oneOf: cards(103, 104, 105, 106, 119, 120) },
-  { oneOf: cards(123, 124, 125) },
-  { oneOf: codes(RO1_CARDS), count: 3 },
+  { oneOf: cards(9, 12, 101, 113), label: 'obrat vlevo' },
+  { oneOf: cards(103, 104, 105, 106, 119, 120), label: 'obrat o 90° ze stop nebo ze stůj' },
+  { oneOf: cards(123, 124, 125), label: 'změna strany' },
+  { oneOf: codes(RO1_CARDS), count: 3, label: 'další cvik z karet 1-101 až 1-125' },
 ]
 // §1.2.4 RO2: a recall, a jump, a turn, a stand, "nejméně dva další libovolné cviky
 // z karet 201 až 227".
 const RO2_REQUIRED = [
-  { oneOf: cards(213, 214, 215, 216) },
-  { oneOf: cards(217, 218) },
-  { oneOf: cards(203, 204, 205, 206, 225, 226) },
-  { oneOf: cards(107, 108, 118, 119, 120, 209, 210, 221, 223, 224, 225, 226, 227) },
+  { oneOf: cards(213, 214, 215, 216), label: 'přivolání' },
+  { oneOf: cards(217, 218), label: 'skok' },
+  { oneOf: cards(203, 204, 205, 206, 225, 226), label: 'obrat o 180°' },
+  {
+    oneOf: cards(107, 108, 118, 119, 120, 209, 210, 221, 223, 224, 225, 226, 227),
+    label: 'stůj',
+  },
   {
     oneOf: codes(RO2_CARDS).filter((c) => !cards(228, 229, 230, 231, 232).includes(c)),
     count: 2,
+    label: 'další cvik z karet 2-201 až 2-227',
   },
 ]
 // §1.2.5 RO3: a recall, "2x skok … z toho musí být nejméně 1 přeskok ze třídy 3", one of
 // 310–312, a stand, "nejméně tři další libovolné cviky z karet 301 až 327".
 const RO3_REQUIRED = [
-  { oneOf: cards(302, 308, 309, 319, 320, 321, 322) },
-  { oneOf: cards(313, 314) },
-  { oneOf: cards(217, 218, 313, 314) },
-  { oneOf: cards(310, 311, 312) },
-  { oneOf: cards(303, 304, 305, 306, 307, 316, 317, 318) },
-  { oneOf: codes(RO3_CARDS), count: 3 },
+  { oneOf: cards(302, 308, 309, 319, 320, 321, 322), label: 'přivolání' },
+  { oneOf: cards(313, 314), label: 'přeskok z RO3' },
+  { oneOf: cards(217, 218, 313, 314), label: 'druhý skok' },
+  { oneOf: cards(310, 311, 312), label: 'odložení za pochodu' },
+  { oneOf: cards(303, 304, 305, 306, 307, 316, 317, 318), label: 'stůj' },
+  { oneOf: codes(RO3_CARDS), count: 3, label: 'další cvik z karet 3-301 až 3-327' },
 ]
 // §1.2.6 RO-V (p. 7–8): a food refusal, one of 004/005/303/307, a stand, a předsednutí or
 // a stand in front of the handler (1-114/1-115 are not RO-V cards; ignored).
 const RO_V_REQUIRED = [
-  { oneOf: cards(111, 117, 220) },
-  { oneOf: cards(4, 5, 303, 307) },
-  { oneOf: cards(107, 118, 119, 120, 221, 223, 225, 227, 303, 318) },
-  { oneOf: cards(14, 25, 32, 108, 221) },
+  { oneOf: cards(111, 117, 220), label: 'cvik s rušivým vlivem' },
+  { oneOf: cards(4, 5, 303, 307), label: 'obejití psa nebo odchod od psa' },
+  { oneOf: cards(107, 118, 119, 120, 221, 223, 225, 227, 303, 318), label: 'stůj' },
+  { oneOf: cards(14, 25, 32, 108, 221), label: 'předsednutí nebo stůj před psovodem' },
 ]
 
 /**

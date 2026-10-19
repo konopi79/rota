@@ -1,4 +1,4 @@
-import { CLASS_IDS, EQUIPMENT, type ClassId, type RoClass } from '@rota/content'
+import { CLASS_IDS, EQUIPMENT, getCard, type ClassId, type RoClass } from '@rota/content'
 import { z } from 'zod/v4'
 
 import type { QuizStats } from './quiz'
@@ -19,8 +19,21 @@ const setupSchema = z.object({
 })
 export type Setup = z.infer<typeof setupSchema>
 
+const customCourseSchema = z.object({
+  startSide: z.enum(['left', 'right']),
+  cards: z.array(z.object({ code: z.string(), supplementary: z.string().optional() })),
+  /** Check the order at all — off for a short sequence where the rules don't matter. */
+  checks: z.boolean().default(true),
+  /** Check against the judges' guidelines too (national classes). */
+  guidelines: z.boolean().default(false),
+})
+/** A course put together by hand (plan §12), being edited. */
+export type CustomCourse = z.infer<typeof customCourseSchema>
+
 const storedSchema = z.object({
   setups: z.partialRecord(z.enum(CLASS_IDS), setupSchema),
+  /** The last hand-made course per class. */
+  customCourses: z.partialRecord(z.enum(CLASS_IDS), customCourseSchema).optional(),
   installHintDismissed: z.boolean().optional(),
   /** Quiz answers per card (`lib/quiz.ts` `statKey`). */
   quiz: z
@@ -79,6 +92,50 @@ export function saveSetup(classId: ClassId, setup: Setup): void {
   const stored = read()
   stored.setups[classId] = setup
   write(stored)
+}
+
+export const emptyCustomCourse = (): CustomCourse => ({
+  startSide: 'left',
+  cards: [],
+  checks: true,
+  guidelines: false,
+})
+
+/**
+ * The last hand-made course of a class, empty if there is none. Cards the ruleset no
+ * longer knows (a later regulation) are dropped rather than failing the whole course.
+ */
+export function loadCustomCourse(cls: RoClass): CustomCourse {
+  const course = read().customCourses?.[cls.id]
+  if (!course) return emptyCustomCourse()
+  const known = (code: string | undefined) => !code || getCard(cls.ruleset, code) !== undefined
+  return {
+    ...course,
+    cards: course.cards.filter((c) => known(c.code) && known(c.supplementary)),
+  }
+}
+
+export function saveCustomCourse(classId: ClassId, course: CustomCourse): void {
+  const stored = read()
+  write({ ...stored, customCourses: { ...stored.customCourses, [classId]: course } })
+}
+
+/**
+ * Opens `course` for editing (from a dealt course or a shared link). A different course
+ * already in progress is replaced only if `confirmReplace` says so; `false` = keep it.
+ */
+export function adoptCustomCourse(
+  cls: RoClass,
+  course: CustomCourse,
+  confirmReplace: () => boolean,
+): boolean {
+  const current = loadCustomCourse(cls)
+  // The cards and the start side are the course; the check switches are not worth asking.
+  const key = (c: CustomCourse) => JSON.stringify([c.startSide, c.cards])
+  const differs = key(current) !== key(course)
+  if (current.cards.length > 0 && differs && !confirmReplace()) return false
+  saveCustomCourse(cls.id, course)
+  return true
 }
 
 export const isInstallHintDismissed = () => read().installHintDismissed === true

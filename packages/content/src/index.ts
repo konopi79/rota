@@ -15,11 +15,19 @@ export { CZ_CARDS, CZ_CLASSES, CZ_RULESET } from './cz'
 export { FCI_CARDS, FCI_CLASSES, FCI_RULESET } from './fci'
 export { CLASSES, getCard, getClass } from './registry'
 export {
+  customDeck,
+  customDeckIssues,
   dealDeck,
   finishSide,
+  isCardIssue,
   randomSeed,
   validateDeck,
   geometry,
+  type CardIssue,
+  type CardProblem,
+  type CourseIssue,
+  type DeckIssue,
+  type CustomCard,
   type Deck,
   type DeckEntry,
   type DealOptions,

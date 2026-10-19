@@ -182,6 +182,8 @@ export const roClassSchema = z
               .object({
                 oneOf: z.array(z.string()).min(1),
                 count: z.number().int().min(2).optional(),
+                /** What the exercise is, in Czech — for the warnings of a hand-made course. */
+                label: z.string().min(1),
               })
               .strict(),
           )

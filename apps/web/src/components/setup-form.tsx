@@ -14,6 +14,7 @@ import {
   LayoutGrid,
   ListOrdered,
   Minus,
+  PencilLine,
   Plus,
   Shuffle,
 } from 'lucide-react'
@@ -26,7 +27,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { classSlug } from '@/lib/classes'
+import { classSlug, customCourseHref } from '@/lib/classes'
 import { encodeDeckParams } from '@/lib/deck-url'
 import { speechSupported as isSpeechSupported } from '@/lib/speech'
 import { defaultSetup, loadSetup, saveSetup, subscribeStorage, type Setup } from '@/lib/storage'
@@ -248,6 +249,15 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
       <Button variant="outline" size="lg" className="-mt-3 h-12 text-base" onClick={buildCourse}>
         <ListOrdered />
         {t('setup.course')}
+      </Button>
+      <Button
+        variant="outline"
+        size="lg"
+        className="-mt-3 h-12 text-base"
+        render={<Link href={customCourseHref(classId)} />}
+      >
+        <PencilLine />
+        {t('setup.custom')}
       </Button>
       <Button
         variant="outline"
