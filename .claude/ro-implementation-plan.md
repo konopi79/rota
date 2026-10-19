@@ -34,7 +34,7 @@ committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 | R8  | Quiz                                          | ✅ 2026-09-27 |
 | R9  | Voice: cards read aloud                       | ✅ 2026-09-27 |
 | R10 | FCI decks laid out on the field               | ✅ 2026-10-19 |
-| R11 | Hand-made course                              | 🚧            |
+| R11 | Hand-made course                              | ✅ 2026-10-19 |
 
 > **Order:** R3 is built before R2 so the national classes are usable end to end first;
 > FCI plugs into the same dealer afterwards.
@@ -505,7 +505,7 @@ gesture for audio).
 - [x] Course in the URL (`poradi=`): walk as a deck (edit instead of reshuffle), course page with the warnings, print, share; "Upravit" on a dealt course or a shared link opens it in the editor (asks before replacing a course in progress)
 - [x] Switch "Kontrolovat dle směrnic" for national classes (author, 2026-10-19): the guidelines' checks as structured issues with Czech messages (required exercises labelled in `cz/classes.ts`), course-wide warnings above the cards; test: every dealt national course replayed by hand passes
 - [x] Sharing from the editor ("Sdílet" → the course page) and "Kontrolovat pořadí" to switch the checks off for a short sequence (author, 2026-10-19; `kontrola=0`, `lib/share.ts`)
-- [ ] Tried on a phone by the author
+- [x] Tried on a phone by the author after the deploy (2026-10-19)
 
 Each phase ends green on `bun run format && bun run typecheck && bun run lint` plus its
 own tests, and is committed separately.
