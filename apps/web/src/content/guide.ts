@@ -29,8 +29,9 @@ export const GUIDE: GuideSection[] = [
     id: 'android',
     title: 'Android',
     steps: [
-      `Otevři ${APP_URL} v Chromu (nebo v Samsung Internetu).`,
+      `Otevři ${APP_URL} v Chromu.`,
       'Na úvodní stránce klepni na „Nainstalovat“. Když tlačítko nevidíš, vyber v menu ⋮ „Instalovat aplikaci“ nebo „Přidat na plochu“.',
+      'Když instalaci zablokuje Google Play Protect se zprávou o starší verzi Androidu (stává se v Samsung Internetu), nainstaluj ROTA z Chromu. V Samsung Internetu můžeš místo instalace vybrat v menu „Přidat na“ → „Domovská obrazovka“ – funguje stejně, i offline.',
       'Ve Firefoxu přidáš ROTA přes menu → „Přidat na plochu“.',
     ],
   },
