@@ -29,7 +29,8 @@ export function CourseGrid({
   title: string
   entries: DeckEntry[]
   card: (code: string) => Card
-  onNew: () => void
+  /** A new dealt course; a hand-made course has none. */
+  onNew?: () => void
   onClose: () => void
 }) {
   const { t } = useTranslation()
@@ -56,9 +57,11 @@ export function CourseGrid({
     <div className="bg-background fixed inset-0 z-50 flex touch-none flex-col pb-[env(safe-area-inset-bottom)]">
       <header className="flex items-center gap-1 px-2 pt-[max(env(safe-area-inset-top),0.25rem)]">
         <h2 className="min-w-0 flex-1 truncate px-1 text-sm font-semibold">{title}</h2>
-        <Button variant="ghost" size="icon-lg" aria-label={t('course.new')} onClick={onNew}>
-          <Shuffle />
-        </Button>
+        {onNew && (
+          <Button variant="ghost" size="icon-lg" aria-label={t('course.new')} onClick={onNew}>
+            <Shuffle />
+          </Button>
+        )}
         <Button variant="ghost" size="icon-lg" aria-label={t('course.closeGrid')} onClick={onClose}>
           <X />
         </Button>

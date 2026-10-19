@@ -154,10 +154,10 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
 
       {showGrid && (
         <CourseGrid
-          title={`${t('course.title', { cls: t(`classes.${cls.id}`) })} · ${t('catalogue.count', { count: deck.entries.length })}`}
+          title={`${t(custom ? 'custom.courseTitle' : 'course.title', { cls: t(`classes.${cls.id}`) })} · ${t('catalogue.count', { count: deck.entries.length })}`}
           entries={deck.entries}
           card={card}
-          onNew={newCourse}
+          onNew={custom ? undefined : newCourse}
           onClose={() => setShowGrid(false)}
         />
       )}
