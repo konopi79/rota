@@ -1,12 +1,19 @@
 import { getClass } from '../registry'
 import type { Card, RoClass } from '../schema'
 import { mulberry32, pick, pickWeighted } from './prng'
-import { FieldPlanner } from './layout'
+import { normalize, turnsOf } from './geometry'
+import { FieldPlanner, type PlannerState } from './layout'
 import { NationalCourse } from './course'
 import { cardOf, endsStatic, hasEquipment, paceAfter, sideAfter } from './rules'
-import type { Deck, DeckEntry, DealOptions, Layout, Pace, Round, Side } from './types'
+import type { Deck, DeckEntry, DealOptions, Layout, Pace, Side } from './types'
 
-const ATTEMPTS = 50
+const ATTEMPTS = 100
+/**
+ * Cards taken back per attempt when the next one fits nowhere on the field. With the
+ * direction changed only by the cards, the field fills up quickly; going back a card or
+ * two and trying another one there finds a way on far more often than starting again.
+ */
+const BACKTRACKS = 20
 
 type State = {
   prev: Card | undefined
@@ -23,6 +30,12 @@ type State = {
 
 /** How much more likely a card is drawn while its point value is still short. */
 const QUOTA_WEIGHT = 4
+/**
+ * Laid-out classes: with less than this many metres of way ahead (`FieldPlanner.runway`),
+ * cards that change the direction are this much more likely — the field is about to end.
+ */
+const SHORT_RUNWAY = 8
+const TURN_WEIGHT = 6
 
 /**
  * Deal a performable deck (plan §5, D8). Builds the sequence card by card, drawing only
@@ -31,11 +44,12 @@ const QUOTA_WEIGHT = 4
  * `count` (the pool is too small for the options), the longest attempt is returned —
  * the caller compares `entries.length` with the requested count.
  *
- * Classes with a `course.field` (FCI) are laid out on that field as they are dealt: a
- * card that does not fit where the team stands is set aside for that step, and the deck
- * carries the layout (start, each card's `at`, finish). A deck longer than a course is
- * split into even rounds of at most `course.maxCards`, each on an empty field; a training
- * deck whose field fills up early starts a new round there.
+ * Classes with a `course.field` (FCI) are laid out on that field as they are dealt, up to
+ * one course (`course.maxCards`): a card that does not fit where the team stands is set
+ * aside for that step, a dead end takes cards back (`BACKTRACKS`), and the deck carries
+ * the layout (start, each card's `at`, finish). A longer deck — or a training deck that
+ * fits on no field — goes without one: with the direction changed only by the cards, a
+ * second field dealt from what the first one left would run short of such cards.
  */
 export function dealDeck(options: DealOptions): Deck {
   const cls = getClass(options.classId)
@@ -51,10 +65,16 @@ export function dealDeck(options: DealOptions): Deck {
   const mainPool = scope.filter((c) => usable(c) && !cardOf(cls, c).sequencing.onlyAfterLeave)
 
   const random = mulberry32(options.seed)
+  const field = options.count <= cls.course.maxCards ? cls.course.field : undefined
   let best: Dealt = { entries: [] }
   for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-    const { complete, ...dealt } = attemptDeal(cls, options, mainPool, inClass, random)
+    const { complete, ...dealt } = attemptDeal(cls, options, mainPool, inClass, random, field)
     if (dealt.entries.length === options.count && complete !== false) return { options, ...dealt }
+    if (dealt.entries.length > best.entries.length) best = dealt
+  }
+  // A training deck that fits on no field goes without a plan.
+  if (field && !options.competition) {
+    const { complete: _, ...dealt } = attemptDeal(cls, options, mainPool, inClass, random)
     if (dealt.entries.length > best.entries.length) best = dealt
   }
   return { options, ...best }
@@ -70,26 +90,10 @@ function attemptDeal(
   mainPool: string[],
   inClass: Set<string>,
   random: () => number,
+  field?: { width: number; height: number },
 ): Attempt {
   const entries: DeckEntry[] = []
-  const field = cls.course.field
-  const roundCount = Math.ceil(options.count / cls.course.maxCards)
-  const roundFirsts = Array.from({ length: roundCount }, (_, k) =>
-    Math.round((k * options.count) / roundCount),
-  )
-  const rounds: Round[] = []
-  let planner: FieldPlanner | undefined
-  let first = 0
-  /** Ends the current round with its finish; `false` if the finish does not fit. */
-  const closeRound = (): boolean => {
-    // Not even started: the pool ran out right at a round boundary.
-    if (!planner || first === entries.length) return true
-    // The planner always keeps room for one more card, so the finish fits.
-    const finish = planner.finish()
-    if (!finish) return false
-    rounds.push({ first, start: planner.start, finish })
-    return true
-  }
+  const planner = field && new FieldPlanner(field.width, field.height, random)
   // The start is walked through at normal pace, not from a standstill.
   const state: State = {
     prev: undefined,
@@ -108,16 +112,17 @@ function attemptDeal(
     points === undefined
       ? 0
       : Math.max(0, (quota[String(points)] ?? 0) - (state.byPoints.get(points) ?? 0))
+  // A laid-out deck backtracks (`BACKTRACKS`): the state before each position and the
+  // cards that led to a dead end from there.
+  const snapshots: { state: State; layout: PlannerState; banned: Set<string> }[] = []
+  let backtracks = course ? 0 : BACKTRACKS
 
   while (entries.length < options.count) {
-    const newRound = () => {
-      planner = field && new FieldPlanner(field.width, field.height, random)
-      first = entries.length
+    const position = entries.length
+    if (planner && !snapshots[position]) {
+      snapshots[position] = { state: copyState(state), layout: planner.save(), banned: new Set() }
     }
-    if (field && roundFirsts.includes(entries.length)) {
-      if (!closeRound()) return { entries: [] }
-      newRound()
-    }
+    const banned = snapshots[position]?.banned
     const remaining = options.count - entries.length
     const required = state.prev?.sequencing.nextOneOf
     const optional = state.prev?.sequencing.mayBeFollowedBy ?? []
@@ -131,6 +136,7 @@ function attemptDeal(
       .map((c) => cardOf(cls, c))
       .filter(
         (card) =>
+          !banned?.has(card.code) &&
           allowed(cls, card, state, remaining, inClass) &&
           (!course || course.fits(card, entries.length, state.side)),
       )
@@ -150,15 +156,20 @@ function attemptDeal(
     const followUps = new Set(optional)
     const followUpCount = eligible.filter((c) => followUps.has(c.code)).length
     const followUpWeight = followUpCount ? (eligible.length - followUpCount) / followUpCount : 1
-    const weighted = short > 0 || followUpCount > 0 || !!course
+    const cornered = !!planner && planner.runway() < SHORT_RUNWAY
+    const weighted = short > 0 || followUpCount > 0 || !!course || cornered
     const weightOf = (c: Card) =>
       (short > 0 && missing(c.points) > 0 ? QUOTA_WEIGHT : 1) *
       (course?.helps(c) ? QUOTA_WEIGHT : 1) *
-      (followUps.has(c.code) ? followUpWeight : 1)
+      (followUps.has(c.code) ? followUpWeight : 1) *
+      (cornered && turnsOf(c).some((t) => normalize(t) !== 0) ? TURN_WEIGHT : 1)
+    const weights = new Map(weighted ? eligible.map((c) => [c, weightOf(c)]) : [])
     const draw = (): { card: Card; at?: DeckEntry['at'] } | undefined => {
       let pool = eligible
       while (pool.length) {
-        const card = weighted ? pickWeighted(pool, weightOf, random) : pick(pool, random)
+        const card = weighted
+          ? pickWeighted(pool, (c) => weights.get(c) ?? 1, random)
+          : pick(pool, random)
         if (!card) return undefined
         if (!planner) return { card }
         const at = planner.place(card, state.side)
@@ -168,12 +179,18 @@ function attemptDeal(
       }
       return undefined
     }
-    let drawn = draw()
-    // A training deck whose field is full goes on in a new round; a course stays on one.
-    if (!drawn && field && !options.competition && entries.length > first) {
-      if (!closeRound()) return { entries: [] }
-      newRound()
-      drawn = draw()
+    const drawn = draw()
+    // Nothing fits: take the last card back and try another one in its place.
+    const last = entries.at(-1)
+    const snapshot = snapshots[entries.length - 1]
+    if (!drawn && planner && backtracks > 0 && last && snapshot) {
+      backtracks--
+      entries.pop()
+      snapshots.length = entries.length + 1
+      snapshot.banned.add(last.code)
+      Object.assign(state, copyState(snapshot.state))
+      planner.restore(snapshot.layout)
+      continue
     }
     if (!drawn) break
     const { card, at } = drawn
@@ -200,9 +217,25 @@ function attemptDeal(
     state.prev = card
   }
   const complete = course?.complete
-  if (!field) return { entries, complete }
-  if (!closeRound()) return { entries: [] }
-  return { entries, layout: { width: field.width, height: field.height, rounds }, complete }
+  if (!planner || !field) return { entries, complete }
+  // The planner always keeps room for one more card, so the finish fits.
+  const finish = planner.finish()
+  if (!finish) return { entries: [] }
+  const { width, height } = field
+  return {
+    entries,
+    layout: { width, height, rounds: [{ first: 0, start: planner.start, finish }] },
+    complete,
+  }
+}
+
+function copyState(state: State): State {
+  return {
+    ...state,
+    used: new Set(state.used),
+    counts: new Map(state.counts),
+    byPoints: new Map(state.byPoints),
+  }
 }
 
 function allowed(

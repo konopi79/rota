@@ -57,15 +57,24 @@ export function FieldPlan({
     return [{ index: r.first + i, card: c, at, shape: shapeOf(c, at, entry.side, recallFollows) }]
   })
 
-  // Walks between the cards: start → card, where an exercise ends → the next card → finish,
-  // with the corner where the team turns on the way.
-  const walks: Point[][] = []
+  // Walks between the cards, straight on from where an exercise ends: start → card → … →
+  // finish. After a turn about the team walks back beside its way in — a hairpin from the
+  // card (drawn over the way in, the walk back looked like a turn before the card).
+  const walks: [Point, Point][] = []
+  const hairpins: { from: Pose; beside: Point }[] = []
+  const targets = [...items.map(({ at }) => at), r.finish]
   let from: Pose = r.start
-  for (const { at, shape } of items) {
-    walks.push(walkOf(from, at)?.points ?? [from, at])
-    from = shape.exit
-  }
-  walks.push(walkOf(from, r.finish)?.points ?? [from, r.finish])
+  targets.forEach((to, i) => {
+    const across = walkOf(from, to)?.across ?? 0
+    if (Math.abs(across) > 0.05) {
+      const beside = offset(from, from.heading, 0, across)
+      hairpins.push({ from, beside })
+      walks.push([beside, to])
+    } else {
+      walks.push([from, to])
+    }
+    from = items[i]?.shape.exit ?? from
+  })
 
   const startCard = card('START')
   const finishCard = card('FINISH')
@@ -106,9 +115,24 @@ export function FieldPlan({
             : [],
         ),
       )}
-      {walks.map((points, i) => (
-        <Walk key={i} points={points} />
+      {walks.map(([a, b], i) => (
+        <Walk key={i} from={a} to={b} />
       ))}
+      {hairpins.map(({ from, beside }, i) => {
+        // Bulging on the way the team came in, as wide as it is.
+        const bulge = -0.4 - 0.3 * Math.hypot(beside.x - from.x, beside.y - from.y)
+        const a = offset(from, from.heading, bulge)
+        const b = offset(beside, from.heading, bulge)
+        return (
+          <path
+            key={`u${i}`}
+            d={`M${from.x},${from.y} C${a.x},${a.y} ${b.x},${b.y} ${beside.x},${beside.y}`}
+            fill="none"
+            className="stroke-foreground"
+            strokeWidth={0.1}
+          />
+        )
+      })}
 
       {items.flatMap(({ index, shape }) =>
         shape.props.map((p, i) => <Prop key={`${index}-${i}`} prop={p} />),
@@ -275,11 +299,8 @@ function Prop({ prop }: { prop: geometry.PlacedProp }) {
   return <circle cx={prop.x} cy={prop.y} r={0.25} className="fill-cone" />
 }
 
-/** The walk between two cards (through its corner), with an arrowhead where it arrives. */
-function Walk({ points }: { points: Point[] }) {
-  const to = points.at(-1)
-  const from = points.at(-2)
-  if (!to || !from) return null
+/** The walk between two cards, with an arrowhead where it arrives. */
+function Walk({ from, to }: { from: Point; to: Point }) {
   const length = Math.hypot(to.x - from.x, to.y - from.y)
   if (length < 0.5) return null
   const heading = bearing(from, to)
@@ -288,12 +309,7 @@ function Walk({ points }: { points: Point[] }) {
   const right = offset(tip, heading, -0.45, 0.25)
   return (
     <g className="stroke-foreground fill-foreground">
-      <polyline
-        points={[...points.slice(0, -1), tip].map((p) => `${p.x},${p.y}`).join(' ')}
-        fill="none"
-        strokeWidth={0.1}
-        strokeLinejoin="round"
-      />
+      <line x1={from.x} y1={from.y} x2={tip.x} y2={tip.y} strokeWidth={0.1} />
       <polygon
         points={`${tip.x},${tip.y} ${left.x},${left.y} ${right.x},${right.y}`}
         strokeWidth={0}

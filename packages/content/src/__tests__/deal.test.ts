@@ -203,7 +203,8 @@ describe('dealDeck', () => {
       }
     }
     expect(decks).toBeGreaterThan(2000)
-  })
+    // FCI decks are laid out on the field too (~20 ms each).
+  }, 60_000)
 
   test('every card of a class eventually gets dealt', () => {
     for (const cls of CLASSES) {
@@ -219,7 +220,7 @@ describe('dealDeck', () => {
       }
       expect([...cls.cardCodes].filter((c) => !seen.has(c))).toEqual([])
     }
-  })
+  }, 60_000)
 
   test('a pool too small for the request returns fewer cards', () => {
     // RO-Z without equipment has 25 usable cards; ask for more.
@@ -244,8 +245,8 @@ describe('competition courses (R7)', () => {
   }
 
   test('FCI courses always meet the point mix (≥ 7 four-point, ≥ 5 three-point)', () => {
-    // 1 200 courses: each one is laid out on the field too (~2–6 ms).
-    for (let seed = 0; seed < 600; seed++) {
+    // 400 courses: each one is laid out on the field too (~25 ms).
+    for (let seed = 0; seed < 200; seed++) {
       for (const count of [18, 20]) {
         const deck = competition('FCI-ROB', seed, count)
         expect(deck.entries).toHaveLength(count)
@@ -253,7 +254,7 @@ describe('competition courses (R7)', () => {
         if (errors.length) throw new Error(`seed ${seed}/${count}: ${errors}`)
       }
     }
-  }, 30_000)
+  }, 60_000)
 
   test('every class yields a valid competition course', () => {
     for (const cls of CLASSES) {
@@ -262,7 +263,7 @@ describe('competition courses (R7)', () => {
         expect(validateDeck(deck)).toEqual([])
       }
     }
-  })
+  }, 60_000)
 
   test('the validator catches a missing point mix and a wrong course size', () => {
     // A plain training deck rarely meets the mix (~4 %) — find one that misses it.

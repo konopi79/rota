@@ -69,7 +69,7 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
       {
         id: 'field-plan',
         title: 'Parkur, který se vejde na plochu (FCI)',
-        desc: 'Karty FCI-ROB rozmístí aplikace na plochu 20 × 20 m: start na kraji, 3–5 m mezi kartami, z každé karty odcházíš směrem, kterým cvik končí, místo pro kužely, přivolání i skoky. Plánek s vyznačenou aktuální kartou otevřeš ikonou mapy; delší balíček se rozdělí do kol.',
+        desc: 'Karty FCI-ROB rozmístí aplikace na plochu 20 × 20 m: start na kraji, 3–5 m mezi kartami, mezi kartami rovně (směr mění jen karty), místo pro kužely, přivolání i skoky. Plánek s vyznačenou aktuální kartou otevřeš ikonou mapy; má ho balíček do 20 karet.',
       },
       {
         id: 'badges',

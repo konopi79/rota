@@ -383,7 +383,12 @@ export const FCI_FOUR_POINT_CARDS: Card[] = [
     // p. 32: "musí být umístěna 8 metrů od předchozí karty. Překážka je umístěna přesně
     // v poloviční vzdálenosti ... nejbližší bočnice překážky je umístěna 2 m vlevo nebo vpravo
     // od středové linie"; the handler turns about.
-    geometry: { fromPrevious: 8, turn: 180, props: [{ kind: 'jump', ahead: -4, side: 2.5 }] },
+    // Either way: the regulation does not say which way the handler turns about.
+    geometry: {
+      fromPrevious: 8,
+      turn: [180, -180],
+      props: [{ kind: 'jump', ahead: -4, side: 2.5 }],
+    },
     image: '421',
     sourcePage: 32,
   },
@@ -405,7 +410,8 @@ export const FCI_FOUR_POINT_CARDS: Card[] = [
       onlyAfterLeave: true,
     },
     // p. 32: "ve vzdálenosti 3 až 5 metrů od předchozí karty. Psovod se otáčí čelem vzad"
-    geometry: { fromPrevious: 4, turn: 180 },
+    // Either way: the regulation does not say which way the handler turns about.
+    geometry: { fromPrevious: 4, turn: [180, -180] },
     image: '422',
     sourcePage: 32,
   },
