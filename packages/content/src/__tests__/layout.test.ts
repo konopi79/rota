@@ -88,6 +88,62 @@ describe('field layout — validator', () => {
     expect(validateDeck(deck)).toContain('#2 101: turn of more than 90° between cards')
   })
 
+  test('a turn between cards comes after walking on from the exercise', () => {
+    // 2 m on from 101, a corner to the left, 2 m into 102.
+    expect(
+      validateDeck(
+        course(
+          [
+            ['101', [10, 15]],
+            ['102', [8, 13, 270]],
+          ],
+          [4, 13, 270],
+        ),
+      ),
+    ).toEqual([])
+    // The corner right at 101: on the plan the team would leave 101 sideways.
+    expect(
+      validateDeck(
+        course(
+          [
+            ['101', [10, 15]],
+            ['102', [6, 15, 270]],
+          ],
+          [2, 15, 270],
+        ),
+      ),
+    ).toContain('#2 102: turns right where the previous exercise ends')
+    // 308 turns about to the left; heading off to the side at once would look like 90°
+    // (handler feedback, 2026-10-20).
+    expect(
+      validateDeck(
+        course(
+          [
+            ['308', [10, 15, 0, -180]],
+            ['101', [14, 15, 90]],
+          ],
+          [18, 15, 90],
+        ),
+      ),
+    ).toContain('#2 101: turns right where the previous exercise ends')
+  })
+
+  test('steps back stay clear of other exercises; the team walks on from the card', () => {
+    // 305 steps 2 m back, to 1 m from where 101 was done.
+    const errors = validateDeck(
+      course(
+        [
+          ['101', [10, 15]],
+          ['305', [10, 12]],
+        ],
+        [10, 8],
+      ),
+    )
+    expect(errors).toContain('#2 305: steps back too close to #1 101')
+    // The finish 4 m past 305 itself, not past where the steps back end.
+    expect(errors.filter((e) => e.includes('from the previous exercise'))).toEqual([])
+  })
+
   test('a card turns only the way it says', () => {
     expect(validateDeck(course([['101', [10, 15, 0, 90]]]))).toContain(
       '#1 101: turn 90° not allowed',
@@ -179,8 +235,8 @@ describe('field layout — dealer', () => {
       }
     }
     expect(decks).toBe(600)
-    // Long decks retry the last round a few times; ~30 ms each.
-  }, 30_000)
+    // 89 cards cannot be dealt (the class has fewer), so those run every attempt: ~150 ms.
+  }, 60_000)
 
   test('a long deck is split into rounds of at most a course', () => {
     for (let seed = 0; seed < 20; seed++) {
@@ -231,6 +287,14 @@ describe('card geometry', () => {
         !!card.geometry?.fromPrevious,
       ])
     }
+  })
+
+  test('steps back end behind the card, the team walks on from the card', () => {
+    const card = exercises.find((c) => c.code === '306')
+    if (!card) throw new Error('306 missing')
+    const shape = shapeOf(card, { x: 10, y: 10, heading: 0, turn: 0 }, 'left', false)
+    expect(shape.back).toMatchObject({ x: 10, y: 14 })
+    expect(shape.exit).toMatchObject({ x: 10, y: 10, heading: 0 })
   })
 
   test('a recall card replaces the recall cone of the leave card', () => {

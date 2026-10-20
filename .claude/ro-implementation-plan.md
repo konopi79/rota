@@ -308,7 +308,14 @@ are therefore laid out on the field while they are dealt:
 - Each card's `geometry`: its turn (107/108: 180–270°), where the team leaves it, and its
   cones, bowls and jumps; jumps on the dog's side, at most two per field (§3.5).
 - Between cards the team may turn on its own — straight on preferred, then 90° corners,
-  rarely 45° — so courses stay on the grid the way judges draw them. Cards stand where
+  rarely 45° — so courses stay on the grid the way judges draw them. The corner is on the
+  way, not at the card: the team walks 1–3 m on in the direction the exercise ends, turns
+  and walks 2–4 m straight into the next card (3–5 m in all). With the corner right at the
+  card, "180° vlevo" followed by a 90° corner read as a 90° turn on the plan (handler
+  feedback, 2026-10-20: "pokaždé to netrefilo směr").
+- Steps back (305, 306, 412, 413) keep 1.5 m clear of the other exercises, their cards and
+  equipment — a deck stepped back through the previous card — and the team walks on from
+  the card, so the next one is measured from there. Cards stand where
   §4.3 puts them (A: right of the team, B: ahead) and stay ≥ 3 m apart; equipment ≥ 1.5 m
   from other exercises (§3.5: not "nepřiměřeně" close to other cards).
 - After the recall cards 321–323, 421, 422 ("Psovod se otáčí čelem vzad … tým pokračuje
@@ -496,6 +503,7 @@ gesture for audio).
 - [x] SVG field plan on the course page and behind a map button in the deck (current card highlighted, round badge, "Nové kolo" hint)
 - [x] Feedback from the same thread: the course is a "tréninkový parkur" (it cannot meet every judging rule) and shows no points total (points are difficulty, not a score)
 - [x] Recall-card direction confirmed on judges' course plans (author, 2026-10-19); recall card after a leave card about half the time; plan drawn in the judges' style (card images, 1 m grid), bends on a 90°/45° lattice, card spacing measured where the cards stand
+- [x] Walks leave every card the way its exercise ends (handler feedback, 2026-10-20): the corner between two cards on the way (`walkOf`, 1–3 m out, 2–4 m in), drawn with it; steps back kept clear of other cards, the next card measured from the card; validator + tests
 
 ### R11 — Hand-made course
 

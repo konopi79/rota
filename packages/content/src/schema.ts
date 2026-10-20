@@ -83,7 +83,10 @@ export const geometrySchema = z
      * the new direction is 90° left). Several values: the course builder picks one.
      */
     turn: z.union([z.number(), z.array(z.number()).min(2)]).optional(),
-    /** Where the team leaves the exercise: metres ahead of the card (negative = behind). */
+    /**
+     * Where the team leaves the exercise: metres ahead of the card. Negative = steps back
+     * that far; the team then walks on forward past the card.
+     */
     exit: z.number().optional(),
     props: z.array(propSchema).min(1).optional(),
     /**
