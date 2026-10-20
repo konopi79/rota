@@ -3,16 +3,19 @@ import {
   approachOf,
   CARD_SPACING,
   distance,
+  distanceToSegment,
   EDGE,
-  GAP_MAX,
   GAP_MIN,
+  legsOf,
   MAX_JUMPS,
   normalize,
-  offset,
   PROP_SPACING,
   shapeOf,
   signOf,
   turnsOf,
+  walkTo,
+  type Approach,
+  type Legs,
   type PlacedProp,
   type Shape,
 } from './geometry'
@@ -34,14 +37,32 @@ const BENDS: [number, number][] = [
 ]
 /** Weight factor for a placement that leaves the team walking diagonally. */
 const DIAGONAL = 0.2
-/** Distance from where the team left the previous exercise, sampled every metre. */
-const GAPS = [GAP_MIN, 4, GAP_MAX]
+
+type WalkOption = { bend: number; legs: Legs; weight: number }
+const walkCache = new Map<string, WalkOption[]>()
+
+/** Every walk on within `approach`; each turn keeps its weight, shared by its legs. */
+function walksFrom(approach: Approach): WalkOption[] {
+  const key = `${approach.min}/${approach.max}/${approach.maxBend}`
+  let walks = walkCache.get(key)
+  if (!walks) {
+    walks = BENDS.filter(([bend]) => Math.abs(bend) <= approach.maxBend).flatMap(
+      ([bend, weight]) => {
+        const legs = legsOf(approach, bend)
+        return legs.map((l) => ({ bend, legs: l, weight: weight / legs.length }))
+      },
+    )
+    walkCache.set(key, walks)
+  }
+  return walks
+}
 
 type Previous = { card: Card; at: Placement; side: Side }
 
 /**
  * Lays a deck out on the field while it is dealt (plan §5, FCI): the start somewhere on the
- * edge, then each card 3–5 m on from the end of the previous exercise, with its equipment,
+ * edge, then each card 3–5 m on from the end of the previous exercise — leaving it in the
+ * direction the exercise ends, any turn of its own on the way — with its equipment,
  * inside the field and clear of the other cards. `place` refuses a card that does not fit
  * — the dealer then draws another — and keeps room for at least one more card, so the
  * finish always fits.
@@ -54,6 +75,8 @@ export class FieldPlanner {
   private signs: Point[]
   /** Equipment of every card but the last one (a leave card's recall cone is still open). */
   private props: PlacedProp[] = []
+  /** Where the team steps back (from the card to `back`): kept clear like equipment. */
+  private backs: [Point, Point][] = []
   private previous: Previous | undefined
 
   constructor(
@@ -76,30 +99,28 @@ export class FieldPlanner {
     const approach = approachOf(previousShape, card)
     const props = [...this.props, ...(previousShape?.props ?? [])]
 
-    const gaps = approach.min === approach.max ? [approach.min] : GAPS
-    const options = BENDS.filter(([bend]) => Math.abs(bend) <= approach.maxBend).flatMap(
-      ([bend, weight]) =>
-        gaps.flatMap((gap) =>
-          turnsOf(card).map((turn) => ({
-            bend,
-            gap,
-            turn,
-            // Back onto the grid after a diagonal; stay off diagonals otherwise.
-            weight: weight * (normalize(exit.heading + bend + turn) % 90 ? DIAGONAL : 1),
-          })),
-        ),
+    const options = walksFrom(approach).flatMap(({ bend, legs, weight }) =>
+      turnsOf(card).map((turn) => ({
+        bend,
+        legs,
+        turn,
+        // Back onto the grid after a diagonal; stay off diagonals otherwise.
+        weight: weight * (normalize(exit.heading + bend + turn) % 90 ? DIAGONAL : 1),
+      })),
     )
     while (options.length) {
       const option = pickWeighted(options, (o) => o.weight, this.random)
       if (!option) break
       options.splice(options.indexOf(option), 1)
-      const heading = normalize(exit.heading + option.bend)
-      const at: Placement = { ...offset(exit, heading, option.gap), heading, turn: option.turn }
+      const at: Placement = { ...walkTo(exit, option.bend, option.legs), turn: option.turn }
+      // The cheap check first: most places are taken once the field fills up.
+      if (!this.free(at, card.placement, this.signs, props)) continue
       const shape = shapeOf(card, at, side, false)
       if (this.fits(card, at, shape, props)) {
         this.props = props
         this.stations.push(at)
         this.signs.push(signOf(card.placement, at))
+        if (shape.back) this.backs.push([at, shape.back])
         this.previous = { card, at, side }
         return at
       }
@@ -113,19 +134,12 @@ export class FieldPlanner {
     const exit = shape?.exit ?? this.start
     const approach = approachOf(shape, undefined)
     const props = [...this.props, ...(shape?.props ?? [])]
-    const options = BENDS.flatMap(([bend, weight]) =>
-      (approach.min === approach.max ? [approach.min] : GAPS).map((gap) => ({
-        bend,
-        gap,
-        weight,
-      })),
-    )
+    const options = [...walksFrom(approach)]
     while (options.length) {
       const option = pickWeighted(options, (o) => o.weight, this.random)
       if (!option) break
       options.splice(options.indexOf(option), 1)
-      const heading = normalize(exit.heading + option.bend)
-      const finish = { ...offset(exit, heading, option.gap), heading }
+      const finish = walkTo(exit, option.bend, option.legs)
       if (this.free(finish, 'A', this.signs, props)) return finish
     }
     return undefined
@@ -146,30 +160,37 @@ export class FieldPlanner {
       this.inside(at) &&
       this.inside(sign) &&
       signs.every((s) => distance(s, sign) >= CARD_SPACING) &&
-      props.every((q) => distance(q, at) >= PROP_SPACING && distance(q, sign) >= PROP_SPACING)
+      props.every((q) => distance(q, at) >= PROP_SPACING && distance(q, sign) >= PROP_SPACING) &&
+      [at, sign].every(this.clearOfBacks)
     )
   }
 
+  private clearOfBacks = (p: Point) =>
+    this.backs.every(([a, b]) => distanceToSegment(p, a, b) >= PROP_SPACING)
+
+  /** The rest of the exercise fits too (`at` itself is `free`). */
   private fits(card: Card, at: Placement, shape: Shape, props: PlacedProp[]): boolean {
-    if (!this.free(at, card.placement, this.signs, props) || !this.inside(shape.exit)) return false
+    if (!this.inside(shape.exit)) return false
+    // Steps back stay clear of the other exercises, their cards and equipment.
+    const back = shape.back
+    if (back) {
+      if (!this.inside(back)) return false
+      const clear = (p: { x: number; y: number }) => distanceToSegment(p, at, back) >= PROP_SPACING
+      if (![...this.stations, ...this.signs, ...props].every(clear)) return false
+    }
     const near = (p: Point) => (q: Point) => distance(p, q) < PROP_SPACING
     for (const prop of shape.props) {
       if (!this.inside(prop)) return false
       if (this.stations.some(near(prop)) || this.signs.some(near(prop))) return false
-      if (props.some(near(prop))) return false
+      if (props.some(near(prop)) || !this.clearOfBacks(prop)) return false
     }
     const jumps = [...props, ...shape.props].filter((p) => p.kind === 'jump').length
     if (jumps > MAX_JUMPS) return false
     // Room for one more card (or the finish) after this one.
     const signs = [...this.signs, signOf(card.placement, at)]
     const allProps = [...props, ...shape.props]
-    const approach = approachOf(shape, undefined)
-    return BENDS.some(([bend]) =>
-      (approach.min === approach.max ? [approach.min] : GAPS).some((gap) => {
-        const heading = normalize(shape.exit.heading + bend)
-        const next = { ...offset(shape.exit, heading, gap), heading }
-        return this.free(next, 'A', signs, allProps)
-      }),
+    return walksFrom(approachOf(shape, undefined)).some(({ bend, legs }) =>
+      this.free(walkTo(shape.exit, bend, legs), 'A', signs, allProps),
     )
   }
 

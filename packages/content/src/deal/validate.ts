@@ -3,15 +3,18 @@ import type { Card, RoClass } from '../schema'
 import {
   angleDiff,
   approachOf,
-  bearing,
   CARD_SPACING,
   distance,
+  distanceToSegment,
   EDGE,
+  LEGS_IN,
+  LEGS_OUT,
   MAX_JUMPS,
   PROP_SPACING,
   shapeOf,
   signOf,
   turnsOf,
+  walkOf,
   type Shape,
 } from './geometry'
 import { endsStatic, hasEquipment, paceAfter, sideAfter } from './rules'
@@ -242,9 +245,10 @@ const EPS = 0.01
 /**
  * The deck fits its field (plan §5, FCI), round by round: start on the edge, each card
  * 3–5 m on from the end of the previous exercise (recall cards and recall cones at their
- * stated distance), no turn sharper than the regulation allows between cards, everything
- * inside the field, cards (where they stand) and equipment clear of each other, at most
- * two jumps.
+ * stated distance), walked off in the direction the exercise ends with any turn of its own
+ * on the way, no turn sharper than the regulation allows between cards, everything inside
+ * the field, cards (where they stand) and equipment clear of each other, steps back clear
+ * of the other exercises, at most two jumps.
  */
 function validateLayout(cls: RoClass, deck: Deck): string[] {
   const { layout, entries } = deck
@@ -298,12 +302,16 @@ function validateRound(
     }
     const from = previous?.exit ?? start
     const { min, max, maxBend } = approachOf(previous, card)
-    const d = distance(from, to)
+    // The walk read back off the two poses: on from the exercise, a corner, into the card.
+    const walk = walkOf(from, to)
+    const d = walk?.length ?? distance(from, to)
     if (d < min - EPS || d > max + EPS) {
       errors.push(`${at}: ${d.toFixed(1)} m from the previous exercise`)
     }
-    if (d > EPS && Math.abs(angleDiff(bearing(from, to), to.heading)) > 1) {
+    if (!walk || walk.in < Math.min(...LEGS_IN) - EPS) {
       errors.push(`${at}: not facing the way the team comes`)
+    } else if (walk.points.length > 2 && walk.out < Math.min(...LEGS_OUT) - EPS) {
+      errors.push(`${at}: turns right where the previous exercise ends`)
     }
     if (Math.abs(angleDiff(from.heading, to.heading)) > maxBend + EPS) {
       errors.push(`${at}: turn of more than ${maxBend}° between cards`)
@@ -369,6 +377,23 @@ function validateRound(
     for (const b of props.slice(i + 1)) {
       if (b.owner !== a.owner && distance(a.p, b.p) < PROP_SPACING - EPS) {
         errors.push(`${a.owner}: ${a.p.kind} too close to the ${b.p.kind} of ${b.owner}`)
+      }
+    }
+  })
+  // Steps back: clear of the other exercises, their cards and equipment.
+  shapes.forEach((shape, i) => {
+    const at = entries[i]?.at
+    const back = shape?.back
+    if (!at || !back) return
+    if (!inside(back)) errors.push(`${label(i)}: steps back off the field`)
+    const others = [
+      ...spots.filter((s) => s.label !== label(i)),
+      ...props.filter((q) => q.owner !== label(i)),
+    ]
+    for (const o of others) {
+      if (distanceToSegment(o.p, at, back) < PROP_SPACING - EPS) {
+        const what = 'label' in o ? o.label : `the ${o.p.kind} of ${o.owner}`
+        errors.push(`${label(i)}: steps back too close to ${what}`)
       }
     }
   })

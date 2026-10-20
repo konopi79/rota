@@ -1,9 +1,16 @@
-import { geometry, type Card, type DeckEntry, type Layout, type Point } from '@rota/content'
+import {
+  geometry,
+  type Card,
+  type DeckEntry,
+  type Layout,
+  type Point,
+  type Pose,
+} from '@rota/content'
 
 import { cardImageUrl } from '@/components/deck/card-image'
 import { cn } from '@/lib/utils'
 
-const { bearing, offset, shapeOf, signOf } = geometry
+const { bearing, offset, shapeOf, signOf, walkOf } = geometry
 
 /** Drawing margin around the field (room for the axis labels), in metres. */
 const PAD = 1.4
@@ -50,14 +57,15 @@ export function FieldPlan({
     return [{ index: r.first + i, card: c, at, shape: shapeOf(c, at, entry.side, recallFollows) }]
   })
 
-  // Walks between the cards: start → card, where an exercise ends → the next card → finish.
-  const walks: [Point, Point][] = []
-  let from: Point = r.start
+  // Walks between the cards: start → card, where an exercise ends → the next card → finish,
+  // with the corner where the team turns on the way.
+  const walks: Point[][] = []
+  let from: Pose = r.start
   for (const { at, shape } of items) {
-    walks.push([from, at])
+    walks.push(walkOf(from, at)?.points ?? [from, at])
     from = shape.exit
   }
-  walks.push([from, r.finish])
+  walks.push(walkOf(from, r.finish)?.points ?? [from, r.finish])
 
   const startCard = card('START')
   const finishCard = card('FINISH')
@@ -80,22 +88,26 @@ export function FieldPlan({
       />
 
       {/* What happens inside an exercise (a recall cone 5 m on, steps back) — dashed. */}
-      {items.map(({ index, at, shape }) =>
-        shape.exit.x !== at.x || shape.exit.y !== at.y ? (
-          <line
-            key={`in${index}`}
-            x1={at.x}
-            y1={at.y}
-            x2={shape.exit.x}
-            y2={shape.exit.y}
-            className="stroke-muted-foreground"
-            strokeWidth={0.1}
-            strokeDasharray="0.3 0.25"
-          />
-        ) : null,
+      {items.flatMap(({ index, at, shape }) =>
+        [shape.exit, shape.back].flatMap((to, i) =>
+          to && (to.x !== at.x || to.y !== at.y)
+            ? [
+                <line
+                  key={`in${index}-${i}`}
+                  x1={at.x}
+                  y1={at.y}
+                  x2={to.x}
+                  y2={to.y}
+                  className="stroke-muted-foreground"
+                  strokeWidth={0.1}
+                  strokeDasharray="0.3 0.25"
+                />,
+              ]
+            : [],
+        ),
       )}
-      {walks.map(([a, b], i) => (
-        <Walk key={i} from={a} to={b} />
+      {walks.map((points, i) => (
+        <Walk key={i} points={points} />
       ))}
 
       {items.flatMap(({ index, shape }) =>
@@ -263,8 +275,11 @@ function Prop({ prop }: { prop: geometry.PlacedProp }) {
   return <circle cx={prop.x} cy={prop.y} r={0.25} className="fill-cone" />
 }
 
-/** The walk between two cards, with an arrowhead where it arrives. */
-function Walk({ from, to }: { from: Point; to: Point }) {
+/** The walk between two cards (through its corner), with an arrowhead where it arrives. */
+function Walk({ points }: { points: Point[] }) {
+  const to = points.at(-1)
+  const from = points.at(-2)
+  if (!to || !from) return null
   const length = Math.hypot(to.x - from.x, to.y - from.y)
   if (length < 0.5) return null
   const heading = bearing(from, to)
@@ -273,7 +288,12 @@ function Walk({ from, to }: { from: Point; to: Point }) {
   const right = offset(tip, heading, -0.45, 0.25)
   return (
     <g className="stroke-foreground fill-foreground">
-      <line x1={from.x} y1={from.y} x2={tip.x} y2={tip.y} strokeWidth={0.1} />
+      <polyline
+        points={[...points.slice(0, -1), tip].map((p) => `${p.x},${p.y}`).join(' ')}
+        fill="none"
+        strokeWidth={0.1}
+        strokeLinejoin="round"
+      />
       <polygon
         points={`${tip.x},${tip.y} ${left.x},${left.y} ${right.x},${right.y}`}
         strokeWidth={0}
