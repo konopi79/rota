@@ -27,16 +27,14 @@ export const EDGE = 1
 export const CARD_SPACING = 3
 /** Minimum distance between a cone, bowl or jump and another exercise's card or equipment. */
 export const PROP_SPACING = 1.5
-/** The largest turn the team takes on its own between two cards. */
-export const MAX_BEND = 90
 /**
- * A turn between two cards is taken on the way, not at the card: the team first walks on
- * in the direction the exercise ends (so a card's own turn stays what the card says —
- * handler feedback, 2026-10-20), turns, and comes straight to the next card. Lengths of
- * those two legs in metres; together the 3–5 m between exercises.
+ * The direction changes only on the cards (author, 2026-10-21; §3.5: "Cviky musí být
+ * umístěny přirozeně ve směru postupu týmu"): between two cards the team walks straight on
+ * the way the exercise ends. After a turn about on the spot it walks back beside its way in
+ * (a hairpin on the plan), this many metres to the side it turned — straight back it would
+ * run into the cards it has just passed.
  */
-export const LEGS_OUT = [1, 2, 3]
-export const LEGS_IN = [2, 3, 4]
+export const HAIRPIN_WIDTHS = [1, 2, 3]
 /** §3.5: "V parkuru mohou být celkem dvě překážky". */
 export const MAX_JUMPS = 2
 
@@ -49,12 +47,21 @@ export type Shape = {
   exit: Pose
   /** Steps back end here; the team then walks on past its card (kept clear of the others). */
   back?: Point
+  /**
+   * The exercise turns the team about on the spot: the walk on goes back beside the way in,
+   * to this side of the exit heading (1 = right, −1 = left).
+   */
+  hairpin?: 1 | -1
   /** The recall cone is part of the exercise: the next card stands 5 m past it. */
   recallCone: boolean
 }
 
-/** How the next card is approached from the previous exercise. */
-export type Approach = { min: number; max: number; maxBend: number }
+/**
+ * How the next card is approached from the previous exercise: straight on, `min`–`max` m
+ * ahead, shifted to the side by one of `shifts` (metres, right positive — 0 but after a
+ * turn about).
+ */
+export type Approach = { min: number; max: number; shifts: number[] }
 
 const rad = (deg: number) => (deg * Math.PI) / 180
 
@@ -128,83 +135,48 @@ export function shapeOf(card: Card, at: Placement, side: Side, recallFollows: bo
     })
     ahead = Math.max(ahead, RECALL_DISTANCE)
   }
+  // Turned about where the exercise is done: a right turn brings the team back on the
+  // right of its way in, which is the left of the way out.
+  const hairpin = !ahead && normalize(at.turn) === 180 ? (at.turn > 0 ? -1 : 1) : undefined
   return {
     props,
     exit: { ...offset(at, at.heading, ahead), heading: normalize(at.heading + at.turn) },
     ...(back && { back }),
+    ...(hairpin && { hairpin }),
     recallCone,
   }
 }
 
-/**
- * How far (walked) and how straight the next card stands from the end of the previous
- * exercise.
- */
+/** How far and where the next card stands from the end of the previous exercise. */
 export function approachOf(previous: Shape | undefined, next: Card | undefined): Approach {
   const fromPrevious = next?.geometry?.fromPrevious
+  const side = previous?.hairpin
+  const shifts = side ? HAIRPIN_WIDTHS.map((w) => w * side) : [0]
   // A recall card stands straight ahead of the leave card, at the distance it states.
-  if (fromPrevious) return { min: fromPrevious, max: fromPrevious, maxBend: 0 }
-  if (previous?.recallCone) return { min: RECALL_DISTANCE, max: RECALL_DISTANCE, maxBend: MAX_BEND }
-  return { min: GAP_MIN, max: GAP_MAX, maxBend: MAX_BEND }
+  if (fromPrevious) return { min: fromPrevious, max: fromPrevious, shifts: [0] }
+  if (previous?.recallCone) return { min: RECALL_DISTANCE, max: RECALL_DISTANCE, shifts }
+  return { min: GAP_MIN, max: GAP_MAX, shifts }
 }
 
-/** The two legs of a walk between cards: on from the previous exercise, then into the next. */
-export type Legs = { out: number; in: number }
-
-/**
- * The legs a walk with a turn of `bend` may take within `approach`: straight on, the whole
- * distance is the leg into the card; with a turn, the team walks on 1–3 m first.
- */
-export function legsOf(approach: Approach, bend: number): Legs[] {
-  const exact = approach.min === approach.max
-  if (!bend) return (exact ? [approach.min] : [GAP_MIN, 4, GAP_MAX]).map((d) => ({ out: 0, in: d }))
-  return LEGS_OUT.flatMap((out) =>
-    (exact ? [approach.min - out] : LEGS_IN)
-      .filter(
-        (d) => d >= Math.min(...LEGS_IN) && out + d >= approach.min && out + d <= approach.max,
-      )
-      .map((d) => ({ out, in: d })),
-  )
-}
-
-/** Where a walk from `from` with a turn of `bend` and these legs arrives, facing on. */
-export function walkTo(from: Pose, bend: number, legs: Legs): Pose {
-  const corner = offset(from, from.heading, legs.out)
-  const heading = normalize(from.heading + bend)
-  return { ...offset(corner, heading, legs.in), heading }
-}
-
-export type Walk = Legs & {
-  /** From, the corner if the walk turns, to. */
-  points: Point[]
-  length: number
+/** Where the team comes walking `ahead` m straight on from `from`, `across` m to the side. */
+export function walkTo(from: Pose, ahead: number, across = 0): Pose {
+  return { ...offset(from, from.heading, ahead, across), heading: from.heading }
 }
 
 /**
- * The walk from `from` to `to` read back off their poses: straight on when both face the
- * same way, otherwise on along `from.heading` to a corner and along `to.heading` into
- * `to`. `undefined` when no such walk leads forward from one to the other.
+ * The walk from `from` to `to` read back off their poses: how far ahead and how far to the
+ * side (right positive) `to` stands. `undefined` if the team would arrive facing another
+ * way — a change of direction between the cards.
  */
-export function walkOf(from: Pose, to: Pose): Walk | undefined {
+export function walkOf(from: Pose, to: Pose): { ahead: number; across: number } | undefined {
+  if (Math.abs(angleDiff(from.heading, to.heading)) > 1) return undefined
+  const h = rad(from.heading)
   const dx = to.x - from.x
   const dy = to.y - from.y
-  const u = offset({ x: 0, y: 0 }, from.heading, 1)
-  const v = offset({ x: 0, y: 0 }, to.heading, 1)
-  const det = u.x * v.y - u.y * v.x
-  if (Math.abs(det) < 1e-6) {
-    // The same (or the opposite) direction: only straight on, along the line.
-    const ahead = dx * u.x + dy * u.y
-    const across = dx * u.y - dy * u.x
-    if (Math.abs(angleDiff(from.heading, to.heading)) > 1 || Math.abs(across) > 0.05) return
-    if (ahead <= 0) return
-    return { out: 0, in: ahead, points: [from, to], length: ahead }
+  return {
+    ahead: dx * Math.sin(h) - dy * Math.cos(h),
+    across: dx * Math.cos(h) + dy * Math.sin(h),
   }
-  // from + out·u + in·v = to
-  const out = (dx * v.y - dy * v.x) / det
-  const into = (u.x * dy - u.y * dx) / det
-  if (out < -0.05 || into <= 0) return
-  const corner = offset(from, from.heading, out)
-  return { out, in: into, points: [from, corner, to], length: out + into }
 }
 
 /** Shortest distance from `p` to the segment `a`–`b`. */

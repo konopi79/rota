@@ -10,7 +10,7 @@ import {
 import { cardImageUrl } from '@/components/deck/card-image'
 import { cn } from '@/lib/utils'
 
-const { angleDiff, bearing, distance, offset, shapeOf, signOf, walkOf } = geometry
+const { bearing, offset, shapeOf, signOf, walkOf } = geometry
 
 /** Drawing margin around the field (room for the axis labels), in metres. */
 const PAD = 1.4
@@ -18,8 +18,6 @@ const PAD = 1.4
 const CARD_W = 1.7
 const CARD_H = (CARD_W * 283) / 400
 const NUMBER_R = 0.5
-/** How far beside its way in the team is drawn walking back after turning about. */
-const ABOUT_OFFSET = 0.7
 
 /**
  * The plan of one round of a deck laid out on a field (FCI), drawn the way judges draw
@@ -59,34 +57,23 @@ export function FieldPlan({
     return [{ index: r.first + i, card: c, at, shape: shapeOf(c, at, entry.side, recallFollows) }]
   })
 
-  // Walks between the cards: start → card, where an exercise ends → the next card → finish,
-  // with the corner where the team turns on the way.
-  const targets: Pose[] = [...items.map(({ at }) => at), r.finish]
-  const walks: Point[][] = []
-  // Turns about on the spot, drawn as a hairpin from the card to the walk on beside the way
-  // in — drawn over it, the walk back looked like a turn before the card (handler
-  // feedback, 2026-10-21).
-  const hairpins: { at: Pose; beside: Point }[] = []
+  // Walks between the cards, straight on from where an exercise ends: start → card → … →
+  // finish. After a turn about the team walks back beside its way in — a hairpin from the
+  // card (drawn over the way in, the walk back looked like a turn before the card).
+  const walks: [Point, Point][] = []
+  const hairpins: { from: Pose; beside: Point }[] = []
+  const targets = [...items.map(({ at }) => at), r.finish]
   let from: Pose = r.start
   targets.forEach((to, i) => {
-    walks.push(walkOf(from, to)?.points ?? [from, to])
-    const item = items[i]
-    if (!item) return
-    const { at, shape } = item
-    from = shape.exit
-    const next = targets[i + 1]
-    if (
-      next &&
-      distance(shape.exit, at) < 0.01 &&
-      Math.abs(angleDiff(at.heading, shape.exit.heading)) > 179
-    ) {
-      const side = Math.sign(at.turn) || 1
-      const beside = { ...offset(at, at.heading, 0, side * ABOUT_OFFSET), heading: from.heading }
-      if (walkOf(beside, next)) {
-        hairpins.push({ at, beside })
-        from = beside
-      }
+    const across = walkOf(from, to)?.across ?? 0
+    if (Math.abs(across) > 0.05) {
+      const beside = offset(from, from.heading, 0, across)
+      hairpins.push({ from, beside })
+      walks.push([beside, to])
+    } else {
+      walks.push([from, to])
     }
+    from = items[i]?.shape.exit ?? from
   })
 
   const startCard = card('START')
@@ -128,16 +115,18 @@ export function FieldPlan({
             : [],
         ),
       )}
-      {walks.map((points, i) => (
-        <Walk key={i} points={points} />
+      {walks.map(([a, b], i) => (
+        <Walk key={i} from={a} to={b} />
       ))}
-      {hairpins.map(({ at, beside }, i) => {
-        const a = offset(at, at.heading, 0.6)
-        const b = offset(beside, at.heading, 0.6)
+      {hairpins.map(({ from, beside }, i) => {
+        // Bulging on the way the team came in, as wide as it is.
+        const bulge = -0.4 - 0.3 * Math.hypot(beside.x - from.x, beside.y - from.y)
+        const a = offset(from, from.heading, bulge)
+        const b = offset(beside, from.heading, bulge)
         return (
           <path
             key={`u${i}`}
-            d={`M${at.x},${at.y} C${a.x},${a.y} ${b.x},${b.y} ${beside.x},${beside.y}`}
+            d={`M${from.x},${from.y} C${a.x},${a.y} ${b.x},${b.y} ${beside.x},${beside.y}`}
             fill="none"
             className="stroke-foreground"
             strokeWidth={0.1}
@@ -310,11 +299,8 @@ function Prop({ prop }: { prop: geometry.PlacedProp }) {
   return <circle cx={prop.x} cy={prop.y} r={0.25} className="fill-cone" />
 }
 
-/** The walk between two cards (through its corner), with an arrowhead where it arrives. */
-function Walk({ points }: { points: Point[] }) {
-  const to = points.at(-1)
-  const from = points.at(-2)
-  if (!to || !from) return null
+/** The walk between two cards, with an arrowhead where it arrives. */
+function Walk({ from, to }: { from: Point; to: Point }) {
   const length = Math.hypot(to.x - from.x, to.y - from.y)
   if (length < 0.5) return null
   const heading = bearing(from, to)
@@ -323,12 +309,7 @@ function Walk({ points }: { points: Point[] }) {
   const right = offset(tip, heading, -0.45, 0.25)
   return (
     <g className="stroke-foreground fill-foreground">
-      <polyline
-        points={[...points.slice(0, -1), tip].map((p) => `${p.x},${p.y}`).join(' ')}
-        fill="none"
-        strokeWidth={0.1}
-        strokeLinejoin="round"
-      />
+      <line x1={from.x} y1={from.y} x2={tip.x} y2={tip.y} strokeWidth={0.1} />
       <polygon
         points={`${tip.x},${tip.y} ${left.x},${left.y} ${right.x},${right.y}`}
         strokeWidth={0}

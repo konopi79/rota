@@ -56,9 +56,13 @@ describe('field layout — validator', () => {
     expect(validateDeck(straight(['101', '102', '103']))).toEqual([])
   })
 
-  test('FCI decks need a layout, national ones must not have one', () => {
+  test('FCI decks up to a course may be laid out, national ones never', () => {
     const { layout: _, ...bare } = straight(['101'])
-    expect(validateDeck(bare)).toContain('no field layout')
+    expect(validateDeck(bare)).toContain('cards placed without a field layout')
+    const unplaced = { ...bare, entries: bare.entries.map(({ at: _at, ...e }) => e) }
+    expect(validateDeck(unplaced)).toEqual([])
+    const long = straight(Array.from({ length: 21 }, () => '101'))
+    expect(validateDeck(long)).toContain('21 cards laid out on one field, at most 20')
     const national = { ...straight(['Z-001']), options: { ...base, classId: 'RO1' as const } }
     expect(validateDeck(national)).toContain('RO1 is not laid out')
   })
@@ -70,38 +74,17 @@ describe('field layout — validator', () => {
     expect(validateDeck(deck)).toContain('#1: start not on the edge facing in')
   })
 
-  test('3–5 m between exercises, facing the way the team comes', () => {
+  test('3–5 m straight on between exercises', () => {
     expect(validateDeck(course([['101', [10, 17]]], [10, 13]))).toContain(
       '#1 101: 2.0 m from the previous exercise',
     )
-    expect(validateDeck(course([['101', [10, 15, 30]]], [12, 11.5, 30]))).toContain(
-      '#1 101: not facing the way the team comes',
+    expect(validateDeck(course([['101', [12, 15]]], [12, 11]))).toContain(
+      '#1 101: not straight on from the previous exercise',
     )
   })
 
-  test('no turn sharper than 90° between cards', () => {
-    // 4 m backwards and to the side: a 135° bend without a card.
-    const deck = course([
-      ['105', [10, 15, 0, 180]],
-      ['101', [7.17, 12.17, 315]],
-    ])
-    expect(validateDeck(deck)).toContain('#2 101: turn of more than 90° between cards')
-  })
-
-  test('a turn between cards comes after walking on from the exercise', () => {
-    // 2 m on from 101, a corner to the left, 2 m into 102.
-    expect(
-      validateDeck(
-        course(
-          [
-            ['101', [10, 15]],
-            ['102', [8, 13, 270]],
-          ],
-          [4, 13, 270],
-        ),
-      ),
-    ).toEqual([])
-    // The corner right at 101: on the plan the team would leave 101 sideways.
+  test('the direction changes only on the cards (author, 2026-10-21)', () => {
+    // A corner after 101, which goes straight on.
     expect(
       validateDeck(
         course(
@@ -112,20 +95,40 @@ describe('field layout — validator', () => {
           [2, 15, 270],
         ),
       ),
-    ).toContain('#2 102: turns right where the previous exercise ends')
-    // 308 turns about to the left; heading off to the side at once would look like 90°
-    // (handler feedback, 2026-10-20).
+    ).toContain('#2 102: changes direction between cards')
+    // 105 turns about: the next card back the way the team came, not 135° off.
+    const deck = course([
+      ['105', [10, 15, 0, 180]],
+      ['101', [7.17, 12.17, 315]],
+    ])
+    expect(validateDeck(deck)).toContain('#2 101: changes direction between cards')
+  })
+
+  test('after a turn about the team walks back beside its way in, on the side it turned', () => {
+    // 308 turns about to the left: back 2 m to the right of the way out (west, going down).
+    const turned = (x: number) =>
+      course(
+        [
+          ['101', [10, 15]],
+          ['308', [10, 11, 0, -180]],
+          ['102', [x, 15, 180]],
+        ],
+        [x, 18.5, 180],
+      )
+    expect(validateDeck(turned(8))).toEqual([])
+    expect(validateDeck(turned(12))).toContain('#3 102: not straight on from the previous exercise')
+    // Without a turn about the team does not step aside.
     expect(
       validateDeck(
         course(
           [
-            ['308', [10, 15, 0, -180]],
-            ['101', [14, 15, 90]],
+            ['101', [10, 15]],
+            ['102', [12, 11]],
           ],
-          [18, 15, 90],
+          [12, 7],
         ),
       ),
-    ).toContain('#2 101: turns right where the previous exercise ends')
+    ).toContain('#2 102: not straight on from the previous exercise')
   })
 
   test('steps back stay clear of other exercises; the team walks on from the card', () => {
@@ -195,8 +198,7 @@ describe('field layout — validator', () => {
       ],
       [10, 8.5, 180],
     )
-    expect(validateDeck(recall)).toContain('finish after #2: 2.5 m from the previous exercise')
-    expect(validateDeck(recall)).toContain('finish after #2: not facing the way the team comes')
+    expect(validateDeck(recall)).toContain('finish after #2: -2.5 m from the previous exercise')
   })
 
   test('at most two jumps on the field', () => {
@@ -218,8 +220,8 @@ describe('field layout — dealer', () => {
   test('every FCI deck fits its field (property test)', () => {
     let decks = 0
     for (const equipment of equipmentSets) {
-      for (const count of [5, 12, 20, 40, 89]) {
-        for (let seed = 0; seed < 40; seed++) {
+      for (const count of [5, 12, 20]) {
+        for (let seed = 0; seed < 50; seed++) {
           const deck = dealDeck({
             ...base,
             equipment,
@@ -229,24 +231,22 @@ describe('field layout — dealer', () => {
           })
           const errors = validateDeck(deck)
           if (errors.length) throw new Error(`${equipment}/${count}/seed ${seed}: ${errors}`)
-          expect(deck.layout).toBeDefined()
+          expect(deck.entries).toHaveLength(count)
+          expect(deck.layout?.rounds).toHaveLength(1)
           decks++
         }
       }
     }
-    expect(decks).toBe(600)
-    // 89 cards cannot be dealt (the class has fewer), so those run every attempt: ~150 ms.
+    expect(decks).toBe(450)
+    // ~20 ms a deck: a dead end on the field takes cards back (`BACKTRACKS`).
   }, 60_000)
 
-  test('a long deck is split into rounds of at most a course', () => {
-    for (let seed = 0; seed < 20; seed++) {
-      const deck = dealDeck({ ...base, count: 50, seed })
-      expect(deck.entries).toHaveLength(50)
-      const firsts = deck.layout?.rounds.map((r) => r.first) ?? []
-      // Planned at 0, 17 and 33; a field that fills up early adds a round.
-      expect(firsts.length).toBeGreaterThanOrEqual(3)
-      const sizes = firsts.map((f, i) => (firsts[i + 1] ?? 50) - f)
-      expect(Math.max(...sizes)).toBeLessThanOrEqual(20)
+  test('a deck longer than a course goes without a plan', () => {
+    for (let seed = 0; seed < 10; seed++) {
+      const deck = dealDeck({ ...base, count: 21 + seed * 6, seed })
+      expect(deck.layout).toBeUndefined()
+      expect(deck.entries.some((e) => e.at)).toBe(false)
+      expect(validateDeck(deck)).toEqual([])
     }
   })
 

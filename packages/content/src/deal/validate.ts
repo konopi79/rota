@@ -7,8 +7,6 @@ import {
   distance,
   distanceToSegment,
   EDGE,
-  LEGS_IN,
-  LEGS_OUT,
   MAX_JUMPS,
   PROP_SPACING,
   shapeOf,
@@ -404,25 +402,22 @@ function rightHandIssues(
 const EPS = 0.01
 
 /**
- * The deck fits its field (plan §5, FCI), round by round: start on the edge, each card
- * 3–5 m on from the end of the previous exercise (recall cards and recall cones at their
- * stated distance), walked off in the direction the exercise ends with any turn of its own
- * on the way, no turn sharper than the regulation allows between cards, everything inside
+ * The deck fits its field (plan §5, FCI): start on the edge, each card
+ * 3–5 m straight on from the end of the previous exercise (recall cards and recall cones
+ * at their stated distance; after a turn about beside the way in), the direction changed
+ * only by the cards, everything inside
  * the field, cards (where they stand) and equipment clear of each other, steps back clear
  * of the other exercises, at most two jumps.
  */
 function validateLayout(cls: RoClass, deck: Deck): string[] {
   const { layout, entries } = deck
-  if (!layout) return entries.length ? ['no field layout'] : []
-  const errors: string[] = []
-  const { rounds } = layout
-  if (rounds[0]?.first !== 0) errors.push('rounds: the first round does not start at card 1')
-  rounds.forEach((round, k) => {
-    const end = rounds[k + 1]?.first ?? entries.length
-    if (end <= round.first) errors.push(`round ${k + 1}: no cards`)
-    else errors.push(...validateRound(cls, layout, entries.slice(round.first, end), round))
-  })
-  return errors
+  // Laid out up to one course; a longer deck — or one that fits on no field — goes without.
+  if (!layout) return entries.some((e) => e.at) ? ['cards placed without a field layout'] : []
+  const max = cls.course.maxCards
+  if (entries.length > max) return [`${entries.length} cards laid out on one field, at most ${max}`]
+  const [round, ...more] = layout.rounds
+  if (!round || more.length || round.first !== 0) return ['not one field from card 1']
+  return validateRound(cls, layout, entries, round)
 }
 
 function validateRound(
@@ -462,20 +457,19 @@ function validateRound(
       errors.push(`${at}: recall card without its leave card on the field`)
     }
     const from = previous?.exit ?? start
-    const { min, max, maxBend } = approachOf(previous, card)
-    // The walk read back off the two poses: on from the exercise, a corner, into the card.
+    const { min, max, shifts } = approachOf(previous, card)
+    // Straight on from the exercise; only a turn about brings the team back beside its way in.
     const walk = walkOf(from, to)
-    const d = walk?.length ?? distance(from, to)
-    if (d < min - EPS || d > max + EPS) {
-      errors.push(`${at}: ${d.toFixed(1)} m from the previous exercise`)
-    }
-    if (!walk || walk.in < Math.min(...LEGS_IN) - EPS) {
-      errors.push(`${at}: not facing the way the team comes`)
-    } else if (walk.points.length > 2 && walk.out < Math.min(...LEGS_OUT) - EPS) {
-      errors.push(`${at}: turns right where the previous exercise ends`)
-    }
-    if (Math.abs(angleDiff(from.heading, to.heading)) > maxBend + EPS) {
-      errors.push(`${at}: turn of more than ${maxBend}° between cards`)
+    if (!walk) {
+      errors.push(`${at}: changes direction between cards`)
+    } else {
+      if (walk.ahead < min - EPS || walk.ahead > max + EPS) {
+        errors.push(`${at}: ${walk.ahead.toFixed(1)} m from the previous exercise`)
+      }
+      const [low, high] = [Math.min(...shifts), Math.max(...shifts)]
+      const straight = Math.abs(walk.across) < 0.05
+      const hairpin = !!previous?.hairpin && walk.across > low - EPS && walk.across < high + EPS
+      if (!straight && !hairpin) errors.push(`${at}: not straight on from the previous exercise`)
     }
     if (!inside(to)) errors.push(`${at}: outside the field`)
   }

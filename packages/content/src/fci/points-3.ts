@@ -377,7 +377,8 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       onlyAfterLeave: true,
     },
     // p. 28: "ve vzdálenosti 3 - 5 m od předchozí karty. Psovod se otáčí čelem vzad"
-    geometry: { fromPrevious: 4, turn: 180 },
+    // Either way: the regulation does not say which way the handler turns about.
+    geometry: { fromPrevious: 4, turn: [180, -180] },
     image: '321',
     sourcePage: 28,
   },
@@ -399,7 +400,8 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       onlyAfterLeave: true,
     },
     // p. 28: "ve vzdálenosti 3 - 5 m od předchozí karty. Psovod se otáčí čelem vzad"
-    geometry: { fromPrevious: 4, turn: 180 },
+    // Either way: the regulation does not say which way the handler turns about.
+    geometry: { fromPrevious: 4, turn: [180, -180] },
     image: '322',
     sourcePage: 28,
   },
@@ -421,7 +423,8 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       onlyAfterLeave: true,
     },
     // p. 28: "ve vzdálenosti 3 - 5 m od předchozí karty. Psovod se otáčí čelem vzad"
-    geometry: { fromPrevious: 4, turn: 180 },
+    // Either way: the regulation does not say which way the handler turns about.
+    geometry: { fromPrevious: 4, turn: [180, -180] },
     image: '323',
     sourcePage: 28,
   },
