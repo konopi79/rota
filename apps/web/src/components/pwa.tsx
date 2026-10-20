@@ -12,19 +12,23 @@ import {
   promptInstall,
   subscribeInstall,
 } from '@/lib/install'
+import { reportIssue, watchServiceWorkerInstall } from '@/lib/error-report'
 import { watchForUpdates } from '@/lib/sw-update'
 import { dismissInstallHint, isInstallHintDismissed, subscribeStorage } from '@/lib/storage'
 
 /**
  * Registers the service worker (production only — dev has no sw.js) and keeps an
- * installed app up to date (`lib/sw-update.ts`).
+ * installed app up to date (`lib/sw-update.ts`). A failed registration or install is
+ * reported (`lib/error-report.ts`) — the app would silently stay online-only.
  */
 export function ServiceWorkerRegistration() {
   useEffect(() => {
     if (process.env.NODE_ENV !== 'production' || !('serviceWorker' in navigator)) return
+    const registration = navigator.serviceWorker.register('/sw.js')
+    registration.then(watchServiceWorkerInstall, reportIssue)
     return watchForUpdates({
       container: navigator.serviceWorker,
-      registration: navigator.serviceWorker.register('/sw.js'),
+      registration,
       doc: document,
       reload: () => window.location.reload(),
     })

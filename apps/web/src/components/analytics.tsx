@@ -10,6 +10,8 @@ import {
   sendHit,
   shouldCount,
 } from '@/lib/analytics'
+// Installs the error reports as soon as the layout's scripts load, before hydration.
+import '@/lib/error-report'
 
 /** Counts page views and app launches (`lib/analytics.ts`); renders nothing. */
 export function Analytics() {

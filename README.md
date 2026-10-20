@@ -6,7 +6,7 @@ exercise cards in random order, one at a time, full screen on your phone. The or
 always one you can actually perform with your dog: supplementary cards stay with their
 exercise, a leave is followed by a recall, pace changes and the dog's side are respected.
 
-**Try it: [rotapp.cz](https://rotapp.cz)** — no account, no cookies, only an anonymous visit counter;
+**Try it: [rotapp.cz](https://rotapp.cz)** — no account, no cookies, only an anonymous visit and error counter;
 add it to your home screen and it works offline on the training field. Everything it can
 do is listed on its [About page](https://rotapp.cz/o-aplikaci) (Czech).
 
