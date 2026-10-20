@@ -6,7 +6,8 @@
  * running in the app.
  *
  * What is counted: which page (a deck or course by class only), and once per launch
- * whether the app runs from the home screen. Offline nothing is sent — the request just
+ * whether the app runs from the home screen. Script errors go here too, with the full page
+ * address (`lib/error-report.ts`). Offline nothing is sent — the request just
  * fails, which is fine.
  */
 

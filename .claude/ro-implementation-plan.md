@@ -59,6 +59,11 @@ wants to know how many people use ROTA, so a cookieless counter (GoatCounter,
 `lib/analytics.ts`) sends the visited page — a deck or course by class only — the
 referrer, the screen width and once per launch whether it runs from the home screen.
 Nothing is stored on the device, hence no consent banner; the About page says so.
+**Changed 2026-10-20:** script errors are reported to the same counter (`lib/error-report.ts`)
+— the error, where it happened and the **full** page address, a deck's seed and position
+included, so the error can be repeated (an installed app "opened but did nothing" for a
+handler and could not be reproduced). The address holds no personal data; the About page
+says so.
 
 **D3 — Static output.** With no server features the app builds with `output: 'export'`
 and is served as static files (small nginx/Caddy image, or any static host).
@@ -478,6 +483,7 @@ gesture for audio).
 - [x] Ready for public: history checked (no PDFs, secrets or service IDs ever committed), README (live link, how to report a card error, MIT covers the code only — not the card graphics), CI `permissions: contents: read`, issue form "Chyba v kartě nebo pravidle"; GitHub: homepage + topics, `main` ruleset (no force push / deletion), Dependabot alerts, secret scanning + push protection, private vulnerability reporting (2026-09-27; the last three need a public repo — done right after the switch)
 - [x] `konopi79/rota` made public (2026-09-27); the ruleset, secret scanning and private vulnerability reporting could only be switched on after that
 - [x] Visit counter (2026-09-28): GoatCounter `rotapp`, cookieless, own `/count` requests instead of count.js (client-side navigation, decks counted by class only, launches from the home screen vs. browser), CSP allows `rotapp.goatcounter.com`, privacy texts and D2 updated (`lib/analytics.ts`, tested)
+- [x] Error reports (2026-10-20): uncaught errors, rejected promises and a failed service worker install as GoatCounter events `chyba: <error> (<source>) @ <full page address>`, listeners installed before hydration, each error once and at most 5 per page load (`lib/error-report.ts`, tested); privacy texts and D2 updated
 - [x] Own domain `rotapp.cz` (2026-09-28): Blueboard DNS (A + AAAA per rock8, DNSSEC), rock8 custom domains `rotapp.cz` + `www.rotapp.cz` with Let's Encrypt; `www` → 301 to the apex in nginx (an explicit `www` A/AAAA was needed — the rock8 challenge TXT under `www` stops the `*` wildcard from answering for it); guide, README, GitHub homepage point to `rotapp.cz`
 
 ### R7 — Competition-course generator
