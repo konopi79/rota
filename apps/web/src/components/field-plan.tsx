@@ -10,7 +10,7 @@ import {
 import { cardImageUrl } from '@/components/deck/card-image'
 import { cn } from '@/lib/utils'
 
-const { bearing, offset, shapeOf, signOf, walkOf } = geometry
+const { angleDiff, bearing, distance, offset, shapeOf, signOf, walkOf } = geometry
 
 /** Drawing margin around the field (room for the axis labels), in metres. */
 const PAD = 1.4
@@ -18,6 +18,8 @@ const PAD = 1.4
 const CARD_W = 1.7
 const CARD_H = (CARD_W * 283) / 400
 const NUMBER_R = 0.5
+/** How far beside its way in the team is drawn walking back after turning about. */
+const ABOUT_OFFSET = 0.7
 
 /**
  * The plan of one round of a deck laid out on a field (FCI), drawn the way judges draw
@@ -59,13 +61,33 @@ export function FieldPlan({
 
   // Walks between the cards: start → card, where an exercise ends → the next card → finish,
   // with the corner where the team turns on the way.
+  const targets: Pose[] = [...items.map(({ at }) => at), r.finish]
   const walks: Point[][] = []
+  // Turns about on the spot, drawn as a hairpin from the card to the walk on beside the way
+  // in — drawn over it, the walk back looked like a turn before the card (handler
+  // feedback, 2026-10-21).
+  const hairpins: { at: Pose; beside: Point }[] = []
   let from: Pose = r.start
-  for (const { at, shape } of items) {
-    walks.push(walkOf(from, at)?.points ?? [from, at])
+  targets.forEach((to, i) => {
+    walks.push(walkOf(from, to)?.points ?? [from, to])
+    const item = items[i]
+    if (!item) return
+    const { at, shape } = item
     from = shape.exit
-  }
-  walks.push(walkOf(from, r.finish)?.points ?? [from, r.finish])
+    const next = targets[i + 1]
+    if (
+      next &&
+      distance(shape.exit, at) < 0.01 &&
+      Math.abs(angleDiff(at.heading, shape.exit.heading)) > 179
+    ) {
+      const side = Math.sign(at.turn) || 1
+      const beside = { ...offset(at, at.heading, 0, side * ABOUT_OFFSET), heading: from.heading }
+      if (walkOf(beside, next)) {
+        hairpins.push({ at, beside })
+        from = beside
+      }
+    }
+  })
 
   const startCard = card('START')
   const finishCard = card('FINISH')
@@ -109,6 +131,19 @@ export function FieldPlan({
       {walks.map((points, i) => (
         <Walk key={i} points={points} />
       ))}
+      {hairpins.map(({ at, beside }, i) => {
+        const a = offset(at, at.heading, 0.6)
+        const b = offset(beside, at.heading, 0.6)
+        return (
+          <path
+            key={`u${i}`}
+            d={`M${at.x},${at.y} C${a.x},${a.y} ${b.x},${b.y} ${beside.x},${beside.y}`}
+            fill="none"
+            className="stroke-foreground"
+            strokeWidth={0.1}
+          />
+        )
+      })}
 
       {items.flatMap(({ index, shape }) =>
         shape.props.map((p, i) => <Prop key={`${index}-${i}`} prop={p} />),
