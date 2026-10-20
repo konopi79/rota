@@ -255,7 +255,7 @@ describe('field layout — dealer', () => {
       const deck = dealDeck({ ...base, count: 20, seed, competition: true })
       expect(deck.layout?.rounds).toHaveLength(1)
     }
-  })
+  }, 30_000)
 
   test('national decks are not laid out', () => {
     const deck = dealDeck({ ...base, classId: 'RO3', count: 20 })

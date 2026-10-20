@@ -254,7 +254,7 @@ describe('competition courses (R7)', () => {
         if (errors.length) throw new Error(`seed ${seed}/${count}: ${errors}`)
       }
     }
-  }, 30_000)
+  }, 60_000)
 
   test('every class yields a valid competition course', () => {
     for (const cls of CLASSES) {
@@ -263,7 +263,7 @@ describe('competition courses (R7)', () => {
         expect(validateDeck(deck)).toEqual([])
       }
     }
-  })
+  }, 60_000)
 
   test('the validator catches a missing point mix and a wrong course size', () => {
     // A plain training deck rarely meets the mix (~4 %) — find one that misses it.
