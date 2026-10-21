@@ -116,8 +116,8 @@ export const HANDLER_GAITS: Record<HandlerPace, Gait> = {
   slow: {
     rate: 0.6,
     stance: 0.65,
-    stride: 0.46,
-    reach: 0.2,
+    stride: 0.52,
+    reach: 0.13,
     heelOff: 0.6,
     strike: -0.2,
     pushOff: 0.4,
@@ -126,8 +126,8 @@ export const HANDLER_GAITS: Record<HandlerPace, Gait> = {
   normal: {
     rate: 0.95,
     stance: 0.6,
-    stride: 0.62,
-    reach: 0.26,
+    stride: 0.72,
+    reach: 0.17,
     heelOff: 0.55,
     strike: -0.3,
     pushOff: 0.55,
@@ -136,8 +136,8 @@ export const HANDLER_GAITS: Record<HandlerPace, Gait> = {
   fast: {
     rate: 1.3,
     stance: 0.55,
-    stride: 0.8,
-    reach: 0.32,
+    stride: 0.84,
+    reach: 0.2,
     heelOff: 0.5,
     strike: -0.35,
     pushOff: 0.7,
@@ -194,7 +194,7 @@ export const handlerFoot = (pace: HandlerPace, p: number) => {
  * Most a walking leg is stretched: nearly straight, but never locked — so the hips rise
  * over the planted foot and dip while both feet are on the ground, as in real walking.
  */
-const WALKING_LEG = LEG * 0.985
+const WALKING_LEG = LEG * 0.996
 
 /** Hip and knee angles that put the ankle at (y, z) from the hip joint; the knee bends forward. */
 const legAngles = (y: number, z: number) => {
@@ -214,6 +214,9 @@ export const HANDLER_PACE: Record<HandlerPace, { speed: number; rate: number }> 
   fast: paceOf(HANDLER_GAITS.fast),
 }
 
+/** How far the arms swing forward and back, radians. */
+const ARM_SWING: Record<HandlerPace, number> = { slow: 0.24, normal: 0.34, fast: 0.48 }
+
 /** The pose walking sets on top of the standing pose at time `t` (seconds). */
 export const handlerGait = (pace: HandlerPace, t: number): Pose => {
   const { rate } = HANDLER_GAITS[pace]
@@ -223,16 +226,19 @@ export const handlerGait = (pace: HandlerPace, t: number): Pose => {
       ['left', 0],
       ['right', 0.5],
     ] as const
-  ).map(([side, offset]) => ({ side, ...handlerFoot(pace, (((t * rate + offset) % 1) + 1) % 1) }))
+  ).map(([side, offset]) => {
+    const p = (((t * rate + offset) % 1) + 1) % 1
+    return { side, p, ...handlerFoot(pace, p) }
+  })
   // The hips as high as both legs still reach their ankles.
   const hips = Math.min(...feet.map((f) => f.y + Math.sqrt(WALKING_LEG ** 2 - f.z ** 2)))
-  for (const { side, ...foot } of feet) {
+  for (const { side, p, ...foot } of feet) {
     const { hip, knee } = legAngles(foot.y - hips, foot.z)
     out[`${side}Hip`] = hip
     out[`${side}Knee`] = knee
     out[`${side}Foot`] = foot.pitch
-    // Arms swing against the leg of the same side.
-    out[`${side}Shoulder`] = -0.8 * hip
+    // Arms swing against the leg of the same side: furthest back as its heel lands (p = 0).
+    out[`${side}Shoulder`] = ARM_SWING[pace] * Math.cos(2 * Math.PI * p)
     out[`${side}Elbow`] = pace === 'fast' ? -1.2 : -0.1
   }
   return out

@@ -114,6 +114,14 @@ describe('handler', () => {
     },
   )
 
+  test.each<HandlerPace>(['slow', 'normal', 'fast'])('%s: the hips do not bounce', (pace) => {
+    const heights = Array.from({ length: 100 }, (_, i) => {
+      const t = i / 100 / HANDLER_PACE[pace].rate
+      return -lowestPoint(HANDLER, { ...HANDLER_STAND, ...handlerGait(pace, t) })
+    })
+    expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(0.05)
+  })
+
   test.each<HandlerPace>(['slow', 'normal', 'fast'])(
     '%s: the planted heel, then the toes, stay put on the sliding ground',
     (pace) => {
