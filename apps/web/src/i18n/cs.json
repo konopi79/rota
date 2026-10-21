@@ -313,5 +313,36 @@
     "startRight": "Start na pravou ruku.",
     "finish": "Cíl. Hotovo.",
     "finishRight": "Do cíle se psem vpravo. Hotovo."
+  },
+  "figures": {
+    "title": "Animace cviků – ukázka",
+    "intro": "Zkouška, jak by mohly vypadat animace cviků: kostičkový psovod a pes předvedou cvik u karty podle zkušebního řádu. Zatím jen pár karet RO-Z.",
+    "hint": "Klepnutím (na počítači i mezerníkem) animaci zastavíš a znovu pustíš. Pohled otočíš tažením jedním prstem nebo myší, přiblížíš sevřením dvou prstů nebo kolečkem myši, posuneš tažením dvěma prsty nebo pravým tlačítkem myši.",
+    "paused": "Pauza – klepni pro pokračování",
+    "back": "ROTA",
+    "exercise": { "label": "Cvik" },
+    "shadows": "Stíny",
+    "view": {
+      "label": "Kamera",
+      "behind": "Zezadu",
+      "angle": "Šikmo",
+      "side": "Z boku",
+      "top": "Shora",
+      "front": "Zepředu"
+    },
+    "speed": { "label": "Rychlost", "quarter": "¼×", "half": "½×", "full": "1×" },
+    "caption": {
+      "approach": "Tým jde ke kartě",
+      "stop": "Psovod zastaví vlevo před kartou",
+      "sit": "Pes si sedne – sám nebo na povel",
+      "basePosition": "Základní pozice: pes sedí u levé nohy",
+      "down": "Na povel si pes lehne",
+      "downHold": "Pes leží, psovod stojí vedle něj",
+      "sitAgain": "Na další povel si pes sedne",
+      "stay": "Psovod může dát povel „zůstaň“",
+      "aroundDog": "Psovod obejde psa zepředu, pes sedí dál",
+      "aroundDone": "Zpět v základní pozici, krátce vydržet",
+      "leave": "Tým pokračuje dál"
+    }
   }
 }

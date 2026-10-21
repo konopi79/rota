@@ -35,6 +35,7 @@ committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 | R9  | Voice: cards read aloud                       | ✅ 2026-09-27 |
 | R10 | FCI decks laid out on the field               | ✅ 2026-10-19 |
 | R11 | Hand-made course                              | ✅ 2026-10-19 |
+| R12 | Exercise animations (proof of concept)        | 🧪 POC        |
 
 > **Order:** R3 is built before R2 so the national classes are usable end to end first;
 > FCI plugs into the same dealer afterwards.
@@ -530,6 +531,14 @@ gesture for audio).
 - [x] Sharing from the editor ("Sdílet" → the course page) and "Kontrolovat pořadí" to switch the checks off for a short sequence (author, 2026-10-19; `kontrola=0`, `lib/share.ts`)
 - [x] Tried on a phone by the author after the deploy (2026-10-19)
 
+### R12 — Exercise animations (POC)
+
+- [x] Box figures built in code (`lib/figures/`): dog postures stand / sit / down, walk and trot; handler walking heel to toe (two-joint IK, the planted heel then toes keep pace with the ground, hips nearly level, arms swinging); tests keep feet on the ground
+- [x] Exercise scripts played on the field (`ExercisePlayer`): walk, stop, dog position, wait, the handler around the dog (`lib/figures/paths.ts`); card in a stand on the ground right in front of the team (§5.3.1)
+- [x] Z-001–Z-004 scripted from the regulation, timing from the Psí škola ABS video
+- [x] Page `/animace`, not linked, `noindex`: exercise choice, captions, tap / space to pause, camera views and orbit, slow motion, shadows switch
+- [ ] Ask the community whether it is wanted (author, 2026-10-21) — then decide: more cards, the card detail, or ⏭️
+
 Each phase ends green on `bun run format && bun run typecheck && bun run lint` plus its
 own tests, and is committed separately.
 
@@ -562,3 +571,28 @@ from a training or a competition — and walk it like a deck.
   sender and the recipient: a five-card sequence needs no follow-up rules.
 - **Where it lives.** The course being edited is in local storage per class (D2); walking,
   printing and sharing put it into the URL (`poradi=Z-003,Z-014.D0a,2-211`) like a deck.
+
+## 13. Exercise animations (R12, proof of concept)
+
+The idea (author, 2026-10-21): a short 3D animation per card showing how the exercise is
+done — the handler and the dog, the position of the body and the legs. Built as a POC on
+a hidden page; whether it grows depends on the community's interest.
+
+- **Box figures, no models.** Downloaded dog models (Quaternius and similar, CC0) only have
+  game animations — no sit, no down — and would need Blender work anyway. Figures built
+  from boxes in code (90s game style, accepted by the author) cost no assets or licences
+  and pose exactly as the regulation needs. Paws and shoes are coloured by side (blue left,
+  orange right) so a viewer can tell the legs apart.
+- **Walking that reads.** The handler's legs are driven by the feet: heel strike, flat,
+  push-off over the toes, the weight-bearing point moving at exactly the walking speed;
+  step cycles advance with the distance walked, so nothing slides when the team speeds up
+  or stops. At heel the dog trots.
+- **Exercises are data.** Each card is a short script (`lib/figures/exercise.ts`) citing
+  the regulation; the team stops in the square left in front of the card (§5.3.1). Order
+  of sources: regulation → judging guidelines → video. The Psí škola ABS overview videos
+  (2024 rules; downloaded for private study only, never committed or shown in the app)
+  settle what the text leaves open — timing, paths, footwork.
+- **three.js** through `@react-three/fiber`, loaded only on `/animace` (still precached
+  with the rest: the precache grew from 17.6 to ~20.3 MB, under the 25 MB budget).
+- **Not linked, `noindex`.** The author shares the address to ask whether the animations
+  are wanted before more cards are scripted.
