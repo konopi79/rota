@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import { DOG, DOG_POSTURES, dogGait, type DogPosture } from '../figures/dog'
-import { ExercisePlayer, stationOf, Z001 } from '../figures/exercise'
+import { ExercisePlayer, stationOf, Z001, Z002 } from '../figures/exercise'
 import {
   HANDLER,
   HANDLER_GAITS,
@@ -170,6 +170,26 @@ describe('TeamAnimator', () => {
     for (let i = 0; i < 10; i++)
       moving = animator.step(0.05, { dog: 'walk', place: 'left', handler: 'normal' })
     expect(moving.travelled).toBeGreaterThan(0)
+  })
+})
+
+describe('Z-002 Stop – lehni', () => {
+  test('sits, then lies down beside the standing handler, then walks on', () => {
+    const player = new ExercisePlayer(Z002)
+    const frames = [player.step(0)]
+    while (!frames.at(-1)!.finished && frames.length < 60 * 60) frames.push(player.step(1 / 60))
+    const station = stationOf(Z002)
+    const captions = [...new Set(frames.map((f) => f.caption))]
+    expect(captions.indexOf('sit')).toBeLessThan(captions.indexOf('down'))
+    const down = frames.filter((f) => f.caption === 'downHold')
+    expect(down.length).toBeGreaterThan(60)
+    for (const f of down) {
+      expect(f.travelled).toBeCloseTo(station, 2)
+      expect(f.dog.x).toBeGreaterThan(0.3)
+      // Lying: the trunk level, close to the ground.
+      expect(clearance(DOG, f.dog.pose, { ...DOG, children: [] })).toBeLessThan(0.03)
+    }
+    expect(frames.at(-1)!.travelled - station).toBeGreaterThan(2.5)
   })
 })
 

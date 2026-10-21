@@ -1,5 +1,6 @@
 'use client'
 
+import { CZ_CARDS } from '@rota/content'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { SRGBColorSpace, TextureLoader, type GridHelper, type Group } from 'three'
@@ -10,7 +11,7 @@ import { Play } from 'lucide-react'
 import { Figure, type FigureHandle } from '@/components/figures/figure'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { DOG } from '@/lib/figures/dog'
-import { ExercisePlayer, stationOf, Z001, type Exercise } from '@/lib/figures/exercise'
+import { EXERCISES, ExercisePlayer, stationOf, type Exercise } from '@/lib/figures/exercise'
 import { HANDLER } from '@/lib/figures/handler'
 import { TeamAnimator, type TeamControls } from '@/lib/figures/team'
 
@@ -184,11 +185,14 @@ function CameraRig({ view, focusRef }: { view: CameraView; focusRef?: RefObject<
   return null
 }
 
-type Mode = 'figures' | 'z001'
+/** An exercise code, or the figures on their own. */
+type Mode = string
+const FIGURES = 'figures'
+const cardName = (code: string) => CZ_CARDS.find((c) => c.code === code)?.name ?? ''
 
 export function FiguresLab() {
   const { t } = useTranslation()
-  const [mode, setMode] = useState<Mode>('z001')
+  const [mode, setMode] = useState<Mode>(EXERCISES[0]!.code)
   const [controls, setControls] = useState<TeamControls>({
     dog: 'stand',
     place: 'left',
@@ -219,6 +223,7 @@ export function FiguresLab() {
     value: T,
     options: readonly T[],
     onChange: (v: T) => void,
+    label: (o: T) => string = (o) => t(`figures.${group}.${o}`),
   ) => (
     <div className="space-y-1">
       <div className="text-muted-foreground text-sm font-medium">{t(`figures.${group}.label`)}</div>
@@ -230,7 +235,7 @@ export function FiguresLab() {
       >
         {options.map((o) => (
           <ToggleGroupItem key={o} value={o}>
-            {t(`figures.${group}.${o}`)}
+            {label(o)}
           </ToggleGroupItem>
         ))}
       </ToggleGroup>
@@ -240,7 +245,9 @@ export function FiguresLab() {
   return (
     <div className="flex flex-1 flex-col">
       <div className="mx-auto w-full max-w-md px-4 pb-3">
-        {choice('mode', mode, ['z001', 'figures'], setMode)}
+        {choice('mode', mode, [...EXERCISES.map((e) => e.code), FIGURES], setMode, (o) =>
+          o === FIGURES ? t('figures.mode.figures') : `${o} ${cardName(o)}`,
+        )}
       </div>
       <div
         className="bg-card relative h-[55vh] min-h-72"
@@ -272,7 +279,7 @@ export function FiguresLab() {
             <planeGeometry args={[30, 30]} />
             <meshStandardMaterial color="#86b86b" />
           </mesh>
-          {mode === 'figures' ? (
+          {mode === FIGURES ? (
             <>
               <LabTeam controls={controls} slowMotion={speed} />
               <CameraRig view={view} />
@@ -280,7 +287,8 @@ export function FiguresLab() {
           ) : (
             <>
               <ExerciseTeam
-                exercise={Z001}
+                key={mode}
+                exercise={EXERCISES.find((e) => e.code === mode)!}
                 slowMotion={speed}
                 focusRef={focusRef}
                 onCaption={setCaption}
@@ -298,7 +306,7 @@ export function FiguresLab() {
             </div>
           </div>
         )}
-        {mode !== 'figures' && caption && (
+        {mode !== FIGURES && caption && (
           <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-4">
             <div className="bg-background/85 rounded-lg px-3 py-1.5 text-center font-medium shadow">
               {t(`figures.caption.${caption}`)}
@@ -307,7 +315,7 @@ export function FiguresLab() {
         )}
       </div>
       <div className="mx-auto grid w-full max-w-md gap-3 px-4 py-4">
-        {mode === 'figures' && (
+        {mode === FIGURES && (
           <>
             {choice('dog', controls.dog, ['stand', 'sit', 'down', 'walk', 'trot'], (dog) =>
               update({ dog }),

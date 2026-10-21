@@ -36,6 +36,28 @@ export const Z001: Exercise = {
   ],
 }
 
+/**
+ * Z-002 Stop – lehni: "Tým se zastaví u karty v místě pro vykonání cviku a zaujme základní
+ * pozici. Na povel psovoda si pes lehá." — regulation, appendix 1, p. 18; "po zaujetí každé
+ * pozice psovod stojí vedle psa". In the video the dog lies down about a second after it
+ * sat, stays down for a moment and the team walks on straight from the down.
+ */
+export const Z002: Exercise = {
+  code: 'Z-002',
+  steps: [
+    { walk: 3.5, caption: 'approach' },
+    { stop: true, caption: 'stop' },
+    { dog: 'sit', caption: 'sit' },
+    { wait: 0.6, caption: 'basePosition' },
+    { dog: 'down', caption: 'down' },
+    { wait: 1.2, caption: 'downHold' },
+    { walk: 3, caption: 'leave' },
+  ],
+}
+
+/** The exercises the page can play, in card order. */
+export const EXERCISES: Exercise[] = [Z001, Z002]
+
 /** How long a change of the dog's position takes before the next step starts. */
 const POSTURE_TIME = 0.9
 /**

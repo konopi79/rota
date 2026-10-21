@@ -344,12 +344,14 @@
       "front": "Zepředu"
     },
     "speed": { "label": "Rychlost", "quarter": "¼×", "half": "½×", "full": "1×" },
-    "mode": { "label": "Ukázka", "z001": "Z-001 Stop", "figures": "Postavy" },
+    "mode": { "label": "Ukázka", "figures": "Postavy" },
     "caption": {
       "approach": "Tým jde ke kartě",
       "stop": "Psovod zastaví vlevo před kartou",
       "sit": "Pes si sedne – sám nebo na povel",
       "basePosition": "Základní pozice: pes sedí u levé nohy",
+      "down": "Na povel si pes lehne",
+      "downHold": "Pes leží, psovod stojí vedle něj",
       "leave": "Tým pokračuje dál"
     }
   }
