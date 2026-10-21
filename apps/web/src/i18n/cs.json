@@ -313,5 +313,34 @@
     "startRight": "Start na pravou ruku.",
     "finish": "Cíl. Hotovo.",
     "finishRight": "Do cíle se psem vpravo. Hotovo."
+  },
+  "figures": {
+    "title": "Animace cviků – zkouška postav",
+    "hint": "Pracovní stránka: kostičkový pes a psovod. Kameru otočíš tažením, přiblížíš sevřením prstů.",
+    "back": "ROTA",
+    "dog": {
+      "label": "Pes",
+      "stand": "Stůj",
+      "sit": "Sedni",
+      "down": "Lehni",
+      "walk": "Krok",
+      "trot": "Klus"
+    },
+    "place": { "label": "Kde je pes", "left": "Vlevo", "right": "Vpravo", "front": "Předsednutí" },
+    "handler": {
+      "label": "Psovod",
+      "stand": "Stojí",
+      "slow": "Pomalu",
+      "normal": "Chůze",
+      "fast": "Rychle"
+    },
+    "view": {
+      "label": "Kamera",
+      "angle": "Šikmo",
+      "side": "Z boku",
+      "top": "Shora",
+      "front": "Zepředu"
+    },
+    "speed": { "label": "Rychlost", "quarter": "¼×", "half": "½×", "full": "1×" }
   }
 }
