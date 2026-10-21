@@ -2,14 +2,15 @@ import { angleTo, ease } from './math'
 
 /**
  * Feet that carry the body — the rule the author set: any move of the body is made by the
- * legs. A planted foot stays where it is on the ground, whatever the body above it does
- * (it may only turn on the spot, on its heel or pads); when the body moves or turns away
- * from where a foot belongs, the foot lifts and steps to where it will belong by the time
- * it lands. The legs are then solved to reach the feet (`handler.ts`, `dog.ts`).
+ * legs, and every move follows on from the last (nothing jumps). A planted foot stays where
+ * it is on the ground, whatever the body above it does (it may only turn on the spot, on
+ * its heel or pads); when the body has carried it to the edge of where it can stay, the
+ * foot lifts and steps to where it will belong by the time it lands. The legs are then
+ * solved to reach the feet (`handler.ts`, `dog.ts`).
  *
- * Every foot keeps its own step cycle, driven by how far its own place moves: walking
- * straight they all move alike and keep the gait's order (trot, walk, left-right), turning
- * the feet far from the turn step more and the ones near it only shuffle round.
+ * Feet step when they must, not to a clock: the handler alternates left and right, always
+ * with one foot down; the dog lifts the paws furthest out of place, never more than two at
+ * once, diagonal pairs together when trotting.
  */
 
 /** A body on the field: where it is and which way it faces (heading 0 = +z). */
@@ -19,46 +20,32 @@ export type FootSpec = {
   name: string
   /** Where the foot stands under a still body, in the body's frame (x left, z ahead). */
   neutral: readonly [number, number]
-  /** Its place in the step cycle (0–1): which feet move together and in what order. */
-  offset: number
-  /** Feet of one pair keep one rhythm (a trot's diagonals), set by the one with most to go. */
+  /** Paws of one pair lift together (a trot's diagonals). */
   pair?: number
 }
 
 export type StepGait = {
-  /** Share of the cycle a foot is on the ground. */
+  /** Share of the time a foot is on the ground (dog: sets its stride). */
   stance: number
-  /** Metres the body moves in one step cycle. */
+  /** Metres the body moves in one stride cycle (dog). */
   cycleLength: number
   /** How high a full step lifts the foot, metres. */
   clearance: number
-  /** Turning counts as walking this many metres per radian. */
-  turnLength: number
-  /** Moving sideways counts this many times over: legs take short steps to the side. */
-  sideways: number
-  /** The longest a step in the air takes, seconds: a lifted foot is put down promptly. */
+  /** How long a step in the air takes, seconds. */
   swingTime: number
+  /** Handler: both feet on the ground between steps at least this long, seconds. */
+  doubleSupport?: number
   /**
    * Walking on, the feet land this much further back than where they stand still, metres:
    * a person's heel lands just ahead of the hips and pushes off far behind them.
    */
   backShift?: number
-  /** A planted foot this far from where it belongs, in half strides, steps at once... */
-  reach?: number
-  /** ...as long as this many other feet stay on the ground (default one). */
+  /** Dog: at least this many paws stay down (default two). */
   support?: number
   /** Sideways a leg reaches this share of its reach ahead or back. */
   reachAside?: number
   /** A planted foot turns on the spot to stay within this angle of the body, radians. */
   pivot?: number
-  /**
-   * The feet share one rhythm (a person: left, right, left…), set by the foot that has
-   * furthest to go — turning, the outer foot takes longer steps, not more of them. Without
-   * it each foot (a dog's paw) steps as often as its own place moves.
-   */
-  shared?: boolean
-  /** How fast a foot out of the gait's order falls back in, share of a cycle per cycle. */
-  catchUp?: number
 }
 
 export type FootState = {
@@ -69,7 +56,7 @@ export type FootState = {
   yaw: number
   /** Swing progress 0–1, or null while the foot is planted. */
   swing: number | null
-  /** Stance progress 0–1 while planted. */
+  /** How far through its stance a planted foot is, 0 (just landed) – 1 (about to lift). */
   stance: number
   /** Length of the current or last step, metres. */
   step: number
@@ -84,48 +71,140 @@ const placeUnder = (body: Body, [x, z]: readonly [number, number]) => ({
 /** Below this the body counts as standing: the feet finish their steps and close up. */
 const STILL_SPEED = 0.05
 const STILL_SPIN = 0.15
-/** A standing body puts its feet in place at this pace, m/s of equivalent walking. */
-const SETTLE_SPEED = 0.8
 /**
  * Standing, a foot this close to where it belongs needs no step: a stop is one closing step
  * (the feet parallel, side by side), not shuffling into place.
  */
 const SETTLED_DISTANCE = 0.06
 const SETTLED_YAW = 0.15
-/** Feet look this far ahead at most, seconds (a body setting off or slowing to a stop)... */
-const MAX_LOOKAHEAD = 4
-/** ...and expect the body to keep turning this long at most. */
+/** A swinging foot expects the body to keep turning this long at most, seconds. */
 const MAX_TURN_LOOKAHEAD = 0.5
-/** By default a planted foot this far from where it belongs (in half strides) must step. */
-const REACH = 1.25
+/** A swinging foot's aim closes on a changed target at this rate, per second. */
+const AIM_RATE = 10
 /** By default a leg reaches sideways this share of its reach ahead or back. */
 const REACH_ASIDE = 0.6
-/** By default a foot out of its gait's order catches up this share of a cycle per cycle. */
-const CATCH_UP = 0.25
 
-const frac = (x: number) => x - Math.floor(x)
 /** `x` kept within ±`limit`. */
 const clamp = (x: number, limit: number) => Math.max(-limit, Math.min(limit, x))
-/** `x` wrapped into [−0.5, 0.5). */
-const wrap = (x: number) => x - Math.floor(x + 0.5)
 
-export class Stepper {
-  /** The gait's reference cycle, driven by the body's own motion. */
-  private phase = 0
-  /** Each foot's own cycle. */
-  private footPhase: number[]
-  /** Standing still with every foot where it belongs. */
-  private settled = true
-  /** The stride and the way of moving last frame: a change re-times the planted feet. */
-  private lastCycle = 0
-  private lastStraight = true
+type Aim = { x: number; z: number; yaw: number }
+type Swing = { from: Aim; aim: Aim | null; time: number; duration: number }
+
+/** One step through the air: from where the foot lifted towards its (eased) aim. */
+const swingStep = (swing: Swing, wanted: Aim, dt: number, clearance: number): FootState => {
+  const follow = Math.min(1, AIM_RATE * dt)
+  const aim: Aim = swing.aim
+    ? {
+        x: swing.aim.x + (wanted.x - swing.aim.x) * follow,
+        z: swing.aim.z + (wanted.z - swing.aim.z) * follow,
+        yaw: swing.aim.yaw + angleTo(swing.aim.yaw, wanted.yaw) * follow,
+      }
+    : wanted
+  swing.aim = aim
+  const progress = Math.min(1, swing.time / swing.duration)
+  const k = ease(progress)
+  const step = Math.hypot(aim.x - swing.from.x, aim.z - swing.from.z)
+  return {
+    x: swing.from.x + (aim.x - swing.from.x) * k,
+    z: swing.from.z + (aim.z - swing.from.z) * k,
+    yaw: swing.from.yaw + angleTo(swing.from.yaw, aim.yaw) * k,
+    // Short steps (closing up, shuffling round) lift less than full ones.
+    lift: clearance * Math.sin(Math.PI * progress) * Math.min(1, step / 0.15 + 0.2),
+    swing: progress,
+    stance: 0,
+    step,
+  }
+}
+
+/** A planted foot turns on the spot (heel, pads) to stay within `pivot` of the body. */
+const pivoted = (foot: FootState, heading: number, pivot: number | undefined) => {
+  const turned = angleTo(heading, foot.yaw)
+  return pivot !== undefined && Math.abs(turned) > pivot
+    ? heading + Math.sign(turned) * pivot
+    : foot.yaw
+}
+
+/** The body's motion between two frames. */
+const motionOf = (prev: Body, body: Body, dt: number) => {
+  const vx = dt > 0 ? (body.x - prev.x) / dt : 0
+  const vz = dt > 0 ? (body.z - prev.z) / dt : 0
+  const spin = dt > 0 ? angleTo(prev.heading, body.heading) / dt : 0
+  const speed = Math.hypot(vx, vz)
+  return { vx, vz, spin, speed, still: speed < STILL_SPEED && Math.abs(spin) < STILL_SPIN }
+}
+
+/** Above this the body walks on (m/s): the feet step in rhythm, not only when they must. */
+const WALKING = 0.3
+/** A planted foot lets the body turn this far past it before it steps round (share of pivot). */
+const TURN_TRIGGER = 0.85
+/** Setting off with the feet side by side, the foot behind by this much leads (else the right). */
+const FIRST_STEP_AFTER = 0.02
+/**
+ * A person's feet never cross: across the body, a foot stays at least this far to its own
+ * side of the other one (heels, metres — a shoe is 11 cm wide), landing and on the way.
+ */
+const FEET_APART = 0.14
+/** Points along a shoe from the heel, metres, and how far apart two shoes keep across. */
+const SHOE = [0.02, 0.14, 0.26]
+const SHOES_APART = 0.12
+
+/** 1 while `along` is within `near`, fading out over `fade` beyond it. */
+const within = (along: number, near: number, fade: number) =>
+  Math.max(0, Math.min(1, (near + fade - Math.abs(along)) / fade))
+
+/**
+ * How far `foot` must move to its `side` (+1 left, −1 right, across a body facing `heading`)
+ * to keep clear of the planted `other`: the heels `FEET_APART` (always, or only while passing),
+ * and the shoes — turned as the feet point — side by side. A swinging foot passes the
+ * planted one within 20–35 cm along the body.
+ */
+const shortOfApart = (foot: Aim, other: Aim, heading: number, side: number, passing: boolean) => {
+  const c = Math.cos(heading)
+  const s = Math.sin(heading)
+  const across = (a: { x: number; z: number }, b: { x: number; z: number }) =>
+    side * ((a.x - b.x) * c - (a.z - b.z) * s)
+  const along = (a: { x: number; z: number }, b: { x: number; z: number }) =>
+    (a.x - b.x) * s + (a.z - b.z) * c
+  const shoe = (f: Aim) =>
+    SHOE.map((d) => ({ x: f.x + d * Math.sin(f.yaw), z: f.z + d * Math.cos(f.yaw) }))
+  let short =
+    (FEET_APART - across(foot, other)) * (passing ? within(along(foot, other), 0.2, 0.15) : 1)
+  for (const p of shoe(foot))
+    for (const q of shoe(other))
+      short = Math.max(short, (SHOES_APART - across(p, q)) * within(along(p, q), 0.1, 0.08))
+  return Math.max(0, short)
+}
+
+/** `foot` moved `by` metres across a body facing `heading` (+ = to its left). */
+const movedAcross = <T extends { x: number; z: number }>(
+  foot: T,
+  heading: number,
+  by: number,
+): T => ({
+  ...foot,
+  x: foot.x + by * Math.cos(heading),
+  z: foot.z - by * Math.sin(heading),
+})
+
+/**
+ * A person's feet: left, right, left… — never both in the air, a moment on both after each
+ * step. The rear foot lifts once the body has carried it half a stride behind its place (or
+ * turned past it, or, standing, left it out of place) and the other foot has been down a
+ * moment; it lands half a stride ahead, so it then carries the body as far again. Setting
+ * off from the feet side by side, the first step is a half step; stopping, the last step
+ * lands where the body comes to rest and the other foot closes up.
+ */
+export class BipedStepper {
   private last: Body
   private state: FootState[]
-  /** Where a swinging foot lifted off. */
-  private from: { x: number; z: number; yaw: number }[]
+  private swings: (Swing | null)[]
+  /** Seconds each foot has been down. */
+  private down: number[]
+  private travelled = 0
+  private settled = true
 
   constructor(
-    private specs: readonly FootSpec[],
+    private readonly specs: readonly FootSpec[],
     body: Body,
   ) {
     this.last = { ...body }
@@ -137,266 +216,167 @@ export class Stepper {
       stance: 0,
       step: 0,
     }))
-    this.from = this.state.map((f) => ({ ...f }))
-    this.footPhase = specs.map((s) => s.offset)
+    this.swings = specs.map(() => null)
+    this.down = specs.map(() => 1)
   }
 
-  /** Put every foot down where it is now (after the legs were posed some other way). */
-  plant(feet: { x: number; z: number; yaw: number }[], body: Body) {
-    this.state = this.state.map((f, i) => ({ ...f, ...feet[i]!, lift: 0, swing: null }))
-    this.last = { ...body }
-  }
-
-  /** The feet's step cycle, for what swings along with it (arms). */
+  /** Metres walked over cycle lengths (for what moves along). */
   get cycle() {
-    return this.phase
+    return this.travelled
   }
 
-  /** Where the feet are now. */
   get feet(): readonly FootState[] {
     return this.state
   }
 
-  /** Standing still, every foot in place. */
+  /** Standing still, both feet in place. */
   get still() {
     return this.settled
   }
 
-  /** Another gait for the same feet (walk ↔ trot): the feet fall in with its order. */
-  setFeet(specs: readonly FootSpec[]) {
-    this.specs = specs
-  }
-
   /**
-   * Setting off from a stand, every foot is where it belongs. A foot early in its stance
-   * would stay down for most of a stride and fall out of its leg's reach, so the cycle
-   * starts where every planted foot is well into its stance — the first step is a half
-   * step, as a dog's or a person's is.
-   */
-  private startingPhase(gait: StepGait) {
-    let best = 0
-    let bestMargin = -Infinity
-    for (let i = 0; i < 100; i++) {
-      const phase = i / 100
-      const margin = Math.min(
-        ...this.specs.map((s) => {
-          const local = frac(phase + s.offset)
-          return local < gait.stance ? local / gait.stance : 1
-        }),
-      )
-      if (margin > bestMargin) [best, bestMargin] = [phase, margin]
-    }
-    return best
-  }
-
-  /**
-   * `rest`: where the body will come to a stand, when it is stopping — the last steps land
+   * `rest`: where the body will come to a stand, when it is stopping — the last step lands
    * right there, so a stop is the last step and the other foot closing up beside it.
    */
   update(dt: number, body: Body, gait: StepGait, rest?: Body): FootState[] {
     const prev = this.last
     this.last = { ...body }
+    const { vx, vz, spin, speed, still } = motionOf(prev, body, dt)
+    this.travelled += (speed * dt) / gait.cycleLength
     const c = Math.cos(body.heading)
     const s = Math.sin(body.heading)
-    const dx = body.x - prev.x
-    const dz = body.z - prev.z
-    const turn = angleTo(prev.heading, body.heading)
-    const vx = dt > 0 ? dx / dt : 0
-    const vz = dt > 0 ? dz / dt : 0
-    const spin = dt > 0 ? turn / dt : 0
-    const still = Math.hypot(vx, vz) < STILL_SPEED && Math.abs(spin) < STILL_SPIN
+    const forward = vx * s + vz * c
     // Walking on at a good pace, the footfalls move back (`backShift`).
-    const back = (gait.backShift ?? 0) * Math.min(1, Math.max(0, (vx * s + vz * c) / 0.6))
-    const homes = this.specs.map((spec) => [spec.neutral[0], spec.neutral[1] - back] as const)
+    const back = (gait.backShift ?? 0) * Math.min(1, Math.max(0, forward / 0.6))
+    const homeOf = (b: Body, i: number) => {
+      const [x, z] = this.specs[i]!.neutral
+      return placeUnder(b, [x, z - back])
+    }
+    const ds = gait.doubleSupport ?? 0.08
+    // How far the body carries a planted foot while the other one steps, and so how far
+    // ahead a foot lands: half of that.
+    const lead = Math.max(0, forward) * (gait.swingTime + 2 * ds) * 0.5
+    const reach = Math.max(lead, 0.12)
+    const pivot = gait.pivot ?? 0.5
 
-    const unsettled = this.state.map((f, i) => {
-      if (f.swing !== null) return true
-      const home = placeUnder(body, homes[i]!)
-      return (
-        Math.hypot(f.x - home.x, f.z - home.z) > SETTLED_DISTANCE ||
-        Math.abs(angleTo(f.yaw, body.heading)) > SETTLED_YAW
-      )
+    const offsets = this.state.map((f, i) => {
+      const home = homeOf(body, i)
+      const dx = f.x - home.x
+      const dz = f.z - home.z
+      return {
+        along: dx * s + dz * c,
+        across: dx * c - dz * s,
+        turned: Math.abs(angleTo(body.heading, f.yaw)),
+        off: Math.hypot(dx, dz),
+      }
     })
-    if (still && !unsettled.some(Boolean)) {
-      this.settled = true
-      return this.state
-    }
-    const startedNow = this.settled
-    if (this.settled) {
-      this.phase = this.startingPhase(gait)
-      this.footPhase = this.specs.map((spec) => this.phase + spec.offset)
-    }
-    // Come to a stand, the foot furthest out of place steps in at once — one at a time.
-    if (still && this.state.every((f) => f.swing === null)) {
-      let worst = -1
-      let worstOff = 0
-      this.state.forEach((f, i) => {
-        if (!unsettled[i]) return
-        const home = placeUnder(body, homes[i]!)
-        const off = Math.hypot(f.x - home.x, f.z - home.z)
-        if (off >= worstOff) [worst, worstOff] = [i, off]
+
+    const anySwinging = this.swings.some(Boolean)
+    if (!anySwinging) {
+      // Which foot steps next, if any.
+      let next = -1
+      let worst = 0
+      const level = Math.abs(offsets[0]!.along - offsets[1]!.along) < 0.1
+      this.state.forEach((_, i) => {
+        const o = offsets[i]!
+        const other = this.down[1 - i]!
+        if (other < ds) return
+        let strain: number
+        if (still) {
+          strain = o.off > SETTLED_DISTANCE || o.turned > SETTLED_YAW ? 1 + o.off : 0
+        } else {
+          const behind = Math.max(0, -o.along) / reach
+          strain = Math.max(behind, o.turned / (pivot * TURN_TRIGGER), Math.abs(o.across) / 0.12)
+          // Walking on, the feet keep their rhythm: the foot behind steps as soon as the one
+          // ahead has landed and taken the weight.
+          const otherAlong = offsets[1 - i]!.along
+          if (forward > WALKING && o.along < otherAlong - 0.05) strain = Math.max(strain, 1)
+        }
+        if (strain >= 1 && strain > worst) [next, worst] = [i, strain]
       })
-      if (worst >= 0) {
-        const local = frac(this.footPhase[worst]!)
-        if (local < gait.stance) this.footPhase[worst]! += gait.stance - local
+      // Setting off from side by side: the foot to lead is the one furthest behind (or the
+      // right one if level), as soon as the body moves.
+      if (next < 0 && level && !still && forward > 0.05 && this.down.every((d) => d >= ds)) {
+        const a = offsets[0]!.along
+        const b = offsets[1]!.along
+        next = a < b - FIRST_STEP_AFTER ? 0 : 1
+      }
+      if (next >= 0) {
+        const f = this.state[next]!
+        const duration = still ? gait.swingTime * 0.8 : gait.swingTime
+        this.swings[next] = { from: { x: f.x, z: f.z, yaw: f.yaw }, aim: null, time: 0, duration }
       }
     }
-    this.settled = false
-
-    // How far a place under the body moves this frame, in the body's own frame: ahead,
-    // sideways (short steps) and the turn.
-    const travelOf = (fromX: number, fromZ: number, toX: number, toZ: number) => {
-      const ax = toX - fromX
-      const az = toZ - fromZ
-      return Math.hypot(ax * s + az * c, (ax * c - az * s) * gait.sideways, turn * gait.turnLength)
-    }
-    const bodyAdvance = travelOf(prev.x, prev.z, body.x, body.z) / gait.cycleLength
-    // 1 walking straight on, 0 turning on the spot.
-    const linear = Math.hypot(dx, dz)
-    const straight = linear / (linear + Math.abs(turn) * gait.turnLength * 4 + 1e-9)
-    // The stride changed (another pace) or the body set off walking from turning on the spot:
-    // each planted foot's place in its stance is read off where it actually stands — a foot
-    // already behind is late in its stance and lifts soon.
-    const walkingOn = straight > 0.7
-    if (
-      !still &&
-      !startedNow &&
-      (Math.abs(gait.cycleLength - this.lastCycle) > 1e-6 || (walkingOn && !this.lastStraight))
-    ) {
-      const half = (gait.stance * gait.cycleLength) / 2
-      const placed = this.state.map((f, i) => {
-        if (f.swing !== null) return null
-        const home = placeUnder(body, homes[i]!)
-        const along = (f.x - home.x) * s + (f.z - home.z) * c
-        return Math.min(0.95, Math.max(0, (half - along) / (2 * half))) * gait.stance
-      })
-      if (gait.shared) {
-        // One rhythm: set by the planted foot furthest behind, the others in their order.
-        let lead = -1
-        placed.forEach((local, i) => {
-          if (local !== null && (lead < 0 || local > placed[lead]!)) lead = i
-        })
-        if (lead >= 0) {
-          this.phase = Math.floor(this.phase) + placed[lead]! - this.specs[lead]!.offset
-          this.footPhase = this.footPhase.map((p, i) =>
-            this.state[i]!.swing === null ? this.phase + this.specs[i]!.offset : p,
-          )
-        }
-      } else
-        placed.forEach((local, i) => {
-          if (local !== null) this.footPhase[i] = Math.floor(this.footPhase[i]!) + local
-        })
-    }
-    this.lastCycle = gait.cycleLength
-    if (!still) this.lastStraight = walkingOn
-    this.phase += bodyAdvance
-    const half = (gait.stance * gait.cycleLength) / 2
-    const support = gait.support ?? 1
-    // How far each foot's place moves; feet sharing a rhythm take the most of theirs.
-    const ownTravel = homes.map((h) => {
-      const now = placeUnder(body, h)
-      const before = placeUnder(prev, h)
-      return travelOf(before.x, before.z, now.x, now.z) / gait.cycleLength
-    })
-    const rhythm = ownTravel.map((t, i) => {
-      if (gait.shared) return Math.max(...ownTravel)
-      const pair = this.specs[i]!.pair
-      if (pair === undefined) return t
-      return Math.max(...ownTravel.filter((_, k) => this.specs[k]!.pair === pair))
-    })
+    this.settled =
+      still &&
+      !this.swings.some(Boolean) &&
+      offsets.every((o) => o.off <= SETTLED_DISTANCE && o.turned <= SETTLED_YAW)
 
     this.state = this.state.map((foot, i) => {
-      const spec = this.specs[i]!
-      const home = placeUnder(body, homes[i]!)
-      const own = still ? (unsettled[i] ? (SETTLE_SPEED * dt) / gait.cycleLength : 0) : rhythm[i]!
-      let advance = own
-      const othersDown = this.state.filter((f, k) => k !== i && f.swing === null).length
-
-      if (foot.swing === null) {
-        // A planted foot falls in with the gait's order...
-        const diff = wrap(this.phase + spec.offset - this.footPhase[i]!)
-        // ...the more so the straighter the body goes: turning, each paw keeps to itself (a
-        // person keeps left, right, left… always).
-        const pull =
-          (gait.catchUp ?? CATCH_UP) * Math.max(bodyAdvance, advance) * (gait.shared ? 1 : straight)
-        this.footPhase[i]! += Math.sign(diff) * Math.min(Math.abs(diff), pull)
-        // ...steps at once when the body has carried it out of its leg's reach...
-        const offX = c * (foot.x - home.x) - s * (foot.z - home.z)
-        const offZ = s * (foot.x - home.x) + c * (foot.z - home.z)
-        const aside = half * (gait.reachAside ?? REACH_ASIDE)
-        const local = frac(this.footPhase[i]!)
-        if (
-          local < gait.stance &&
-          Math.hypot(offZ / half, offX / aside) > (gait.reach ?? REACH) &&
-          othersDown >= support
-        )
-          this.footPhase[i]! += gait.stance - local
-        // ...but never lifts while too few other feet carry the body.
-        const next = frac(this.footPhase[i]! + advance)
-        if (next >= gait.stance && othersDown < support)
-          advance = Math.max(0, gait.stance - 1e-6 - frac(this.footPhase[i]!))
+      const swing = this.swings[i]
+      if (!swing) {
+        this.down[i]! += dt
+        const o = offsets[i]!
+        const stance =
+          still || lead <= 0 ? 0 : Math.min(1, Math.max(0, (lead - o.along) / (2 * lead)))
+        return {
+          ...foot,
+          yaw: pivoted(foot, body.heading, gait.pivot),
+          lift: 0,
+          swing: null,
+          stance,
+        }
+      }
+      swing.time += dt
+      const left = Math.max(0, swing.duration - swing.time)
+      // Where it will land: under the body as it will be then (or where it comes to rest),
+      // half a stride ahead along the way it goes.
+      let wanted: Aim
+      if (rest) {
+        const [x, z] = this.specs[i]!.neutral
+        wanted = { ...placeUnder(rest, [x, z]), yaw: rest.heading }
       } else {
-        // A foot in the air is put down promptly, whatever the body does.
-        advance = Math.max(advance, ((1 - gait.stance) * dt) / gait.swingTime)
+        const future: Body = {
+          x: body.x + vx * left,
+          z: body.z + vz * left,
+          heading: body.heading + spin * Math.min(left, MAX_TURN_LOOKAHEAD),
+        }
+        const home = homeOf(future, i)
+        wanted = {
+          x: home.x + Math.sin(future.heading) * lead,
+          z: home.z + Math.cos(future.heading) * lead,
+          yaw: future.heading,
+        }
       }
-      this.footPhase[i]! += advance
-      const local = frac(this.footPhase[i]!)
-
-      if (local < gait.stance) {
-        // On the ground: it stays put, turning on the spot at most to keep within reach of
-        // the body's direction.
-        let yaw = foot.yaw
-        const turned = angleTo(body.heading, yaw)
-        if (gait.pivot !== undefined && Math.abs(turned) > gait.pivot)
-          yaw = body.heading + Math.sign(turned) * gait.pivot
-        return { ...foot, yaw, lift: 0, swing: null, stance: local / gait.stance }
+      // It lands to its own side of the other foot, and swings past it on that side.
+      const side = Math.sign(this.specs[i]!.neutral[0])
+      const other = this.state[1 - i]!
+      wanted = movedAcross(
+        wanted,
+        wanted.yaw,
+        side * shortOfApart(wanted, other, wanted.yaw, side, false),
+      )
+      let next = swingStep(swing, wanted, dt, gait.clearance)
+      const inAir = Math.sin(Math.PI * (next.swing ?? 0))
+      const clear = shortOfApart(next, other, body.heading, side, true)
+      next = movedAcross(next, body.heading, side * clear * inAir)
+      if (swing.time >= swing.duration) {
+        this.swings[i] = null
+        this.down[i] = 0
+        return { ...next, lift: 0, swing: null, stance: 0 }
       }
-
-      const progress = (local - gait.stance) / (1 - gait.stance)
-      if (foot.swing === null) this.from[i] = { x: foot.x, z: foot.z, yaw: foot.yaw }
-      const from = this.from[i]!
-      // Where the foot belongs at the middle of its next stance, the body going on as now:
-      // the rest of the swing at its own pace, half the stance at the body's.
-      const swingRate = dt > 0 ? advance / dt : 0
-      const bodyRate = dt > 0 ? own / dt : 0
-      const lookahead = still
-        ? 0
-        : Math.min(
-            (swingRate > 0 ? ((1 - progress) * (1 - gait.stance)) / swingRate : 0) +
-              (bodyRate > 0 ? gait.stance / 2 / bodyRate : MAX_LOOKAHEAD),
-            MAX_LOOKAHEAD,
-          )
-      const future: Body = {
-        x: body.x + vx * lookahead,
-        z: body.z + vz * lookahead,
-        heading: body.heading + spin * Math.min(lookahead, MAX_TURN_LOOKAHEAD),
-      }
-      const target = rest ? placeUnder(rest, this.specs[i]!.neutral) : placeUnder(future, homes[i]!)
-      const step = Math.hypot(target.x - from.x, target.z - from.z)
-      const k = ease(progress)
-      return {
-        x: from.x + (target.x - from.x) * k,
-        z: from.z + (target.z - from.z) * k,
-        yaw: from.yaw + angleTo(from.yaw, future.heading) * k,
-        // Short steps (closing up, shuffling round) lift less than full ones.
-        lift: gait.clearance * Math.sin(Math.PI * progress) * Math.min(1, step / 0.15 + 0.2),
-        swing: progress,
-        stance: 0,
-        step,
-      }
+      return next
     })
     return this.state
   }
 }
 
-/** A paw steps once it is this far (in strides) from where it would land now. */
-const PAW_TRIGGER = 0.85
-/** Standing, a paw this far from where it belongs is put right. */
+/** A paw steps once it is this near the edge of its reach (1 = there). */
+const PAW_TRIGGER = 0.8
+/** Standing, a paw this far from where it belongs is put right, metres. */
 const PAW_SETTLE = 0.02
-/** Past this (in strides) a paw steps even if that leaves fewer paws down than usual. */
-const PAW_URGENT = 1.05
-
-type Swing = { from: { x: number; z: number; yaw: number }; time: number; step: number }
+/** Past this a paw steps even if that leaves fewer paws down than usual. */
+const PAW_URGENT = 0.95
 
 /**
  * A dog's paws, stepping when they must — the way a dog moves. A paw stays down until the
@@ -409,6 +389,7 @@ export class PawStepper {
   private last: Body
   private state: FootState[]
   private swings: (Swing | null)[]
+  private strained = 0
   private travelled = 0
 
   constructor(
@@ -439,6 +420,14 @@ export class PawStepper {
     return this.travelled
   }
 
+  /**
+   * How near the planted paws are to the edge of their reach (1 = there, more = past it, the
+   * leg cannot follow): the body must wait for them to step.
+   */
+  get strain() {
+    return this.strained
+  }
+
   get feet(): readonly FootState[] {
     return this.state
   }
@@ -450,16 +439,12 @@ export class PawStepper {
   update(dt: number, body: Body, gait: StepGait): FootState[] {
     const prev = this.last
     this.last = { ...body }
+    const { vx, vz, spin, speed, still } = motionOf(prev, body, dt)
     const c = Math.cos(body.heading)
     const s = Math.sin(body.heading)
-    const vx = dt > 0 ? (body.x - prev.x) / dt : 0
-    const vz = dt > 0 ? (body.z - prev.z) / dt : 0
-    const spin = dt > 0 ? angleTo(prev.heading, body.heading) / dt : 0
-    const speed = Math.hypot(vx, vz)
-    const still = speed < STILL_SPEED && Math.abs(spin) < STILL_SPIN
     const stride = gait.stance * gait.cycleLength
     this.travelled += (speed * dt) / gait.cycleLength
-    const aside = gait.reachAside ?? REACH_ASIDE
+    const sideways = gait.reachAside ?? REACH_ASIDE
     const support = gait.support ?? 2
     // How fast each paw's place moves (turning, the far paws' places move most).
     const homeVelocity = this.specs.map((spec) => {
@@ -477,45 +462,41 @@ export class PawStepper {
      * Where a paw would land under a body: ahead of its place by as far as its place moves
      * while it is in the air, at most half a stride — it then carries the body as far again.
      */
-    const landing = (b: Body, i: number) => {
+    const landing = (b: Body, i: number, t: number) => {
       const home = placeUnder(b, this.specs[i]!.neutral)
       const v = homeVelocity[i]!
       // In the body's frame: ahead up to half a stride, sideways only as far as a leg reaches.
-      const t = swingTime(i)
       const bc = Math.cos(b.heading)
       const bs = Math.sin(b.heading)
       const ahead = clamp((v.x * bs + v.z * bc) * t, stride / 2)
-      const across = clamp((v.x * bc - v.z * bs) * t, (stride * aside) / 2)
+      const across = clamp((v.x * bc - v.z * bs) * t, (stride * sideways) / 2)
       return { x: home.x + across * bc + ahead * bs, z: home.z - across * bs + ahead * bc }
     }
     /**
      * How near a planted paw is to the edge of its leg's reach (1 = there): how far it has
      * fallen behind its place, along the way the place moves, and how far off to the side.
-     * When the body stands, any distance from its place counts.
      */
     const strain = (i: number) => {
       const f = this.state[i]!
       const home = placeUnder(body, this.specs[i]!.neutral)
       const dx = f.x - home.x
       const dz = f.z - home.z
+      if (still) return Math.hypot(dx, dz) / PAW_SETTLE
       const v = homeVelocity[i]!
       const speedHere = Math.hypot(v.x, v.z)
       const [ux, uz] = speedHere > 1e-3 ? [v.x / speedHere, v.z / speedHere] : [s, c]
       const along = dx * ux + dz * uz
-      const across = dx * uz - dz * ux
       const behind = speedHere > 1e-3 ? Math.max(0, -along) : Math.abs(along)
-      return Math.hypot(behind / (stride / 2), across / (stride * aside))
+      // A leg's sideways reach is the body's sideways, whichever way the place moves.
+      const aside = dx * c - dz * s
+      return Math.hypot(behind / (stride / 2), aside / (stride * sideways))
     }
 
     // Which paws lift now: the most strained first, as long as enough stay down. With all
-    // four down, the first goes at half a stride — setting off, or keeping the trot going as
-    // one pair lands and the other takes over.
+    // four down, the first goes early — setting off, or keeping the trot going as one pair
+    // lands and the other takes over.
     const planted = this.state.map((f) => f.swing === null)
-    const trigger = still
-      ? PAW_SETTLE / stride
-      : planted.every(Boolean)
-        ? PAW_TRIGGER * 0.25
-        : PAW_TRIGGER
+    const trigger = still ? 1 : planted.every(Boolean) ? PAW_TRIGGER * 0.25 : PAW_TRIGGER
     const candidates = this.state
       .map((_, i) => ({ i, strain: planted[i] ? strain(i) : 0 }))
       .filter(({ i, strain: k }) => planted[i] && k >= trigger)
@@ -528,52 +509,59 @@ export class PawStepper {
       )
       const allowed = (count: number) => {
         const down = planted.filter(Boolean).length - count
-        return down >= support || (k > PAW_URGENT && down >= support - 1)
+        // Standing (getting up, settling) nothing is urgent: one paw at a time.
+        return down >= support || (!still && k > PAW_URGENT && down >= support - 1)
       }
-      // The pair together if it can; a paw out of reach steps alone if it must.
+      // A pair steps together; a paw steps alone only when it must (out of its reach) — so a
+      // trot, once the pairs have formed, stays a trot.
+      const alone = k > PAW_URGENT && allowed(1)
       const lifting =
-        partner >= 0 && planted[partner] && allowed(2) ? [i, partner] : allowed(1) ? [i] : []
-      if (lifting.length === 0) continue
+        partner < 0
+          ? allowed(1)
+            ? [i]
+            : []
+          : planted[partner] && allowed(2)
+            ? [i, partner]
+            : alone
+              ? [i]
+              : []
       for (const j of lifting) {
         planted[j] = false
         const f = this.state[j]!
-        this.swings[j] = { from: { x: f.x, z: f.z, yaw: f.yaw }, time: 0, step: 0 }
+        // How long the step takes is set as it lifts, so it never jumps on the way.
+        this.swings[j] = {
+          from: { x: f.x, z: f.z, yaw: f.yaw },
+          aim: null,
+          time: 0,
+          duration: swingTime(j),
+        }
       }
     }
+
+    // Those still down after this: how strained.
+    this.strained = still ? 0 : Math.max(0, ...planted.map((down, i) => (down ? strain(i) : 0)))
 
     this.state = this.state.map((foot, i) => {
       const swing = this.swings[i]
       if (!swing) {
         // Down: it stays put, turning on its pads at most to keep within reach.
-        let yaw = foot.yaw
-        const turned = angleTo(body.heading, yaw)
-        if (gait.pivot !== undefined && Math.abs(turned) > gait.pivot)
-          yaw = body.heading + Math.sign(turned) * gait.pivot
-        return { ...foot, yaw, lift: 0, swing: null }
+        return { ...foot, yaw: pivoted(foot, body.heading, gait.pivot), lift: 0, swing: null }
       }
       swing.time += dt
-      const duration = swingTime(i)
-      const progress = Math.min(1, swing.time / duration)
       // Where it will land: under the body as it will be then, a lead ahead.
-      const left = Math.max(0, duration - swing.time)
+      const left = Math.max(0, swing.duration - swing.time)
       const future: Body = {
         x: body.x + vx * left,
         z: body.z + vz * left,
         heading: body.heading + spin * Math.min(left, MAX_TURN_LOOKAHEAD),
       }
-      const target = landing(future, i)
-      const step = Math.hypot(target.x - swing.from.x, target.z - swing.from.z)
-      const k = ease(progress)
-      const next: FootState = {
-        x: swing.from.x + (target.x - swing.from.x) * k,
-        z: swing.from.z + (target.z - swing.from.z) * k,
-        yaw: swing.from.yaw + angleTo(swing.from.yaw, future.heading) * k,
-        lift: gait.clearance * Math.sin(Math.PI * progress) * Math.min(1, step / 0.15 + 0.2),
-        swing: progress,
-        stance: 0,
-        step,
-      }
-      if (progress >= 1) {
+      const next = swingStep(
+        swing,
+        { ...landing(future, i, swing.duration), yaw: future.heading },
+        dt,
+        gait.clearance,
+      )
+      if (swing.time >= swing.duration) {
         this.swings[i] = null
         return { ...next, lift: 0, swing: null }
       }

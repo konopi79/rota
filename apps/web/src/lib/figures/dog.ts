@@ -164,17 +164,17 @@ const PAW_HEIGHT = 0.04
  */
 export const DOG_FEET: Record<DogGait, FootSpec[]> = {
   walk: [
-    { name: 'leftFrontPaw', neutral: [PAW_X, FRONT_Z], offset: 0.75 },
-    { name: 'rightFrontPaw', neutral: [-PAW_X, FRONT_Z], offset: 0.25 },
-    { name: 'leftHindPaw', neutral: [PAW_X, HIND_Z], offset: 0 },
-    { name: 'rightHindPaw', neutral: [-PAW_X, HIND_Z], offset: 0.5 },
+    { name: 'leftFrontPaw', neutral: [PAW_X, FRONT_Z] },
+    { name: 'rightFrontPaw', neutral: [-PAW_X, FRONT_Z] },
+    { name: 'leftHindPaw', neutral: [PAW_X, HIND_Z] },
+    { name: 'rightHindPaw', neutral: [-PAW_X, HIND_Z] },
   ],
   // Trotting, a diagonal pair moves as one.
   trot: [
-    { name: 'leftFrontPaw', neutral: [PAW_X, FRONT_Z], offset: 0, pair: 0 },
-    { name: 'rightFrontPaw', neutral: [-PAW_X, FRONT_Z], offset: 0.5, pair: 1 },
-    { name: 'leftHindPaw', neutral: [PAW_X, HIND_Z], offset: 0.5, pair: 1 },
-    { name: 'rightHindPaw', neutral: [-PAW_X, HIND_Z], offset: 0, pair: 0 },
+    { name: 'leftFrontPaw', neutral: [PAW_X, FRONT_Z], pair: 0 },
+    { name: 'rightFrontPaw', neutral: [-PAW_X, FRONT_Z], pair: 1 },
+    { name: 'leftHindPaw', neutral: [PAW_X, HIND_Z], pair: 1 },
+    { name: 'rightHindPaw', neutral: [-PAW_X, HIND_Z], pair: 0 },
   ],
 }
 
@@ -187,17 +187,12 @@ export const dogStep = (gait: DogGait): StepGait => ({
   ...(gait === 'trot'
     ? { stance: 0.5, cycleLength: 0.56, clearance: 0.07 }
     : { stance: 0.6, cycleLength: 0.48, clearance: 0.05 }),
-  turnLength: 0.25,
-  sideways: 2,
   swingTime: gait === 'trot' ? 0.18 : 0.22,
   pivot: 0.3,
-  reach: 1.1,
   // A dog's leg reaches little sideways (it swings out some 15°).
   reachAside: 0.3,
-  // A dog never has more than two paws in the air.
-  support: 2,
-  // It changes between walk and trot within a stride.
-  catchUp: 1,
+  // A trotting dog never has more than two paws in the air, a walking one mostly one.
+  support: gait === 'trot' ? 2 : 3,
 })
 
 /** A dog's legs hardly turn or swing sideways: about 20°, 20° out and 17° in (under the body). */

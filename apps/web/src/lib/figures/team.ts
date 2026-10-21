@@ -7,9 +7,16 @@ import {
   type DogGait,
   type DogPosture,
 } from './dog'
-import { HANDLER_FEET, HANDLER_PACE, handlerPose, handlerStep, type HandlerPace } from './handler'
-import { PawStepper, Stepper, type Body, type FootState } from './locomotion'
-import { blendPoses, type Pose } from './rig'
+import {
+  HANDLER,
+  HANDLER_FEET,
+  HANDLER_PACE,
+  handlerPose,
+  handlerStep,
+  type HandlerPace,
+} from './handler'
+import { BipedStepper, PawStepper, type Body, type FootState } from './locomotion'
+import { blendPoses, lowestPoint, type Pose } from './rig'
 
 /** What the two figures are asked to do. */
 export type TeamControls = {
@@ -22,6 +29,8 @@ export type TeamControls = {
   stay?: boolean
   /** Where the handler will come to a stand when it differs from straight ahead (a path). */
   rest?: Body
+  /** A tight bend ahead: the handler slows down to this, m/s. */
+  maxSpeed?: number
 }
 
 export type FigureFrame = {
@@ -62,6 +71,15 @@ const PLACES: Record<TeamControls['place'], { x: number; z: number; heading: num
   front: { x: 0, z: 0.6, heading: Math.PI },
 }
 
+/** The fastest a foot tips heel-to-toe, radians per second (about a walking push-off). */
+const FOOT_PITCH_RATE = 6
+
+/** The fastest the handler's pelvis rises, m/s. */
+const PELVIS_RISE = 0.5
+
+/** How fast the team picks up speed: the gap shrinks by e every 1/RATE seconds. */
+const SET_OFF_RATE = 2.5
+
 /** How fast a change settles: the gap shrinks by e every 1/RATE seconds. */
 export const SETTLE_RATE = 5
 
@@ -93,15 +111,29 @@ export class TeamAnimator {
   /** 1 while the legs carry the dog (standing, moving), 0 sitting or lying. */
   private dogStanding = 1
   private dogGait: DogGait = 'trot'
-  private handlerFeet: Stepper | null = null
+  private handlerFeet: BipedStepper | null = null
+  /** The handler's foot pitches last frame (they change smoothly). */
+  private footPitch = [0, 0]
+  /** The handler's pelvis height last frame. */
+  private pelvis = Infinity
   private dogFeet: PawStepper | null = null
+
+  /** How near the dog's planted paws are to the edge of their reach (`PawStepper.strain`). */
+  get dogStrain() {
+    return this.dogStanding < 1 ? 0 : (this.dogFeet?.strain ?? 0)
+  }
 
   /** Speeds up or slows down; how far the team and the handler have gone; the dog's place. */
   advance(dt: number, controls: TeamControls) {
     const walking = controls.handler !== 'stand'
     if (walking) this.lastPace = controls.handler as HandlerPace
     const pace = HANDLER_PACE[this.lastPace]
-    this.speed = approach(this.speed, walking ? pace.speed : 0, dt)
+    // A person sets off over about a step and stops more firmly.
+    const wanted = walking ? Math.min(pace.speed, controls.maxSpeed ?? Infinity) : 0
+    this.speed =
+      wanted > this.speed
+        ? this.speed + (wanted - this.speed) * (1 - Math.exp(-SET_OFF_RATE * dt))
+        : approach(this.speed, wanted, dt)
     // Stopping, the last few centimetres are one firm stop, not a long creep.
     if (!walking && !controls.stay && this.speed < 0.08) this.speed = 0
     this.walked += this.speed * dt
@@ -118,7 +150,7 @@ export class TeamAnimator {
   /** Poses for the bodies where the caller has put them on the field this frame. */
   pose(dt: number, controls: TeamControls, handler: Body, dog: Body): TeamFrame {
     // The handler: feet under the body, the pelvis and legs solved to them.
-    this.handlerFeet ??= new Stepper(HANDLER_FEET, handler)
+    this.handlerFeet ??= new BipedStepper(HANDLER_FEET, handler)
     const handlerPace = this.lastPace
     // Stopping (the handler told to stand while still moving), the body comes to rest the
     // braking distance ahead.
@@ -132,7 +164,14 @@ export class TeamAnimator {
         })
     const feet = this.handlerFeet.update(dt, handler, handlerStep(handlerPace), rest)
     const motion = Math.min(1, this.speed / HANDLER_PACE[handlerPace].speed)
-    const handlerPoseNow = handlerPose(feet, handler, handlerPace, this.handlerFeet.cycle, motion)
+    const handlerPoseNow = handlerPose(feet, handler, handlerPace, this.handlerFeet.cycle, motion, {
+      pitch: this.footPitch,
+      maxChange: FOOT_PITCH_RATE * dt,
+      pelvis: this.pelvis,
+      maxRise: PELVIS_RISE * dt,
+    })
+    this.pelvis = -lowestPoint(HANDLER, handlerPoseNow)
+    this.footPitch = [handlerPoseNow.leftFoot ?? 0, handlerPoseNow.rightFoot ?? 0]
 
     // The dog.
     const moving = isGait(controls.dog)

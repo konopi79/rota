@@ -63,6 +63,37 @@ const onGround = (
 
 const PAWS = ['leftFrontPaw', 'rightFrontPaw', 'leftHindPaw', 'rightHindPaw']
 
+type Point = { x: number; y: number; z: number }
+
+/** The closest two segments `a`–`b` and `c`–`d` come. */
+const segmentsApart = (a: Point, b: Point, c: Point, d: Point) => {
+  let closest = Infinity
+  const at = (p: Point, q: Point, t: number) => ({
+    x: p.x + (q.x - p.x) * t,
+    y: p.y + (q.y - p.y) * t,
+    z: p.z + (q.z - p.z) * t,
+  })
+  for (let i = 0; i <= 20; i++)
+    for (let j = 0; j <= 20; j++) {
+      const p = at(a, b, i / 20)
+      const q = at(c, d, j / 20)
+      closest = Math.min(closest, Math.hypot(p.x - q.x, p.y - q.y, p.z - q.z))
+    }
+  return closest
+}
+
+/** The handler's legs as drawn: thighs, shins and shoes as segments, with their widths. */
+const legParts = (frame: ExerciseFrame, side: 'left' | 'right') => {
+  const at = onField(frame.team, frame.handler)
+  const point = (joint: string, p: [number, number, number]) =>
+    onGround(HANDLER, frame.handler.pose, at, `${side}${joint}`, p)
+  return [
+    { width: 0.15, ends: [point('Hip', [0, 0, 0]), point('Knee', [0, 0, 0])] },
+    { width: 0.12, ends: [point('Knee', [0, 0, 0]), point('Foot', [0, 0, 0])] },
+    { width: 0.11, ends: [point('Foot', [0, -0.04, -0.06]), point('Foot', [0, -0.04, 0.18])] },
+  ]
+}
+
 /**
  * How far each planted foot is, as drawn, from where it stands on the ground: the handler's
  * heel or toes (whichever carries the weight), the dog's paws while on its legs.
@@ -157,6 +188,20 @@ describe.each(EXERCISES.map((e) => [e.code, e] as const))('%s: feet', (_, exerci
       for (const { who, miss } of misses(frame))
         if (miss > (who.endsWith('Paw') ? 0.01 : 0.005))
           throw new Error(`${who} drawn ${(miss * 100).toFixed(1)} cm off (${frame.caption})`)
+  })
+
+  test("the handler's legs never cross or pass through each other", () => {
+    for (const frame of frames) {
+      const left = legParts(frame, 'left')
+      const right = legParts(frame, 'right')
+      for (const l of left)
+        for (const r of right) {
+          const apart = segmentsApart(l.ends[0]!, l.ends[1]!, r.ends[0]!, r.ends[1]!)
+          // Boxes drawn round segments: a little leeway for their corners.
+          if (apart < (l.width + r.width) / 2 - 0.02)
+            throw new Error(`legs ${(apart * 100).toFixed(1)} cm apart (${frame.caption})`)
+        }
+    }
   })
 
   test('joints stay within what a human and a dog can do', () => {
@@ -386,7 +431,8 @@ describe('every RO-Z exercise', () => {
       const start = turning[still]!.team
       for (const f of turning.slice(still)) {
         expect(Math.hypot(f.team.x - start.x, f.team.z - start.z)).toBeLessThan(0.02)
-        expect(f.dog.x).toBeCloseTo(0.42, 1)
+        // At heel — going round the outside, a moment behind, as fast as its legs carry it.
+        expect(Math.hypot(f.dog.x - 0.42, f.dog.z + 0.2)).toBeLessThan(0.15)
       }
     },
   )
