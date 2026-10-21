@@ -3,7 +3,7 @@
 import { CZ_CARDS } from '@rota/content'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { SRGBColorSpace, TextureLoader, type Group } from 'three'
+import { SRGBColorSpace, TextureLoader, TOUCH, type Group } from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { useTranslation } from 'react-i18next'
 import { Play } from 'lucide-react'
@@ -13,7 +13,8 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { DOG } from '@/lib/figures/dog'
-import { EXERCISES, ExercisePlayer, stationOf, type Exercise } from '@/lib/figures/exercise'
+import { ExercisePlayer, stationOf, type Exercise } from '@/lib/figures/exercise'
+import { EXERCISES } from '@/lib/figures/roz-exercises'
 import { HANDLER } from '@/lib/figures/handler'
 
 type CameraView = 'behind' | 'angle' | 'side' | 'top' | 'front'
@@ -79,21 +80,69 @@ function CardStand({ code, x, z }: { code: string; x: number; z: number }) {
 }
 
 /**
- * The team walks over the field through the exercise; the station — where the team stops —
- * is at the origin. Starts over when the script ends.
+ * The place where the exercise starts (regulation §5.3.1, p. 8), as a square on the ground in
+ * the station's frame: "ve čtverci o délce strany maximálně 120 cm, který se nachází vlevo
+ * před kartou" — the team stops in it, the card at its front right corner; for a change
+ * of direction "cca 120 cm přímo před příslušnou kartou", the square round that point.
+ */
+const SPACE = {
+  side: { x: 0.15, z: -0.15 },
+  ahead: { x: 0, z: 0 },
+}
+const SPACE_SIDE = 1.2
+const SPACE_LINE = 0.025
+
+function ExerciseSpace({ x, z }: { x: number; z: number }) {
+  const half = SPACE_SIDE / 2
+  const edges: [number, number, number, number][] = [
+    [0, half, SPACE_SIDE + SPACE_LINE, SPACE_LINE],
+    [0, -half, SPACE_SIDE + SPACE_LINE, SPACE_LINE],
+    [half, 0, SPACE_LINE, SPACE_SIDE],
+    [-half, 0, SPACE_LINE, SPACE_SIDE],
+  ]
+  return (
+    <group position={[x, 0.004, z]}>
+      <mesh rotation-x={-Math.PI / 2}>
+        <planeGeometry args={[SPACE_SIDE, SPACE_SIDE]} />
+        <meshBasicMaterial color="#fff6b0" transparent opacity={0.3} depthWrite={false} />
+      </mesh>
+      {edges.map(([ex, ez, w, d]) => (
+        <mesh key={`${ex},${ez}`} position={[ex, 0.001, ez]} rotation-x={-Math.PI / 2}>
+          <planeGeometry args={[w, d]} />
+          <meshBasicMaterial color="#fffbe0" />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+/** Where the camera looks: the team's place on the field. */
+type Focus = { x: number; z: number }
+
+/**
+ * Where the card stands relative to the station, the team arriving along +z: in the usual
+ * place right of the team and a little ahead, or 1.2 m straight ahead for a turn.
+ */
+const CARD_PLACE = { side: { x: -0.75, z: 0.45 }, ahead: { x: 0, z: 1.2 } }
+
+/**
+ * The team walks over the field through the exercise; the station — where the exercise
+ * starts — is at the origin. Starts over when the script ends.
  */
 function ExerciseTeam({
   exercise,
   slowMotion,
+  showSpace,
   focusRef,
   onCaption,
 }: {
   exercise: Exercise
   slowMotion: number
-  focusRef: RefObject<number>
+  showSpace: boolean
+  focusRef: RefObject<Focus>
   onCaption: (caption: string | null) => void
 }) {
-  const station = useMemo(() => stationOf(exercise), [exercise])
+  const station = stationOf(exercise)
   const player = useRef<ExercisePlayer>(null)
   const team = useRef<Group>(null)
   const dog = useRef<FigureHandle>(null)
@@ -107,56 +156,69 @@ function ExerciseTeam({
     if (frame.finished) player.current = null
     dog.current?.apply(frame.dog)
     handler.current?.apply(frame.handler)
-    const z = frame.travelled - station
-    team.current?.position.setZ(z)
-    focusRef.current = z
+    const place = { x: frame.team.x, z: frame.team.z - station }
+    team.current?.position.set(place.x, 0, place.z)
+    team.current?.rotation.set(0, frame.team.heading, 0)
+    focusRef.current = place
     if (frame.caption !== caption.current) {
       caption.current = frame.caption
       onCaption(frame.caption)
     }
   })
 
+  const card = CARD_PLACE[exercise.card ?? 'side']
+  const space = SPACE[exercise.card ?? 'side']
   return (
     <>
       <group ref={team}>
         <Figure rig={DOG} ref={dog} />
         <Figure rig={HANDLER} ref={handler} />
       </group>
-      <CardStand code={exercise.code} x={-0.75} z={0.45} />
+      <CardStand code={exercise.code} x={card.x} z={card.z} />
+      {showSpace && <ExerciseSpace x={space.x} z={space.z} />}
       <gridHelper args={[30, 30, '#5f8f4a', '#6f9f58']} position={[0, 0.002, 0]} />
     </>
   )
 }
 
-/** Orbit controls; the camera keeps its offset and follows the team (`focusRef`, z). */
-function CameraRig({ view, focusRef }: { view: CameraView; focusRef: RefObject<number> }) {
+/** Orbit controls; the camera keeps its offset and follows the team (`focusRef`). */
+function CameraRig({ view, focusRef }: { view: CameraView; focusRef: RefObject<Focus> }) {
   const { camera, gl } = useThree()
   const controlsRef = useRef<OrbitControls>(null)
-  const followed = useRef(0)
+  const followed = useRef<Focus>({ x: 0, z: 0 })
 
   useEffect(() => {
     const controls = new OrbitControls(camera, gl.domElement)
+    // On a phone one finger scrolls the page (the scene fills most of the screen) and taps
+    // pause; two fingers turn and zoom the view, as on an embedded map.
+    controls.touches = { ONE: null, TWO: TOUCH.DOLLY_ROTATE }
+    controls.domElement?.style.setProperty('touch-action', 'pan-y')
+    // The camera stays above the ground: nothing to see from below the field.
+    controls.maxPolarAngle = Math.PI / 2 - 0.05
     controlsRef.current = controls
     return () => controls.dispose()
   }, [camera, gl])
   useEffect(() => {
     const controls = controlsRef.current
     if (!controls) return
-    const z = focusRef.current
+    const { x, z } = focusRef.current
     const [ox, oy, oz] = VIEWS[view]
-    controls.target.set(TARGET[0], TARGET[1], TARGET[2] + z)
-    controls.object.position.set(TARGET[0] + ox, TARGET[1] + oy, TARGET[2] + z + oz)
-    followed.current = z
+    controls.target.set(TARGET[0] + x, TARGET[1], TARGET[2] + z)
+    controls.object.position.set(TARGET[0] + x + ox, TARGET[1] + oy, TARGET[2] + z + oz)
+    followed.current = { x, z }
     controls.update()
   }, [view, focusRef])
 
   useFrame(() => {
     const controls = controlsRef.current
     if (!controls) return
-    const shift = focusRef.current - followed.current
-    followed.current = focusRef.current
-    controls.target.z += shift
-    controls.object.position.z += shift
+    const dx = focusRef.current.x - followed.current.x
+    const dz = focusRef.current.z - followed.current.z
+    followed.current = { ...focusRef.current }
+    controls.target.x += dx
+    controls.target.z += dz
+    controls.object.position.x += dx
+    controls.object.position.z += dz
     controls.update()
   })
 
@@ -173,8 +235,9 @@ export function ExerciseAnimation() {
   const [slowMotion, setSlowMotion] = useState<keyof typeof SLOW_MOTION>('full')
   const [paused, setPaused] = useState(false)
   const [shadows, setShadows] = useState(true)
+  const [showSpace, setShowSpace] = useState(false)
   const [caption, setCaption] = useState<string | null>(null)
-  const focusRef = useRef(0)
+  const focusRef = useRef<Focus>({ x: 0, z: 0 })
   const press = useRef<{ x: number; y: number; time: number } | null>(null)
   const exercise = EXERCISES.find((e) => e.code === code)!
 
@@ -258,6 +321,7 @@ export function ExerciseAnimation() {
             key={code}
             exercise={exercise}
             slowMotion={paused ? 0 : SLOW_MOTION[slowMotion]}
+            showSpace={showSpace}
             focusRef={focusRef}
             onCaption={setCaption}
           />
@@ -291,6 +355,19 @@ export function ExerciseAnimation() {
             {t('figures.shadows')}
           </Label>
           <Switch id="shadows" checked={shadows} onCheckedChange={setShadows} />
+        </div>
+        <div className="space-y-1">
+          <div className="flex items-center justify-between gap-4">
+            <Label htmlFor="space" className="text-base">
+              {t('figures.space.label')}
+            </Label>
+            <Switch id="space" checked={showSpace} onCheckedChange={setShowSpace} />
+          </div>
+          {showSpace && (
+            <p className="text-muted-foreground text-sm">
+              {t(`figures.space.${exercise.card ?? 'side'}`)}
+            </p>
+          )}
         </div>
       </div>
     </div>

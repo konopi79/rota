@@ -1,10 +1,10 @@
 'use client'
 
 import { useImperativeHandle, useMemo, useRef, type Ref } from 'react'
-import { MeshStandardMaterial, type Group } from 'three'
+import { Matrix4, MeshStandardMaterial, type Group } from 'three'
 
 import type { FigureFrame } from '@/lib/figures/team'
-import { lowestPoint, resolvePose, type Joint, type Paint } from '@/lib/figures/rig'
+import { jointFrames, lowestPoint, type Joint, type Paint } from '@/lib/figures/rig'
 
 /**
  * Colours of the box figures. 3D materials need real colours, not the UI's tokens; left
@@ -17,12 +17,17 @@ const PAINT: Record<Paint, string> = {
   leftMark: '#2f6fe0',
   rightMark: '#f08a24',
   skin: '#e2b48f',
+  hair: '#5a3d2b',
+  eye: '#1c1c20',
   shirt: '#3b8f86',
   trousers: '#3d4452',
   shoe: '#26272b',
 }
 
 export type FigureHandle = { apply: (frame: FigureFrame) => void }
+
+/** Scratch matrix for setting the joints' rotations. */
+const matrix = new Matrix4()
 
 export function Figure({ rig, ref }: { rig: Joint; ref: Ref<FigureHandle> }) {
   const placement = useRef<Group>(null)
@@ -42,8 +47,13 @@ export function Figure({ rig, ref }: { rig: Joint; ref: Ref<FigureHandle> }) {
     ref,
     () => ({
       apply(frame) {
-        const angles = resolvePose(rig, frame.pose)
-        for (const [name, group] of joints.current) group.rotation.x = angles[name] ?? 0
+        const frames = jointFrames(rig, frame.pose)
+        for (const [name, group] of joints.current) {
+          const m = frames.get(name)?.local
+          if (!m) continue
+          matrix.set(m[0], m[1], m[2], 0, m[3], m[4], m[5], 0, m[6], m[7], m[8], 0, 0, 0, 0, 1)
+          group.quaternion.setFromRotationMatrix(matrix)
+        }
         const root = joints.current.get(rig.name)
         if (root) root.position.y = -lowestPoint(rig, frame.pose)
         placement.current?.position.set(frame.x, 0, frame.z)

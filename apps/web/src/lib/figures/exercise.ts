@@ -1,11 +1,12 @@
 import type { DogPosture } from './dog'
 import type { HandlerPace } from './handler'
-import { AROUND_DOG, type Path } from './paths'
-import { SETTLE_RATE, TeamAnimator, type TeamControls, type TeamFrame } from './team'
+import { angleTo } from './math'
+import { AROUND_DOG, bendAhead, type Path } from './paths'
+import { SETTLE_RATE, TeamAnimator, onField, type TeamControls, type TeamFrame } from './team'
 
 /**
  * One exercise as a short script for the team. The captions are i18n keys under
- * `figures.caption`, shown while the step runs.
+ * `figures.caption`, shown while the step runs. The scripts are in `roz-exercises.ts`.
  */
 export type ExerciseStep = { caption: string } & (
   | { walk: number; pace?: HandlerPace } // metres forward, the dog at heel
@@ -13,6 +14,11 @@ export type ExerciseStep = { caption: string } & (
   | { dog: DogPosture } // the dog changes position, the handler stands
   | { wait: number } // seconds
   | { around: 'dog' } // the handler walks around the dog and back to the base place
+  /**
+   * The team turns by `turn` degrees, positive to the right, the handler walking an arc of
+   * `radius` metres — 0 turns the handler on the spot, the dog going round at heel.
+   */
+  | { turn: number; radius: number }
 )
 
 const PATHS: Record<'dog', Path> = { dog: AROUND_DOG }
@@ -21,86 +27,13 @@ export type Exercise = {
   /** Card code, also the card image. */
   code: string
   steps: ExerciseStep[]
+  /**
+   * Where the card stands (regulation §5.3.1, p. 14): `side` (default) — the exercise
+   * starts in a square "vlevo před kartou"; `ahead` — a change of direction starts "cca
+   * 120 cm přímo před příslušnou kartou".
+   */
+  card?: 'side' | 'ahead'
 }
-
-/**
- * Z-001 Stop: "Tým se zastaví u karty v místě pro provedení cviku a zaujme základní
- * pozici. (pes si může sednout sám či na povel)" — regulation, appendix 1, p. 18. Timing
- * from the Psí škola ABS overview video: the dog sits about half a second after the
- * handler stops, the team holds the position for a moment and walks on.
- */
-export const Z001: Exercise = {
-  code: 'Z-001',
-  steps: [
-    { walk: 3.5, caption: 'approach' },
-    { stop: true, caption: 'stop' },
-    { dog: 'sit', caption: 'sit' },
-    { wait: 1.5, caption: 'basePosition' },
-    { walk: 3, caption: 'leave' },
-  ],
-}
-
-/**
- * Z-002 Stop – lehni: "Tým se zastaví u karty v místě pro vykonání cviku a zaujme základní
- * pozici. Na povel psovoda si pes lehá." — regulation, appendix 1, p. 18; "po zaujetí každé
- * pozice psovod stojí vedle psa". In the video the dog lies down about a second after it
- * sat, stays down for a moment and the team walks on straight from the down.
- */
-export const Z002: Exercise = {
-  code: 'Z-002',
-  steps: [
-    { walk: 3.5, caption: 'approach' },
-    { stop: true, caption: 'stop' },
-    { dog: 'sit', caption: 'sit' },
-    { wait: 0.6, caption: 'basePosition' },
-    { dog: 'down', caption: 'down' },
-    { wait: 1.2, caption: 'downHold' },
-    { walk: 3, caption: 'leave' },
-  ],
-}
-
-/**
- * Z-003 Stop – lehni – sedni: "… Na povel psovoda si pes lehá. Na další povel psovoda si
- * pes sedá." — regulation, appendix 1, p. 19; "po zaujetí každé pozice psovod stojí vedle
- * psa".
- */
-export const Z003: Exercise = {
-  code: 'Z-003',
-  steps: [
-    { walk: 3.5, caption: 'approach' },
-    { stop: true, caption: 'stop' },
-    { dog: 'sit', caption: 'sit' },
-    { wait: 0.6, caption: 'basePosition' },
-    { dog: 'down', caption: 'down' },
-    { wait: 0.8, caption: 'downHold' },
-    { dog: 'sit', caption: 'sitAgain' },
-    { wait: 1, caption: 'basePosition' },
-    { walk: 3, caption: 'leave' },
-  ],
-}
-
-/**
- * Z-004 Stop – okolo psa: "Psovod může dát povel k setrvání na místě a obejde sedícího psa
- * zepředu a zastaví se opět v základní pozici, kde krátce setrvá. Pes přitom nesmí změnit
- * polohu ani pozici." — regulation, appendix 1, p. 19. In the video the handler steps
- * forward, crosses in front of the dog, comes back behind it at a normal walk (about
- * 3.5 s) and stands for a moment before the team walks on.
- */
-export const Z004: Exercise = {
-  code: 'Z-004',
-  steps: [
-    { walk: 3.5, caption: 'approach' },
-    { stop: true, caption: 'stop' },
-    { dog: 'sit', caption: 'sit' },
-    { wait: 0.8, caption: 'stay' },
-    { around: 'dog', caption: 'aroundDog' },
-    { wait: 1, caption: 'aroundDone' },
-    { walk: 3, caption: 'leave' },
-  ],
-}
-
-/** The exercises the page can play, in card order. */
-export const EXERCISES: Exercise[] = [Z001, Z002, Z003, Z004]
 
 /** How long a change of the dog's position takes before the next step starts. */
 const POSTURE_TIME = 0.9
@@ -112,17 +45,102 @@ const POSTURE_TIME = 0.9
 const STOP_TIME = 0.5
 /** Pause at the end before the exercise starts over. */
 const END_PAUSE = 1.2
+/**
+ * Walking a bend, a person turns at most this fast, radians per second (the video: a 90° turn
+ * takes about a second) — round a tight bend they slow down and take shorter steps.
+ */
+const MAX_SPIN = Math.PI / 2
+/** The dog's body stops as its planted paws reach this strain (`PawStepper.strain`). */
+const DOG_STRAIN_LIMIT = 1.15
+/** A turn on the spot advances like walking an arc of this radius, metres. */
+const PIVOT_RADIUS = 0.25
+
+/** A place on the field and the way it faces (heading 0 = +z, positive towards +x). */
+export type Pose = { x: number; z: number; heading: number }
 
 export type ExerciseFrame = TeamFrame & {
+  /** The handler's base place and the team's direction, from where the exercise starts. */
+  team: Pose
   caption: string | null
   /** The step that runs next (after this frame). */
   stepIndex: number
   finished: boolean
 }
 
+/** `p` turned by `angle` about the y axis around (cx, cz), three.js convention. */
+const rotateAbout = (p: Pose, cx: number, cz: number, angle: number): Pose => {
+  const dx = p.x - cx
+  const dz = p.z - cz
+  return {
+    x: cx + dx * Math.cos(angle) + dz * Math.sin(angle),
+    z: cz - dx * Math.sin(angle) + dz * Math.cos(angle),
+    heading: p.heading + angle,
+  }
+}
+
+/** `p` moved `d` metres straight ahead. */
+const forward = (p: Pose, d: number): Pose => ({
+  ...p,
+  x: p.x + d * Math.sin(p.heading),
+  z: p.z + d * Math.cos(p.heading),
+})
+
 /**
- * Plays an exercise step by step. A walk ends early by the distance the team needs to
- * slow down when a stop follows, so the team comes to rest where the script says.
+ * A body that follows a moving target like a critically damped spring with the target's
+ * own velocity fed forward: no lag at a steady pace, a smooth catch-up after a jolt.
+ */
+class Follower {
+  private at: Pose | null = null
+  private velocity = { x: 0, z: 0, heading: 0 }
+
+  /** How fast the target moves over the ground, m/s. */
+  get speed() {
+    return this.targetSpeed
+  }
+  private target: Pose | null = null
+  private targetSpeed = 0
+
+  constructor(private readonly stiffness = 12) {}
+
+  /** `hold` < 1 holds the body back (its legs cannot carry it further yet). */
+  follow(target: Pose, dt: number, hold = 1): Pose {
+    if (!this.at || !this.target || dt <= 0) {
+      this.at = { ...target }
+      this.target = { ...target }
+      return this.at
+    }
+    const w = this.stiffness
+    const turn = angleTo(this.target.heading, target.heading)
+    const tv = {
+      x: (target.x - this.target.x) / dt,
+      z: (target.z - this.target.z) / dt,
+      heading: turn / dt,
+    }
+    this.target = { ...target }
+    this.targetSpeed = Math.hypot(tv.x, tv.z)
+    const gap = {
+      x: target.x - this.at.x,
+      z: target.z - this.at.z,
+      heading: angleTo(this.at.heading, target.heading),
+    }
+    for (const k of ['x', 'z', 'heading'] as const) {
+      const a = w * w * gap[k] + 2 * w * (tv[k] - this.velocity[k])
+      this.velocity[k] = (this.velocity[k] + a * dt) * hold
+    }
+    this.at = {
+      x: this.at.x + this.velocity.x * dt,
+      z: this.at.z + this.velocity.z * dt,
+      heading: this.at.heading + this.velocity.heading * dt,
+    }
+    return this.at
+  }
+}
+
+/**
+ * Plays an exercise step by step and moves the team over the field: `team` is where the
+ * handler's base place is and which way the team faces, starting at the origin facing +z.
+ * A walk ends early by the distance the team needs to slow down when a stop or a turn on
+ * the spot follows, so the team comes to rest where the script says.
  */
 export class ExercisePlayer {
   private animator = new TeamAnimator()
@@ -135,6 +153,13 @@ export class ExercisePlayer {
   /** Where the handler is off the base place (walking around the dog). */
   private offset = { x: 0, z: 0, heading: 0 }
   private walkedAtStart = 0
+  private team: Pose = { x: 0, z: 0, heading: 0 }
+  /** Radians of the current turn still to go. */
+  private turnLeft = 0
+  /** Coming to rest before a turn on the spot. */
+  private braking = false
+  private dogTrots = false
+  private dogBody = new Follower()
 
   constructor(private readonly exercise: Exercise) {}
 
@@ -142,18 +167,34 @@ export class ExercisePlayer {
     const steps = this.exercise.steps
     const current = steps[this.index]
     const travelled = this.last?.travelled ?? 0
+    const walked = this.last?.walked ?? 0
     const speed = this.last?.speed ?? 0
+    const starting = this.stepTime === 0
     this.stepTime += dt
 
+    // The dog trots when its place moves briskly — at heel at a normal pace, round the
+    // outside of a turn — and walks when slow (by its place: a body held back for a paw to
+    // step does not change its gait).
+    const dogSpeed = this.dogBody.speed
+    if (dogSpeed > 0.75) this.dogTrots = true
+    else if (dogSpeed < 0.6) this.dogTrots = false
+    const dogGait = (_pace: HandlerPace) => (this.dogTrots ? 'trot' : 'walk')
     let controls: TeamControls = { dog: this.posture, place: 'left', handler: 'stand' }
     let done = false
     if (current && 'walk' in current) {
       this.pace = current.pace ?? this.pace
-      controls = { dog: this.pace === 'slow' ? 'walk' : 'trot', place: 'left', handler: this.pace }
+      controls = { dog: dogGait(this.pace), place: 'left', handler: this.pace }
       this.posture = 'stand'
       const next = steps[this.index + 1]
-      const braking = next && 'stop' in next ? speed / SETTLE_RATE : 0
-      done = travelled - this.stepStart >= current.walk - braking
+      const brakes = next && ('stop' in next || ('turn' in next && next.radius === 0))
+      const braking = brakes ? speed / SETTLE_RATE : 0
+      const toGo = current.walk - (travelled - this.stepStart)
+      done = toGo <= braking
+      // Slowing down into a turn in a small arc, to be at its pace as it begins.
+      if (next && 'turn' in next && next.radius > 0) {
+        const bend = MAX_SPIN * next.radius
+        if (toGo < Math.max(0, speed - bend) / SETTLE_RATE + 0.3) controls.maxSpeed = bend
+      }
     } else if (current && 'stop' in current) {
       done = this.stepTime >= STOP_TIME
     } else if (current && 'dog' in current) {
@@ -163,18 +204,74 @@ export class ExercisePlayer {
     } else if (current && 'wait' in current) {
       done = this.stepTime >= current.wait
     } else if (current && 'around' in current) {
-      const left = PATHS[current.around].length - ((this.last?.walked ?? 0) - this.walkedAtStart)
+      const path = PATHS[current.around]
+      const left = path.length - (walked - this.walkedAtStart)
       const walking = left > speed / SETTLE_RATE + 0.002
-      controls = { ...controls, handler: walking ? this.pace : 'stand', stay: true }
-      done = !walking && speed < 0.01
+      const bend = bendAhead(path, walked - this.walkedAtStart)
+      controls = {
+        ...controls,
+        handler: walking ? this.pace : 'stand',
+        maxSpeed: bend > 0 ? MAX_SPIN / bend : undefined,
+        stay: true,
+        // The path ends back in the base place.
+        rest: onField(this.team, { x: 0, z: 0, heading: 0 }),
+      }
+      // Done once the handler stands in the base place on both feet.
+      done = !walking && speed < 0.01 && (this.last?.feet.handlerStill ?? true)
+    } else if (current && 'turn' in current) {
+      if (starting) {
+        this.turnLeft = (Math.abs(current.turn) * Math.PI) / 180
+        this.braking = current.radius === 0
+      }
+      this.posture = 'stand'
+      // A turn on the spot starts from a stand: the team first comes to rest.
+      if (this.braking && speed < 0.1) this.braking = false
+      const onTheSpot = current.radius === 0 && !this.braking
+      // Handlers slow down into a turn and pick up the pace after it (the video: a 90° turn
+      // takes about a second, 180° two); on the spot they step slowly round.
+      controls = this.braking
+        ? { dog: dogGait('slow'), place: 'left', handler: 'stand' }
+        : {
+            dog: dogGait('slow'),
+            place: 'left',
+            handler: 'slow',
+            stay: onTheSpot,
+            maxSpeed: MAX_SPIN * (current.radius || PIVOT_RADIUS),
+          }
     } else {
       done = this.stepTime >= END_PAUSE
     }
 
-    const frame = this.animator.step(dt, controls)
-    this.last = frame
+    const advanced = this.animator.advance(dt, controls)
+    const moved = advanced.travelled - travelled
+    const frameWalked = advanced.walked
+
+    if (current && 'turn' in current) {
+      const sign = current.turn > 0 ? -1 : 1 // right = towards −x = heading decreasing
+      if (current.radius === 0 && this.braking) {
+        this.team = forward(this.team, moved)
+      } else if (current.radius === 0) {
+        const angle = Math.min((frameWalked - walked) / PIVOT_RADIUS, this.turnLeft)
+        this.team = { ...this.team, heading: this.team.heading + sign * angle }
+        this.turnLeft -= angle
+        this.team = forward(this.team, moved)
+      } else {
+        const arc = Math.min(moved, this.turnLeft * current.radius)
+        // The centre of the arc is to the side the team turns: left = +x of its frame.
+        const side = sign * current.radius
+        const cx = this.team.x + side * Math.cos(this.team.heading)
+        const cz = this.team.z - side * Math.sin(this.team.heading)
+        const turned = rotateAbout(this.team, cx, cz, (sign * arc) / current.radius)
+        this.team = forward(turned, moved - arc)
+        this.turnLeft -= arc / current.radius
+      }
+      done = this.turnLeft <= 1e-6
+    } else {
+      this.team = forward(this.team, moved)
+    }
+
     if (current && 'around' in current) {
-      this.offset = PATHS[current.around].at(frame.walked - this.walkedAtStart)
+      this.offset = PATHS[current.around].at(frameWalked - this.walkedAtStart)
     } else {
       // Back on the base place: whatever the path left over settles away.
       const k = 1 - Math.exp(-SETTLE_RATE * dt)
@@ -184,6 +281,28 @@ export class ExercisePlayer {
         heading: this.offset.heading * (1 - k),
       }
     }
+
+    // The bodies on the field; the animator puts legs under them. The dog keeps to its place
+    // at heel but its body moves only as its legs can carry it: it follows the place
+    // springily — exactly while the team walks on, a moment behind when the team turns
+    // sharply — and the frame says where it really is.
+    // …and no faster than its legs carry it: with a paw at the edge of its reach, the body
+    // waits for that paw to step.
+    const hold = Math.max(0.1, Math.min(1, (DOG_STRAIN_LIMIT - this.animator.dogStrain) / 0.25))
+    const dog = this.dogBody.follow(onField(this.team, advanced.place), dt, hold)
+    const frame = this.animator.pose(dt, controls, onField(this.team, this.offset), dog)
+    const c = Math.cos(this.team.heading)
+    const s = Math.sin(this.team.heading)
+    const dx = dog.x - this.team.x
+    const dz = dog.z - this.team.z
+    frame.dog = {
+      ...frame.dog,
+      x: c * dx - s * dz,
+      z: s * dx + c * dz,
+      heading: dog.heading - this.team.heading,
+    }
+    this.last = frame
+
     if (done) {
       this.index++
       this.stepTime = 0
@@ -193,6 +312,7 @@ export class ExercisePlayer {
     return {
       ...frame,
       handler: { ...frame.handler, ...this.offset },
+      team: this.team,
       caption: current?.caption ?? null,
       stepIndex: this.index,
       finished: this.index > steps.length,
@@ -201,15 +321,14 @@ export class ExercisePlayer {
 }
 
 /**
- * Where the team stands at the station — at rest after the first stop, when it walks on —
- * in metres walked. The card is placed relative to it.
+ * Where the station is — the place the exercise starts — in metres from the start: the
+ * walks before the first other step. The team walks there straight along +z.
  */
 export const stationOf = (exercise: Exercise): number => {
-  const player = new ExercisePlayer(exercise)
-  const firstStop = exercise.steps.findIndex((s) => 'stop' in s)
-  const walkOn = exercise.steps.findIndex((s, i) => i > firstStop && 'walk' in s)
-  let frame = player.step(0)
-  for (let i = 0; i < 60 * 60 && !frame.finished && frame.stepIndex < walkOn; i++)
-    frame = player.step(1 / 60)
-  return frame.travelled
+  let distance = 0
+  for (const step of exercise.steps) {
+    if (!('walk' in step)) break
+    distance += step.walk
+  }
+  return distance
 }

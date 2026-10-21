@@ -48,10 +48,23 @@ export const pathFromCurve = (
 /**
  * Around the dog sitting or lying at heel, "zepředu" (regulation p. 19, Z-004/Z-005): a step
  * forward, across in front of the dog, back along its far side, behind it and up to the
- * base place again. An ellipse through the handler's place: 0.45 m to the dog's middle,
- * 0.9 m ahead of and behind the handler — clear of a lying dog and its tail too.
+ * base place again. An ellipse through the handler's place, 1.1 m across (round enough for
+ * a person to walk without crossing their feet), 0.9 m ahead of and behind the handler —
+ * clear of a lying dog and its tail too. Round its tight ends the handler slows down.
  */
 export const AROUND_DOG: Path = pathFromCurve((t) => {
   const angle = 2 * Math.PI * t
-  return { x: 0.45 - 0.45 * Math.cos(angle), z: 0.9 * Math.sin(angle) }
+  return { x: 0.55 - 0.55 * Math.cos(angle), z: 0.9 * Math.sin(angle) }
 })
+
+/** How sharply the path bends over the next `ahead` metres from `s`, at most: radians per metre. */
+export const bendAhead = (path: Path, s: number, ahead = 0.4): number => {
+  const STEP = 0.05
+  let most = 0
+  for (let d = 0; d < ahead && s + d < path.length; d += STEP) {
+    const a = path.at(s + d).heading
+    const b = path.at(s + d + STEP).heading
+    most = Math.max(most, Math.abs(Math.atan2(Math.sin(b - a), Math.cos(b - a))) / STEP)
+  }
+  return most
+}

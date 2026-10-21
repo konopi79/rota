@@ -1,4 +1,7 @@
-import type { Box, Joint, Pose, Vec3 } from './rig'
+import { limitedLeg, type LegLimits } from './ik'
+import type { Body, FootSpec, FootState, StepGait } from './locomotion'
+import { angleTo } from './math'
+import { jointFrames, type Box, type Joint, type Pose, type Vec3 } from './rig'
 
 /**
  * A medium dog (border collie size, ~53 cm at the withers) out of boxes. The root joint
@@ -7,6 +10,13 @@ import type { Box, Joint, Pose, Vec3 } from './rig'
  */
 
 const box = (size: Vec3, at: Vec3, paint: Box['paint'] = 'coat'): Box => ({ size, at, paint })
+
+/** Leg segments, metres: foreleg upper and lower, hind thigh, shin and hock. */
+const FORE_UPPER = 0.17
+const FORE_LOWER = 0.18
+const THIGH = 0.16
+const SHIN = 0.16
+const HOCK = 0.09
 
 const paw = (side: 'left' | 'right'): Joint => ({
   name: '',
@@ -22,9 +32,9 @@ const frontLeg = (side: 'left' | 'right', x: number): Joint => ({
   children: [
     {
       name: `${side}Elbow`,
-      pivot: [0, -0.16, 0],
-      boxes: [box([0.06, 0.17, 0.06], [0, -0.085, 0])],
-      children: [{ ...paw(side), name: `${side}FrontPaw`, pivot: [0, -0.17, 0] }],
+      pivot: [0, -FORE_UPPER, 0],
+      boxes: [box([0.06, FORE_LOWER, 0.06], [0, -FORE_LOWER / 2, 0])],
+      children: [{ ...paw(side), name: `${side}FrontPaw`, pivot: [0, -FORE_LOWER, 0] }],
     },
   ],
 })
@@ -36,14 +46,14 @@ const hindLeg = (side: 'left' | 'right', x: number): Joint => ({
   children: [
     {
       name: `${side}Stifle`,
-      pivot: [0, -0.15, 0],
-      boxes: [box([0.065, 0.16, 0.065], [0, -0.075, 0])],
+      pivot: [0, -THIGH, 0],
+      boxes: [box([0.065, SHIN + 0.01, 0.065], [0, -SHIN / 2, 0])],
       children: [
         {
           name: `${side}Hock`,
-          pivot: [0, -0.15, 0],
+          pivot: [0, -SHIN, 0],
           boxes: [box([0.055, 0.1, 0.055], [0, -0.045, 0])],
-          children: [{ ...paw(side), name: `${side}HindPaw`, pivot: [0, -0.09, 0] }],
+          children: [{ ...paw(side), name: `${side}HindPaw`, pivot: [0, -HOCK, 0] }],
         },
       ],
     },
@@ -134,56 +144,134 @@ export const DOG_POSTURES: Record<DogPosture, Pose> = {
 
 export type DogGait = 'walk' | 'trot'
 
-/** Where in the cycle each leg is (0–1). Walk: four beats LH, LF, RH, RF; trot: diagonals. */
-const PHASES: Record<
-  DogGait,
-  Record<'leftHind' | 'leftFront' | 'rightHind' | 'rightFront', number>
-> = {
-  walk: { leftHind: 0, leftFront: 0.25, rightHind: 0.5, rightFront: 0.75 },
-  trot: { leftFront: 0, rightHind: 0, rightFront: 0.5, leftHind: 0.5 },
-}
+/**
+ * The trunk's height when the legs carry it (standing, walking, trotting): low enough for
+ * a straight foreleg to reach a paw half a stride ahead or behind.
+ */
+export const DOG_STANDING_HEIGHT = 0.4
 
-const REACH: Record<DogGait, number> = { walk: 0.32, trot: 0.45 }
-/** Shoulder to ground with the leg straight: the radius a planted paw swings about. */
-const LEG = 0.38
+const PAW_X = 0.065
+const FRONT_Z = 0.22
+const HIND_Z = -0.23
+/** Paw joint above the ground (the paw box below it). */
+const PAW_HEIGHT = 0.04
 
 /**
- * Ground covered in one gait cycle: a paw sweeps back 2·LEG·sin(reach) in half a cycle.
- * The animator advances the phase by distance / this, so the paws keep pace with the
- * ground at any speed.
+ * Which paws move together. The stepper counts a paw's cycle from its landing: in the walk
+ * they land left hind, left front, right hind, right front, a quarter cycle apart; in the
+ * trot the diagonal pairs land together. Order: left front, right front, left hind, right
+ * hind.
  */
-export const DOG_CYCLE_LENGTH: Record<DogGait, number> = {
-  walk: 4 * LEG * Math.sin(REACH.walk),
-  trot: 4 * LEG * Math.sin(REACH.trot),
+export const DOG_FEET: Record<DogGait, FootSpec[]> = {
+  walk: [
+    { name: 'leftFrontPaw', neutral: [PAW_X, FRONT_Z] },
+    { name: 'rightFrontPaw', neutral: [-PAW_X, FRONT_Z] },
+    { name: 'leftHindPaw', neutral: [PAW_X, HIND_Z] },
+    { name: 'rightHindPaw', neutral: [-PAW_X, HIND_Z] },
+  ],
+  // Trotting, a diagonal pair moves as one.
+  trot: [
+    { name: 'leftFrontPaw', neutral: [PAW_X, FRONT_Z], pair: 0 },
+    { name: 'rightFrontPaw', neutral: [-PAW_X, FRONT_Z], pair: 1 },
+    { name: 'leftHindPaw', neutral: [PAW_X, HIND_Z], pair: 1 },
+    { name: 'rightHindPaw', neutral: [-PAW_X, HIND_Z], pair: 0 },
+  ],
 }
 
-/** Speed of a dog moving on its own (the lab page, with the handler standing), m/s. */
-export const DOG_GAIT_SPEED: Record<DogGait, number> = { walk: 0.6, trot: 1.2 }
+/**
+ * A border collie trots at heel with long, easy strides, about two a second. Turning, each
+ * paw steps as far as its own place moves: the paws near the turn only shuffle round, the
+ * others step out; a planted paw turns a little on its pads.
+ */
+export const dogStep = (gait: DogGait): StepGait => ({
+  ...(gait === 'trot'
+    ? { stance: 0.5, cycleLength: 0.56, clearance: 0.07 }
+    : { stance: 0.6, cycleLength: 0.48, clearance: 0.05 }),
+  swingTime: gait === 'trot' ? 0.18 : 0.22,
+  pivot: 0.3,
+  // A dog's leg reaches little sideways (it swings out some 15°).
+  reachAside: 0.3,
+  // A trotting dog never has more than two paws in the air, a walking one mostly one.
+  support: gait === 'trot' ? 2 : 3,
+})
+
+/** A dog's legs hardly turn or swing sideways: about 20°, 20° out and 17° in (under the body). */
+const DOG_LIMITS: LegLimits = { yaw: 0.35, out: 0.35, in: 0.3 }
 
 /**
- * The swing a gait adds to the standing posture at `phase` (cycles): each leg swings
- * forward and back, the lower leg folds while it is carried forward.
+ * The leg angles that put the paws where the stepper has them, the trunk level at its
+ * standing height. Forelegs bend at the elbow backwards, hind legs at the stifle forwards
+ * with the hock kept upright.
  */
-export const dogGait = (gait: DogGait, phase: number): Pose => {
-  const reach = REACH[gait]
-  const lift = gait === 'trot' ? 0.9 : 0.6
-  const out: Pose = {}
-  for (const [leg, offset] of Object.entries(PHASES[gait])) {
-    const angle = 2 * Math.PI * (phase + offset)
-    // −sin: forward first; the leg travels forward (swing) while cos > 0.
-    const swing = -reach * Math.sin(angle)
-    const carry = lift * Math.max(0, Math.cos(angle))
-    const side = leg.startsWith('left') ? 'left' : 'right'
-    if (leg.endsWith('Front')) {
-      out[`${side}Shoulder`] = swing
-      out[`${side}Elbow`] = carry
+export const dogLegs = (feet: readonly FootState[], body: Body): Pose => {
+  const c = Math.cos(body.heading)
+  const s = Math.sin(body.heading)
+  const pose: Pose = {}
+  DOG_FEET.trot.forEach((spec, i) => {
+    const foot = feet[i]!
+    const dx = foot.x - body.x
+    const dz = foot.z - body.z
+    const paw: Vec3 = [
+      c * dx - s * dz,
+      PAW_HEIGHT + foot.lift - DOG_STANDING_HEIGHT,
+      s * dx + c * dz,
+    ]
+    const yaw = angleTo(body.heading, foot.yaw)
+    const side = spec.name.startsWith('left') ? 'left' : 'right'
+    const x = side === 'left' ? PAW_X : -PAW_X
+    if (spec.name.endsWith('FrontPaw')) {
+      const leg = limitedLeg(
+        [paw[0] - x, paw[1] + 0.05, paw[2] - FRONT_Z],
+        FORE_UPPER,
+        FORE_LOWER,
+        yaw,
+        'back',
+        DOG_LIMITS,
+        side,
+      )
+      pose[`${side}Shoulder`] = leg.hip
+      pose[`${side}Shoulder.yaw`] = leg.yaw
+      pose[`${side}Shoulder.roll`] = leg.roll
+      pose[`${side}Elbow`] = leg.knee
     } else {
-      out[`${side}Hip`] = swing
-      out[`${side}Stifle`] = carry
-      out[`${side}Hock`] = -carry * 0.6
+      // The hock stays upright in the leg's plane, so it leans with the leg when the leg
+      // swings out: the stifle and hip reach for its top, found in two passes.
+      const solve = (roll: number, turn: number) => {
+        const hock = [
+          HOCK * Math.sin(roll) * Math.cos(turn),
+          -HOCK * Math.cos(roll),
+          -HOCK * Math.sin(roll) * Math.sin(turn),
+        ]
+        return limitedLeg(
+          [paw[0] - hock[0]! - x, paw[1] - hock[1]! + 0.04, paw[2] - hock[2]! + 0.22],
+          THIGH,
+          SHIN,
+          yaw,
+          'forward',
+          DOG_LIMITS,
+          side,
+        )
+      }
+      const first = solve(0, 0)
+      const leg = solve(solve(first.roll, first.yaw).roll, first.yaw)
+      pose[`${side}Hip`] = leg.hip
+      pose[`${side}Hip.yaw`] = leg.yaw
+      pose[`${side}Hip.roll`] = leg.roll
+      pose[`${side}Stifle`] = leg.knee
+      pose[`${side}Hock`] = -(leg.hip + leg.knee)
     }
-  }
-  out.head = gait === 'trot' ? -0.15 : 0
-  out.tail = -0.15 * Math.sin(4 * Math.PI * phase)
-  return out
+    pose[`${spec.name}.yaw`] = yaw
+  })
+  return pose
+}
+
+/** Where the paws are on the ground in a pose (sitting, lying down), in DOG_FEET order. */
+export const dogPawsOnGround = (pose: Pose, body: Body) => {
+  const frames = jointFrames(DOG, pose)
+  const c = Math.cos(body.heading)
+  const s = Math.sin(body.heading)
+  return DOG_FEET.trot.map((spec) => {
+    const [x, , z] = frames.get(spec.name)!.position
+    return { x: body.x + c * x + s * z, z: body.z - s * x + c * z, yaw: body.heading }
+  })
 }

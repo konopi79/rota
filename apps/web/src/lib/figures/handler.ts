@@ -1,3 +1,6 @@
+import { limitedLeg, type LegLimits } from './ik'
+import type { Body, FootSpec, FootState, StepGait } from './locomotion'
+import { angleTo, ease } from './math'
 import { pitchPoint, type Box, type Joint, type Pose, type Vec3 } from './rig'
 
 /**
@@ -14,10 +17,13 @@ const LEG = THIGH + SHIN
 /** Sole corners relative to the ankle (y, z): where the foot touches the ground. */
 export const HEEL: [number, number] = [-0.08, -0.08]
 export const TOE: [number, number] = [-0.08, 0.2]
+/** The hip joints, left and right, below the pelvis root. */
+const HIP_X = 0.1
+const HIP_DROP = 0.04
 
 const leg = (side: 'left' | 'right', x: number): Joint => ({
   name: `${side}Hip`,
-  pivot: [x, -0.04, 0],
+  pivot: [x, -HIP_DROP, 0],
   boxes: [box([0.15, 0.44, 0.16], [0, -0.2, 0], 'trousers')],
   children: [
     {
@@ -72,14 +78,22 @@ export const HANDLER: Joint = {
             box([0.1, 0.06, 0.1], [0, 0.03, 0], 'skin'), // neck
             box([0.2, 0.22, 0.21], [0, 0.17, 0], 'skin'),
             box([0.04, 0.05, 0.04], [0, 0.15, 0.12], 'skin'), // nose: which way the head faces
+            box([0.035, 0.03, 0.01], [0.05, 0.195, 0.108], 'eye'),
+            box([0.035, 0.03, 0.01], [-0.05, 0.195, 0.108], 'eye'),
+            // Short hair: on top with a fringe, at the back and over the ears.
+            box([0.22, 0.05, 0.23], [0, 0.29, -0.005], 'hair'),
+            box([0.2, 0.03, 0.02], [0, 0.255, 0.106], 'hair'),
+            box([0.22, 0.15, 0.03], [0, 0.215, -0.11], 'hair'),
+            box([0.02, 0.09, 0.12], [0.105, 0.235, -0.045], 'hair'),
+            box([0.02, 0.09, 0.12], [-0.105, 0.235, -0.045], 'hair'),
           ],
         },
         arm('left', 0.25),
         arm('right', -0.25),
       ],
     },
-    leg('left', 0.1),
-    leg('right', -0.1),
+    leg('left', HIP_X),
+    leg('right', -HIP_X),
   ],
 }
 
@@ -94,154 +108,199 @@ export const HANDLER_STAND: Pose = {
 
 export type HandlerPace = 'slow' | 'normal' | 'fast'
 
-type Gait = {
-  /** Step cycles per second. */
+type Pace = {
+  /** How much further back the feet land walking than standing, metres. */
+  backShift: number
+  /** Step cycles per second at full speed. */
   rate: number
+  /** Metres walked per step cycle. */
+  cycleLength: number
   /** Share of the cycle a foot is on the ground. */
   stance: number
-  /** How far a planted foot travels back under the hips, metres. */
-  stride: number
-  /** The heel lands this far ahead of the hip. */
-  reach: number
-  /** Share of the stance after which the heel lifts and the foot rolls over the toes. */
-  heelOff: number
   /** Toes up as the heel lands (negative) and down as the foot pushes off, radians. */
   strike: number
   pushOff: number
-  /** How much higher than the straight line between steps the ankle is carried. */
+  /** How high a full step lifts the heel, metres. */
   clearance: number
+  /** How far the arms swing forward and back, radians. */
+  arms: number
 }
 
-export const HANDLER_GAITS: Record<HandlerPace, Gait> = {
+const PACES: Record<HandlerPace, Pace> = {
   slow: {
+    backShift: 0.05,
     rate: 0.6,
+    cycleLength: 0.8,
     stance: 0.65,
-    stride: 0.52,
-    reach: 0.13,
-    heelOff: 0.6,
     strike: -0.2,
     pushOff: 0.4,
-    clearance: 0.05,
+    clearance: 0.1,
+    arms: 0.24,
   },
   normal: {
+    backShift: 0.11,
     rate: 0.95,
+    cycleLength: 1.2,
     stance: 0.6,
-    stride: 0.72,
-    reach: 0.17,
-    heelOff: 0.55,
     strike: -0.3,
     pushOff: 0.55,
-    clearance: 0.07,
+    clearance: 0.12,
+    arms: 0.34,
   },
   fast: {
+    backShift: 0.14,
     rate: 1.3,
+    cycleLength: 1.53,
     stance: 0.55,
-    stride: 0.84,
-    reach: 0.2,
-    heelOff: 0.5,
     strike: -0.35,
     pushOff: 0.7,
-    clearance: 0.1,
+    clearance: 0.15,
+    arms: 0.48,
   },
 }
 
-/** 0 → 1 with zero slope at both ends. */
-const ease = (x: number) => {
-  const t = Math.min(1, Math.max(0, x))
-  return t * t * (3 - 2 * t)
-}
-
-/**
- * The ankle at `p` (0–1) of a step cycle — height above the ground (y) and distance ahead
- * of the hip (z) — and the foot's pitch (positive = toes down).
- *
- * On the ground the foot rolls like a real one: it lands on the heel with the toes up,
- * lowers the sole, then lifts the heel and pushes off over the toes. Whichever point
- * carries the weight — heel, then toes — moves back at exactly the walking speed, so it
- * stays put on the ground. In the air the ankle swings forward in an arc while the foot
- * turns from toes-down to toes-up for the next landing.
- */
-export const handlerFoot = (pace: HandlerPace, p: number) => {
-  const g = HANDLER_GAITS[pace]
-  const stanceAt = (q: number) => {
-    const heelZ = g.reach - g.stride * q
-    let pitch = 0
-    let contact = HEEL
-    let contactZ = heelZ
-    if (q < 0.15) pitch = g.strike * (1 - ease(q / 0.15))
-    else if (q > g.heelOff) {
-      pitch = g.pushOff * ease((q - g.heelOff) / (1 - g.heelOff))
-      contact = TOE
-      contactZ = heelZ + (TOE[1] - HEEL[1])
-    }
-    const [cy, cz] = pitchPoint(contact[0], contact[1], pitch)
-    return { y: -cy, z: contactZ - cz, pitch }
-  }
-  if (p < g.stance) return stanceAt(p / g.stance)
-  const u = (p - g.stance) / (1 - g.stance)
-  const from = stanceAt(1)
-  const to = stanceAt(0)
-  const pitch =
-    u < 0.35 ? from.pitch * (1 - ease(u / 0.35)) : u > 0.7 ? to.pitch * ease((u - 0.7) / 0.3) : 0
-  return {
-    y: from.y + (to.y - from.y) * u + g.clearance * Math.sin(Math.PI * u),
-    z: from.z + (to.z - from.z) * ease(u),
-    pitch,
-  }
-}
-
-/**
- * Most a walking leg is stretched: nearly straight, but never locked — so the hips rise
- * over the planted foot and dip while both feet are on the ground, as in real walking.
- */
-const WALKING_LEG = LEG * 0.996
-
-/** Hip and knee angles that put the ankle at (y, z) from the hip joint; the knee bends forward. */
-const legAngles = (y: number, z: number) => {
-  const d = Math.min(Math.hypot(y, z), LEG * 0.9999)
-  const towards = Math.atan2(-z, -y) // from straight down, positive = back
-  const thigh = Math.acos((THIGH ** 2 + d ** 2 - SHIN ** 2) / (2 * THIGH * d))
-  const knee = Math.acos((THIGH ** 2 + SHIN ** 2 - d ** 2) / (2 * THIGH * SHIN))
-  return { hip: towards - thigh, knee: Math.PI - knee }
-}
-
-const paceOf = (g: Gait) => ({ speed: (g.stride * g.rate) / g.stance, rate: g.rate })
-
-/** Walking speed in m/s — how fast a planted foot moves back; the ground slides at it. */
+/** Walking speed in m/s and step cycles per second for each pace. */
 export const HANDLER_PACE: Record<HandlerPace, { speed: number; rate: number }> = {
-  slow: paceOf(HANDLER_GAITS.slow),
-  normal: paceOf(HANDLER_GAITS.normal),
-  fast: paceOf(HANDLER_GAITS.fast),
+  slow: { speed: PACES.slow.rate * PACES.slow.cycleLength, rate: PACES.slow.rate },
+  normal: { speed: PACES.normal.rate * PACES.normal.cycleLength, rate: PACES.normal.rate },
+  fast: { speed: PACES.fast.rate * PACES.fast.cycleLength, rate: PACES.fast.rate },
 }
 
-/** How far the arms swing forward and back, radians. */
-const ARM_SWING: Record<HandlerPace, number> = { slow: 0.24, normal: 0.34, fast: 0.48 }
+/** The stepper tracks each foot by its heel's point on the ground. */
+export const HANDLER_FEET: FootSpec[] = [
+  { name: 'leftFoot', neutral: [HIP_X, HEEL[1]] },
+  { name: 'rightFoot', neutral: [-HIP_X, HEEL[1]] },
+]
 
 /**
- * The pose walking sets on top of the standing pose at `phase` (step cycles; the left heel
- * lands at whole numbers). One cycle covers `speed / rate` metres.
+ * A step in the air takes as long as at the pace's cadence: a stride cycle is two steps,
+ * each foot in the air for the share of it it is not down.
  */
-export const handlerGait = (pace: HandlerPace, phase: number): Pose => {
-  const out: Pose = { spine: pace === 'fast' ? 0.12 : 0.03 }
-  const feet = (
-    [
-      ['left', 0],
-      ['right', 0.5],
-    ] as const
-  ).map(([side, offset]) => {
-    const p = (((phase + offset) % 1) + 1) % 1
-    return { side, p, ...handlerFoot(pace, p) }
+export const handlerStep = (pace: HandlerPace): StepGait => ({
+  stance: PACES[pace].stance,
+  cycleLength: PACES[pace].cycleLength,
+  clearance: PACES[pace].clearance,
+  swingTime: (1 - PACES[pace].stance) / PACES[pace].rate,
+  doubleSupport: 0.08,
+  backShift: PACES[pace].backShift,
+  // Turning on the spot, a person sets the stepping foot well into the new direction and
+  // turns a little on the planted heel (řád p. 9: a 90° turn is one such step).
+  pivot: 0.5,
+})
+
+/** A human hip: turns the leg about 40° either way, swings it 25° out and 20° in. */
+const HIP_LIMITS: LegLimits = { yaw: 0.69, out: 0.45, in: 0.35 }
+
+/** The longest a walking leg stretches: nearly straight, never locked. */
+const WALKING_LEG = LEG * 0.996
+/** The pelvis root standing straight: ankle height + leg + hip joint. */
+const STANDING = 0.08 + WALKING_LEG + HIP_DROP
+/**
+ * Walking, a person keeps the knees a little soft and the pelvis this much lower than
+ * standing (metres, at full pace): it then rides level over the planted leg and dips only
+ * as far as the spread feet need, instead of bobbing up to full height every step.
+ */
+const WALK_SINK = 0.012
+
+/**
+ * The legs, feet and arms that put the feet where the stepper has them. The feet roll
+ * like real ones in proportion to the step: on the heel with the toes up as they land,
+ * flat, then over the toes as they push off; short steps (turning on the spot) hardly
+ * roll. The pelvis is as high as both legs still reach their ankles, so it rises over the
+ * planted leg and dips while both feet are down.
+ */
+export const handlerPose = (
+  feet: readonly FootState[],
+  body: Body,
+  pace: HandlerPace,
+  cycle: number,
+  motion: number,
+  /** Each foot's pitch last frame and how far it may change by now: feet never snap. */
+  previous?: { pitch: readonly number[]; maxChange: number; pelvis: number; maxRise: number },
+): Pose => {
+  const p = PACES[pace]
+  const ankles = feet.map((foot, i) => {
+    // A short step lands flatter than a full one…
+    const k = Math.min(1, foot.step / (p.cycleLength * p.stance))
+    // …and a foot pushes off as far as it is left behind the body, however long the step
+    // that put it there (the half step setting off is followed by a full push-off).
+    const behind =
+      -((foot.x - body.x) * Math.sin(body.heading) + (foot.z - body.z) * Math.cos(body.heading)) +
+      HEEL[1]
+    const push = Math.min(1, Math.max(0, behind) / (p.cycleLength * p.stance * 0.5))
+    let pitch = 0
+    if (foot.swing === null) {
+      // On the ground the foot rolls only while the body moves over it: standing, it is flat.
+      const rolling = Math.min(1, 2 * motion)
+      const q = foot.stance
+      if (q < 0.15) pitch = p.strike * k * rolling * (1 - ease(q / 0.15))
+      else if (q > 0.55) pitch = p.pushOff * push * rolling * ease((q - 0.55) / 0.45)
+    } else {
+      const u = foot.swing
+      if (u < 0.35) pitch = p.pushOff * push * (1 - ease(u / 0.35))
+      else if (u > 0.7) pitch = p.strike * k * ease((u - 0.7) / 0.3)
+    }
+    if (previous) {
+      const before = previous.pitch[i] ?? 0
+      pitch = before + Math.max(-previous.maxChange, Math.min(previous.maxChange, pitch - before))
+    }
+    // From the point carrying the weight back to the ankle: the toes while the foot is
+    // tipped forward (pushing off, just lifted), otherwise the heel.
+    const onToes = pitch > 0
+    const fx = Math.sin(foot.yaw)
+    const fz = Math.cos(foot.yaw)
+    const reach = TOE[1] - HEEL[1]
+    const [py, pz] = onToes
+      ? pitchPoint(TOE[0], TOE[1], pitch)
+      : pitchPoint(HEEL[0], HEEL[1], pitch)
+    const cx = foot.x + (onToes ? fx * reach : 0)
+    const cz = foot.z + (onToes ? fz * reach : 0)
+    const wx = cx - fx * pz
+    const wz = cz - fz * pz
+    // Into the body's frame.
+    const dx = wx - body.x
+    const dz = wz - body.z
+    const c = Math.cos(body.heading)
+    const s = Math.sin(body.heading)
+    return {
+      x: c * dx - s * dz,
+      y: foot.lift - py,
+      z: s * dx + c * dz,
+      pitch,
+      yaw: angleTo(body.heading, foot.yaw),
+    }
   })
-  // The hips as high as both legs still reach their ankles.
-  const hips = Math.min(...feet.map((f) => f.y + Math.sqrt(WALKING_LEG ** 2 - f.z ** 2)))
-  for (const { side, p, ...foot } of feet) {
-    const { hip, knee } = legAngles(foot.y - hips, foot.z)
-    out[`${side}Hip`] = hip
-    out[`${side}Knee`] = knee
-    out[`${side}Foot`] = foot.pitch
-    // Arms swing against the leg of the same side: furthest back as its heel lands (p = 0).
-    out[`${side}Shoulder`] = ARM_SWING[pace] * Math.cos(2 * Math.PI * p)
-    out[`${side}Elbow`] = pace === 'fast' ? -1.2 : -0.1
+
+  const hipX = [HIP_X, -HIP_X]
+  // As high as both legs reach — and rising no faster than a person rises off the back
+  // foot: it drops when it must, but never pops up as a foot lifts.
+  const pelvis = Math.min(
+    STANDING - WALK_SINK * motion,
+    previous ? previous.pelvis + previous.maxRise : Infinity,
+    ...ankles.map((a, i) => {
+      const flat = Math.hypot(a.x - hipX[i]!, a.z)
+      return a.y + Math.sqrt(Math.max(0, WALKING_LEG ** 2 - flat ** 2)) + HIP_DROP
+    }),
+  )
+
+  const pose: Pose = {
+    ...HANDLER_STAND,
+    spine: (pace === 'fast' ? 0.12 : 0.03) * motion,
   }
-  return out
+  ;(['left', 'right'] as const).forEach((side, i) => {
+    const a = ankles[i]!
+    const target: Vec3 = [a.x - hipX[i]!, a.y - (pelvis - HIP_DROP), a.z]
+    const legAngles = limitedLeg(target, THIGH, SHIN, a.yaw, 'forward', HIP_LIMITS, side)
+    pose[`${side}Hip`] = legAngles.hip
+    pose[`${side}Hip.yaw`] = legAngles.yaw
+    pose[`${side}Hip.roll`] = legAngles.roll
+    pose[`${side}Knee`] = legAngles.knee
+    pose[`${side}Foot`] = a.pitch
+    pose[`${side}Foot.yaw`] = a.yaw
+    // Arms swing against the legs: the arm is back as far as its leg is ahead of the other.
+    const apart = (ankles[i]!.z - ankles[1 - i]!.z) / (p.cycleLength * p.stance)
+    pose[`${side}Shoulder`] = p.arms * Math.max(-1.2, Math.min(1.2, apart))
+    pose[`${side}Elbow`] = -0.25 - (pace === 'fast' ? 1.2 : 0.1) * motion
+  })
+  return pose
 }
