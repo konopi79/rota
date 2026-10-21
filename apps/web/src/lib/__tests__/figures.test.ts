@@ -3,12 +3,23 @@ import { describe, expect, test } from 'bun:test'
 import { DOG, DOG_POSTURES, dogGait, type DogPosture } from '../figures/dog'
 import {
   HANDLER,
+  HANDLER_GAITS,
   HANDLER_PACE,
   HANDLER_STAND,
+  HEEL,
+  TOE,
   handlerGait,
   type HandlerPace,
 } from '../figures/handler'
-import { jointNames, lowestPoint, resolvePose, type Joint, type Pose } from '../figures/rig'
+import {
+  jointFrames,
+  jointNames,
+  lowestPoint,
+  pitchPoint,
+  resolvePose,
+  type Joint,
+  type Pose,
+} from '../figures/rig'
 import { TeamAnimator } from '../figures/team'
 
 /** The figure with only the named top-level limbs (and no root boxes). */
@@ -100,6 +111,33 @@ describe('handler', () => {
         }),
       )
       expect(highest).toBeGreaterThan(0.08)
+    },
+  )
+
+  test.each<HandlerPace>(['slow', 'normal', 'fast'])(
+    '%s: the planted heel, then the toes, stay put on the sliding ground',
+    (pace) => {
+      const { rate, stance, heelOff } = HANDLER_GAITS[pace]
+      const { speed } = HANDLER_PACE[pace]
+      // Ground position of a sole corner of the left foot at time t: on the ground (y = 0)
+      // and, the ground sliding back at `speed`, at the same spot all the time.
+      const corner = (t: number, [cy, cz]: [number, number]) => {
+        const pose = { ...HANDLER_STAND, ...handlerGait(pace, t) }
+        const foot = jointFrames(HANDLER, pose).get('leftFoot')!
+        const [dy, dz] = pitchPoint(cy, cz, foot.pitch)
+        return { y: foot.y + dy - lowestPoint(HANDLER, pose), z: foot.z + dz + speed * t }
+      }
+      for (const [from, to, point] of [
+        [0, heelOff * stance, HEEL],
+        [(heelOff + 0.01) * stance, stance * 0.99, TOE],
+      ] as const) {
+        const first = corner(from / rate, point)
+        for (let p = from; p <= to; p += 0.01) {
+          const now = corner(p / rate, point)
+          expect(now.y).toBeLessThan(0.002)
+          expect(Math.abs(now.z - first.z)).toBeLessThan(0.005)
+        }
+      }
     },
   )
 })

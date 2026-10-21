@@ -1,12 +1,19 @@
-import type { Box, Joint, Pose, Vec3 } from './rig'
+import { pitchPoint, type Box, type Joint, type Pose, type Vec3 } from './rig'
 
 /**
  * The handler (~1.78 m) out of boxes. The root joint is the centre of the pelvis. Feet
- * stay level and have a toe cap, so a step, a turn on the spot or a step back reads from
- * the feet; the shoes are marked by side like the dog's paws.
+ * have a toe cap, so a step, a turn on the spot or a step back reads from the feet; the
+ * shoes are marked by side like the dog's paws.
  */
 
 const box = (size: Vec3, at: Vec3, paint: Box['paint']): Box => ({ size, at, paint })
+
+const THIGH = 0.42
+const SHIN = 0.4
+const LEG = THIGH + SHIN
+/** Sole corners relative to the ankle (y, z): where the foot touches the ground. */
+export const HEEL: [number, number] = [-0.08, -0.08]
+export const TOE: [number, number] = [-0.08, 0.2]
 
 const leg = (side: 'left' | 'right', x: number): Joint => ({
   name: `${side}Hip`,
@@ -15,12 +22,12 @@ const leg = (side: 'left' | 'right', x: number): Joint => ({
   children: [
     {
       name: `${side}Knee`,
-      pivot: [0, -0.42, 0],
+      pivot: [0, -THIGH, 0],
       boxes: [box([0.12, 0.42, 0.12], [0, -0.2, 0], 'trousers')],
       children: [
         {
           name: `${side}Foot`,
-          pivot: [0, -0.4, 0],
+          pivot: [0, -SHIN, 0],
           level: true,
           boxes: [
             box([0.11, 0.08, 0.2], [0, -0.04, 0.02], 'shoe'),
@@ -87,61 +94,143 @@ export const HANDLER_STAND: Pose = {
 
 export type HandlerPace = 'slow' | 'normal' | 'fast'
 
-/** Hip joint to ankle: the radius the foot on the ground swings about. */
-const LEG = 0.82
-
 type Gait = {
   /** Step cycles per second. */
   rate: number
-  /** The thigh swings from −reach (forward) to +reach (back), radians. */
-  reach: number
   /** Share of the cycle a foot is on the ground. */
   stance: number
-  /** Knee bend at mid-swing, radians — how high the foot is carried. */
-  knee: number
+  /** How far a planted foot travels back under the hips, metres. */
+  stride: number
+  /** The heel lands this far ahead of the hip. */
+  reach: number
+  /** Share of the stance after which the heel lifts and the foot rolls over the toes. */
+  heelOff: number
+  /** Toes up as the heel lands (negative) and down as the foot pushes off, radians. */
+  strike: number
+  pushOff: number
+  /** How much higher than the straight line between steps the ankle is carried. */
+  clearance: number
 }
 
-const GAITS: Record<HandlerPace, Gait> = {
-  slow: { rate: 0.6, reach: 0.3, stance: 0.6, knee: 0.75 },
-  normal: { rate: 0.95, reach: 0.42, stance: 0.55, knee: 0.95 },
-  fast: { rate: 1.4, reach: 0.55, stance: 0.5, knee: 1.15 },
+export const HANDLER_GAITS: Record<HandlerPace, Gait> = {
+  slow: {
+    rate: 0.6,
+    stance: 0.65,
+    stride: 0.46,
+    reach: 0.2,
+    heelOff: 0.6,
+    strike: -0.2,
+    pushOff: 0.4,
+    clearance: 0.05,
+  },
+  normal: {
+    rate: 0.95,
+    stance: 0.6,
+    stride: 0.62,
+    reach: 0.26,
+    heelOff: 0.55,
+    strike: -0.3,
+    pushOff: 0.55,
+    clearance: 0.07,
+  },
+  fast: {
+    rate: 1.3,
+    stance: 0.55,
+    stride: 0.8,
+    reach: 0.32,
+    heelOff: 0.5,
+    strike: -0.35,
+    pushOff: 0.7,
+    clearance: 0.1,
+  },
+}
+
+/** 0 → 1 with zero slope at both ends. */
+const ease = (x: number) => {
+  const t = Math.min(1, Math.max(0, x))
+  return t * t * (3 - 2 * t)
 }
 
 /**
- * Walking speed in m/s: how fast the foot on the ground moves back. The ground slides at
- * this speed, so the planted foot stays put on it instead of shuffling.
+ * The ankle at `p` (0–1) of a step cycle — height above the ground (y) and distance ahead
+ * of the hip (z) — and the foot's pitch (positive = toes down).
+ *
+ * On the ground the foot rolls like a real one: it lands on the heel with the toes up,
+ * lowers the sole, then lifts the heel and pushes off over the toes. Whichever point
+ * carries the weight — heel, then toes — moves back at exactly the walking speed, so it
+ * stays put on the ground. In the air the ankle swings forward in an arc while the foot
+ * turns from toes-down to toes-up for the next landing.
  */
-const speedOf = ({ rate, reach, stance }: Gait) => (2 * LEG * Math.sin(reach) * rate) / stance
-
-export const HANDLER_PACE: Record<HandlerPace, { speed: number; rate: number }> = {
-  slow: { speed: speedOf(GAITS.slow), rate: GAITS.slow.rate },
-  normal: { speed: speedOf(GAITS.normal), rate: GAITS.normal.rate },
-  fast: { speed: speedOf(GAITS.fast), rate: GAITS.fast.rate },
-}
-
-/**
- * The swing walking adds to the standing pose at time `t` (seconds). Each leg is planted
- * and straight for the stance — the thigh sweeps back at an even speed, so the foot keeps
- * pace with the ground — then lifted: the knee bends and the thigh swings forward again.
- */
-export const handlerGait = (pace: HandlerPace, t: number): Pose => {
-  const { rate, reach, stance, knee } = GAITS[pace]
-  const out: Pose = { spine: pace === 'fast' ? 0.15 : 0.03 }
-  for (const [side, offset] of [
-    ['left', 0],
-    ['right', 0.5],
-  ] as const) {
-    const p = (((t * rate + offset) % 1) + 1) % 1
-    let hip: number
-    if (p < stance) {
-      hip = -reach + (2 * reach * p) / stance
-      out[`${side}Knee`] = 0
-    } else {
-      const u = (p - stance) / (1 - stance)
-      hip = reach * Math.cos(Math.PI * u)
-      out[`${side}Knee`] = knee * Math.sin(Math.PI * u)
+export const handlerFoot = (pace: HandlerPace, p: number) => {
+  const g = HANDLER_GAITS[pace]
+  const stanceAt = (q: number) => {
+    const heelZ = g.reach - g.stride * q
+    let pitch = 0
+    let contact = HEEL
+    let contactZ = heelZ
+    if (q < 0.15) pitch = g.strike * (1 - ease(q / 0.15))
+    else if (q > g.heelOff) {
+      pitch = g.pushOff * ease((q - g.heelOff) / (1 - g.heelOff))
+      contact = TOE
+      contactZ = heelZ + (TOE[1] - HEEL[1])
     }
+    const [cy, cz] = pitchPoint(contact[0], contact[1], pitch)
+    return { y: -cy, z: contactZ - cz, pitch }
+  }
+  if (p < g.stance) return stanceAt(p / g.stance)
+  const u = (p - g.stance) / (1 - g.stance)
+  const from = stanceAt(1)
+  const to = stanceAt(0)
+  const pitch =
+    u < 0.35 ? from.pitch * (1 - ease(u / 0.35)) : u > 0.7 ? to.pitch * ease((u - 0.7) / 0.3) : 0
+  return {
+    y: from.y + (to.y - from.y) * u + g.clearance * Math.sin(Math.PI * u),
+    z: from.z + (to.z - from.z) * ease(u),
+    pitch,
+  }
+}
+
+/**
+ * Most a walking leg is stretched: nearly straight, but never locked — so the hips rise
+ * over the planted foot and dip while both feet are on the ground, as in real walking.
+ */
+const WALKING_LEG = LEG * 0.985
+
+/** Hip and knee angles that put the ankle at (y, z) from the hip joint; the knee bends forward. */
+const legAngles = (y: number, z: number) => {
+  const d = Math.min(Math.hypot(y, z), LEG * 0.9999)
+  const towards = Math.atan2(-z, -y) // from straight down, positive = back
+  const thigh = Math.acos((THIGH ** 2 + d ** 2 - SHIN ** 2) / (2 * THIGH * d))
+  const knee = Math.acos((THIGH ** 2 + SHIN ** 2 - d ** 2) / (2 * THIGH * SHIN))
+  return { hip: towards - thigh, knee: Math.PI - knee }
+}
+
+const paceOf = (g: Gait) => ({ speed: (g.stride * g.rate) / g.stance, rate: g.rate })
+
+/** Walking speed in m/s — how fast a planted foot moves back; the ground slides at it. */
+export const HANDLER_PACE: Record<HandlerPace, { speed: number; rate: number }> = {
+  slow: paceOf(HANDLER_GAITS.slow),
+  normal: paceOf(HANDLER_GAITS.normal),
+  fast: paceOf(HANDLER_GAITS.fast),
+}
+
+/** The pose walking sets on top of the standing pose at time `t` (seconds). */
+export const handlerGait = (pace: HandlerPace, t: number): Pose => {
+  const { rate } = HANDLER_GAITS[pace]
+  const out: Pose = { spine: pace === 'fast' ? 0.12 : 0.03 }
+  const feet = (
+    [
+      ['left', 0],
+      ['right', 0.5],
+    ] as const
+  ).map(([side, offset]) => ({ side, ...handlerFoot(pace, (((t * rate + offset) % 1) + 1) % 1) }))
+  // The hips as high as both legs still reach their ankles.
+  const hips = Math.min(...feet.map((f) => f.y + Math.sqrt(WALKING_LEG ** 2 - f.z ** 2)))
+  for (const { side, ...foot } of feet) {
+    const { hip, knee } = legAngles(foot.y - hips, foot.z)
     out[`${side}Hip`] = hip
+    out[`${side}Knee`] = knee
+    out[`${side}Foot`] = foot.pitch
     // Arms swing against the leg of the same side.
     out[`${side}Shoulder`] = -0.8 * hip
     out[`${side}Elbow`] = pace === 'fast' ? -1.2 : -0.1

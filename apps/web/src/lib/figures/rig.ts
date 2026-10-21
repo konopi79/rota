@@ -29,8 +29,8 @@ export type Joint = {
   pivot: Vec3
   boxes: Box[]
   /**
-   * The joint keeps its boxes level with the ground whatever its parents do (feet, paws):
-   * its own angle is set to cancel the pitch it inherits.
+   * The joint's pitch is measured from the ground, not from its parent (feet, paws): with
+   * no angle in the pose its boxes stay level whatever the leg above does.
    */
   level?: boolean
   children?: Joint[]
@@ -45,18 +45,43 @@ export const jointNames = (root: Joint): string[] => [
   ...(root.children ?? []).flatMap(jointNames),
 ]
 
-/**
- * The angle actually applied to each joint: the pose, with `level` joints overridden so
- * that their world pitch is 0.
- */
+/** A point (y, z) turned by `pitch` about the x axis. */
+export const pitchPoint = (y: number, z: number, pitch: number): [number, number] => [
+  y * Math.cos(pitch) - z * Math.sin(pitch),
+  y * Math.sin(pitch) + z * Math.cos(pitch),
+]
+
+/** The angle actually applied to each joint: `level` joints have the inherited pitch removed. */
 export const resolvePose = (root: Joint, pose: Pose): Pose => {
   const out: Pose = {}
   const walk = (joint: Joint, inherited: number) => {
-    const angle = joint.level ? -inherited : (pose[joint.name] ?? 0)
+    const angle = (pose[joint.name] ?? 0) - (joint.level ? inherited : 0)
     out[joint.name] = angle
     for (const child of joint.children ?? []) walk(child, inherited + angle)
   }
   walk(root, 0)
+  return out
+}
+
+/** Where each joint is (y, z) and its world pitch, with the root joint at the origin. */
+export const jointFrames = (
+  root: Joint,
+  pose: Pose,
+): Map<string, { joint: Joint; y: number; z: number; pitch: number }> => {
+  const angles = resolvePose(root, pose)
+  const out = new Map<string, { joint: Joint; y: number; z: number; pitch: number }>()
+  const walk = (joint: Joint, oy: number, oz: number, parentPitch: number) => {
+    const [dy, dz] = pitchPoint(joint.pivot[1], joint.pivot[2], parentPitch)
+    const frame = {
+      joint,
+      y: oy + dy,
+      z: oz + dz,
+      pitch: parentPitch + (angles[joint.name] ?? 0),
+    }
+    out.set(joint.name, frame)
+    for (const child of joint.children ?? []) walk(child, frame.y, frame.z, frame.pitch)
+  }
+  walk(root, 0, 0, 0)
   return out
 }
 
@@ -65,29 +90,17 @@ export const resolvePose = (root: Joint, pose: Pose): Pose => {
  * root by minus this, so the figure stands — or sits, or lies — on the ground in any pose.
  */
 export const lowestPoint = (root: Joint, pose: Pose): number => {
-  const angles = resolvePose(root, pose)
   let lowest = Infinity
-  // Rotation about x by θ: y' = y cos θ − z sin θ, z' = y sin θ + z cos θ.
-  const walk = (joint: Joint, oy: number, oz: number, parentPitch: number) => {
-    const [, py, pz] = joint.pivot
-    const c0 = Math.cos(parentPitch)
-    const s0 = Math.sin(parentPitch)
-    const y = oy + py * c0 - pz * s0
-    const z = oz + py * s0 + pz * c0
-    const pitch = parentPitch + (angles[joint.name] ?? 0)
-    const c = Math.cos(pitch)
-    const s = Math.sin(pitch)
+  for (const { joint, y, pitch } of jointFrames(root, pose).values()) {
     for (const box of joint.boxes) {
       const [, h, d] = box.size
       for (const cy of [box.at[1] - h / 2, box.at[1] + h / 2]) {
         for (const cz of [box.at[2] - d / 2, box.at[2] + d / 2]) {
-          lowest = Math.min(lowest, y + cy * c - cz * s)
+          lowest = Math.min(lowest, y + pitchPoint(cy, cz, pitch)[0])
         }
       }
     }
-    for (const child of joint.children ?? []) walk(child, y, z, pitch)
   }
-  walk(root, 0, 0, 0)
   return lowest
 }
 
