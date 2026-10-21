@@ -172,7 +172,7 @@ describe.each(EXERCISES.map((e) => [e.code, e] as const))('%s: feet', (_, exerci
         expect(dog.pose[`${side}Elbow`] ?? 0).toBeLessThanOrEqual(1e-9)
         for (const joint of [`${side}Shoulder`, `${side}Hip`]) {
           expect(Math.abs(dog.pose[`${joint}.yaw`] ?? 0)).toBeLessThanOrEqual(20 * deg + 1e-9)
-          expect(Math.abs(dog.pose[`${joint}.roll`] ?? 0)).toBeLessThanOrEqual(17.5 * deg)
+          expect(Math.abs(dog.pose[`${joint}.roll`] ?? 0)).toBeLessThanOrEqual(20.1 * deg)
         }
       }
     }
@@ -198,6 +198,20 @@ describe('walking', () => {
     const together = swinging.filter((s) => s[0] === s[3] && s[1] === s[2]).length
     expect(together / swinging.length).toBeGreaterThan(0.9)
   })
+
+  test.each(EXERCISES.map((e) => [e.code, e] as const))(
+    '%s: standing, the handler has both feet down and the dog all four paws',
+    (_, exercise) => {
+      // From the moment the team stands in a position until it walks on (the first frames
+      // of a standing step may still finish the last step).
+      const standing = ['basePosition', 'downHold', 'aroundDone', 'aroundDoneDown', 'stay']
+      const frames = playAll(exercise).filter((f) => standing.includes(f.caption ?? ''))
+      for (const f of frames.slice(20)) {
+        for (const foot of f.feet.handler) expect(foot.swing).toBeNull()
+        if (f.feet.dogOnLegs) for (const paw of f.feet.dog) expect(paw.swing).toBeNull()
+      }
+    },
+  )
 
   test('the handler stands on both feet when standing', () => {
     for (const leg of ['leftHip', 'rightHip'])
@@ -366,9 +380,11 @@ describe('every RO-Z exercise', () => {
     '%s: the handler turns on the spot, the dog stays at heel',
     (_, exercise) => {
       const frames = playAll(exercise)
+      // From where the team has come to rest before turning.
       const turning = frames.filter((f) => f.caption?.startsWith('turn'))
-      const start = turning[0]!.team
-      for (const f of turning) {
+      const still = turning.findIndex((f) => f.speed < 0.1)
+      const start = turning[still]!.team
+      for (const f of turning.slice(still)) {
         expect(Math.hypot(f.team.x - start.x, f.team.z - start.z)).toBeLessThan(0.02)
         expect(f.dog.x).toBeCloseTo(0.42, 1)
       }

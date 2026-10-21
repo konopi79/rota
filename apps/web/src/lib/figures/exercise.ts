@@ -1,5 +1,6 @@
 import type { DogPosture } from './dog'
 import type { HandlerPace } from './handler'
+import { angleTo } from './math'
 import { AROUND_DOG, type Path } from './paths'
 import { SETTLE_RATE, TeamAnimator, onField, type TeamControls, type TeamFrame } from './team'
 
@@ -78,6 +79,54 @@ const forward = (p: Pose, d: number): Pose => ({
 })
 
 /**
+ * A body that follows a moving target like a critically damped spring with the target's
+ * own velocity fed forward: no lag at a steady pace, a smooth catch-up after a jolt.
+ */
+class Follower {
+  private at: Pose | null = null
+  private velocity = { x: 0, z: 0, heading: 0 }
+
+  /** How fast the body moves over the ground, m/s. */
+  get speed() {
+    return Math.hypot(this.velocity.x, this.velocity.z)
+  }
+  private target: Pose | null = null
+
+  constructor(private readonly stiffness = 12) {}
+
+  follow(target: Pose, dt: number): Pose {
+    if (!this.at || !this.target || dt <= 0) {
+      this.at = { ...target }
+      this.target = { ...target }
+      return this.at
+    }
+    const w = this.stiffness
+    const turn = angleTo(this.target.heading, target.heading)
+    const tv = {
+      x: (target.x - this.target.x) / dt,
+      z: (target.z - this.target.z) / dt,
+      heading: turn / dt,
+    }
+    this.target = { ...target }
+    const gap = {
+      x: target.x - this.at.x,
+      z: target.z - this.at.z,
+      heading: angleTo(this.at.heading, target.heading),
+    }
+    for (const k of ['x', 'z', 'heading'] as const) {
+      const a = w * w * gap[k] + 2 * w * (tv[k] - this.velocity[k])
+      this.velocity[k] += a * dt
+    }
+    this.at = {
+      x: this.at.x + this.velocity.x * dt,
+      z: this.at.z + this.velocity.z * dt,
+      heading: this.at.heading + this.velocity.heading * dt,
+    }
+    return this.at
+  }
+}
+
+/**
  * Plays an exercise step by step and moves the team over the field: `team` is where the
  * handler's base place is and which way the team faces, starting at the origin facing +z.
  * A walk ends early by the distance the team needs to slow down when a stop or a turn on
@@ -97,6 +146,10 @@ export class ExercisePlayer {
   private team: Pose = { x: 0, z: 0, heading: 0 }
   /** Radians of the current turn still to go. */
   private turnLeft = 0
+  /** Coming to rest before a turn on the spot. */
+  private braking = false
+  private dogTrots = false
+  private dogBody = new Follower()
 
   constructor(private readonly exercise: Exercise) {}
 
@@ -110,7 +163,12 @@ export class ExercisePlayer {
     this.stepTime += dt
 
     // The dog trots at heel at a normal or fast pace and walks with a slow handler.
-    const dogGait = (pace: HandlerPace) => (pace === 'slow' ? 'walk' : 'trot')
+    // The dog trots when it moves briskly — at heel at a normal pace, round the outside of a
+    // turn — and walks when slow.
+    const dogSpeed = this.dogBody.speed
+    if (dogSpeed > 0.75) this.dogTrots = true
+    else if (dogSpeed < 0.6) this.dogTrots = false
+    const dogGait = (_pace: HandlerPace) => (this.dogTrots ? 'trot' : 'walk')
     let controls: TeamControls = { dog: this.posture, place: 'left', handler: 'stand' }
     let done = false
     if (current && 'walk' in current) {
@@ -132,15 +190,29 @@ export class ExercisePlayer {
     } else if (current && 'around' in current) {
       const left = PATHS[current.around].length - (walked - this.walkedAtStart)
       const walking = left > speed / SETTLE_RATE + 0.002
-      controls = { ...controls, handler: walking ? this.pace : 'stand', stay: true }
-      done = !walking && speed < 0.01
+      controls = {
+        ...controls,
+        handler: walking ? this.pace : 'stand',
+        stay: true,
+        // The path ends back in the base place.
+        rest: onField(this.team, { x: 0, z: 0, heading: 0 }),
+      }
+      // Done once the handler stands in the base place on both feet.
+      done = !walking && speed < 0.01 && (this.last?.feet.handlerStill ?? true)
     } else if (current && 'turn' in current) {
-      if (starting) this.turnLeft = (Math.abs(current.turn) * Math.PI) / 180
+      if (starting) {
+        this.turnLeft = (Math.abs(current.turn) * Math.PI) / 180
+        this.braking = current.radius === 0
+      }
       this.posture = 'stand'
-      const onTheSpot = current.radius === 0
+      // A turn on the spot starts from a stand: the team first comes to rest.
+      if (this.braking && speed < 0.1) this.braking = false
+      const onTheSpot = current.radius === 0 && !this.braking
       // Handlers slow down into a turn and pick up the pace after it (the video: a 90° turn
       // takes about a second, 180° two); on the spot they step slowly round.
-      controls = { dog: dogGait('slow'), place: 'left', handler: 'slow', stay: onTheSpot }
+      controls = this.braking
+        ? { dog: dogGait('slow'), place: 'left', handler: 'stand' }
+        : { dog: dogGait('slow'), place: 'left', handler: 'slow', stay: onTheSpot }
     } else {
       done = this.stepTime >= END_PAUSE
     }
@@ -151,7 +223,9 @@ export class ExercisePlayer {
 
     if (current && 'turn' in current) {
       const sign = current.turn > 0 ? -1 : 1 // right = towards −x = heading decreasing
-      if (current.radius === 0) {
+      if (current.radius === 0 && this.braking) {
+        this.team = forward(this.team, moved)
+      } else if (current.radius === 0) {
         const angle = Math.min((frameWalked - walked) / PIVOT_RADIUS, this.turnLeft)
         this.team = { ...this.team, heading: this.team.heading + sign * angle }
         this.turnLeft -= angle
@@ -183,13 +257,22 @@ export class ExercisePlayer {
       }
     }
 
-    // The bodies on the field; the animator puts legs under them.
-    const frame = this.animator.pose(
-      dt,
-      controls,
-      onField(this.team, this.offset),
-      onField(this.team, advanced.place),
-    )
+    // The bodies on the field; the animator puts legs under them. The dog keeps to its place
+    // at heel but its body moves only as its legs can carry it: it follows the place
+    // springily — exactly while the team walks on, a moment behind when the team turns
+    // sharply — and the frame says where it really is.
+    const dog = this.dogBody.follow(onField(this.team, advanced.place), dt)
+    const frame = this.animator.pose(dt, controls, onField(this.team, this.offset), dog)
+    const c = Math.cos(this.team.heading)
+    const s = Math.sin(this.team.heading)
+    const dx = dog.x - this.team.x
+    const dz = dog.z - this.team.z
+    frame.dog = {
+      ...frame.dog,
+      x: c * dx - s * dz,
+      z: s * dx + c * dz,
+      heading: dog.heading - this.team.heading,
+    }
     this.last = frame
 
     if (done) {

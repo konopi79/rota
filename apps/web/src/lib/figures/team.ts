@@ -8,7 +8,7 @@ import {
   type DogPosture,
 } from './dog'
 import { HANDLER_FEET, HANDLER_PACE, handlerPose, handlerStep, type HandlerPace } from './handler'
-import { Stepper, type Body, type FootState } from './locomotion'
+import { PawStepper, Stepper, type Body, type FootState } from './locomotion'
 import { blendPoses, type Pose } from './rig'
 
 /** What the two figures are asked to do. */
@@ -20,6 +20,8 @@ export type TeamControls = {
   handler: 'stand' | HandlerPace
   /** The team stays where it is while the handler walks (around the dog, on the spot). */
   stay?: boolean
+  /** Where the handler will come to a stand when it differs from straight ahead (a path). */
+  rest?: Body
 }
 
 export type FigureFrame = {
@@ -40,7 +42,13 @@ export type TeamFrame = {
   /** Current walking speed, m/s. */
   speed: number
   /** Where the stepper has the feet and paws (for checking that the legs reach them). */
-  feet: { handler: readonly FootState[]; dog: readonly FootState[]; dogOnLegs: boolean }
+  feet: {
+    handler: readonly FootState[]
+    dog: readonly FootState[]
+    dogOnLegs: boolean
+    /** The handler stands still, both feet in place. */
+    handlerStill: boolean
+  }
 }
 
 /**
@@ -86,7 +94,7 @@ export class TeamAnimator {
   private dogStanding = 1
   private dogGait: DogGait = 'trot'
   private handlerFeet: Stepper | null = null
-  private dogFeet: Stepper | null = null
+  private dogFeet: PawStepper | null = null
 
   /** Speeds up or slows down; how far the team and the handler have gone; the dog's place. */
   advance(dt: number, controls: TeamControls) {
@@ -94,6 +102,8 @@ export class TeamAnimator {
     if (walking) this.lastPace = controls.handler as HandlerPace
     const pace = HANDLER_PACE[this.lastPace]
     this.speed = approach(this.speed, walking ? pace.speed : 0, dt)
+    // Stopping, the last few centimetres are one firm stop, not a long creep.
+    if (!walking && !controls.stay && this.speed < 0.08) this.speed = 0
     this.walked += this.speed * dt
     if (!controls.stay) this.travelled += this.speed * dt
     const target = PLACES[controls.place]
@@ -110,7 +120,17 @@ export class TeamAnimator {
     // The handler: feet under the body, the pelvis and legs solved to them.
     this.handlerFeet ??= new Stepper(HANDLER_FEET, handler)
     const handlerPace = this.lastPace
-    const feet = this.handlerFeet.update(dt, handler, handlerStep(handlerPace))
+    // Stopping (the handler told to stand while still moving), the body comes to rest the
+    // braking distance ahead.
+    const stopping = controls.handler === 'stand' && this.speed > 0
+    const rest = !stopping
+      ? undefined
+      : (controls.rest ?? {
+          ...handler,
+          x: handler.x + Math.sin(handler.heading) * (this.speed / SETTLE_RATE),
+          z: handler.z + Math.cos(handler.heading) * (this.speed / SETTLE_RATE),
+        })
+    const feet = this.handlerFeet.update(dt, handler, handlerStep(handlerPace), rest)
     const motion = Math.min(1, this.speed / HANDLER_PACE[handlerPace].speed)
     const handlerPoseNow = handlerPose(feet, handler, handlerPace, this.handlerFeet.cycle, motion)
 
@@ -124,7 +144,7 @@ export class TeamAnimator {
       1 - Math.exp(-SETTLE_RATE * dt),
     )
     this.dogStanding = approach(this.dogStanding, posture === 'stand' ? 1 : 0, dt)
-    this.dogFeet ??= new Stepper(DOG_FEET[this.dogGait], dog)
+    this.dogFeet ??= new PawStepper(DOG_FEET[this.dogGait], dog)
     this.dogFeet.setFeet(DOG_FEET[this.dogGait])
     const sitting = posture !== 'stand'
     let dogPose = this.dogPosture
@@ -154,6 +174,7 @@ export class TeamAnimator {
         handler: feet,
         dog: this.dogFeet.feet,
         dogOnLegs: !sitting && this.dogStanding > 0.98,
+        handlerStill: this.handlerFeet.still,
       },
     }
   }

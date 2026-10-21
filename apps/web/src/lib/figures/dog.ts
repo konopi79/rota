@@ -11,6 +11,13 @@ import { jointFrames, type Box, type Joint, type Pose, type Vec3 } from './rig'
 
 const box = (size: Vec3, at: Vec3, paint: Box['paint'] = 'coat'): Box => ({ size, at, paint })
 
+/** Leg segments, metres: foreleg upper and lower, hind thigh, shin and hock. */
+const FORE_UPPER = 0.17
+const FORE_LOWER = 0.18
+const THIGH = 0.16
+const SHIN = 0.16
+const HOCK = 0.09
+
 const paw = (side: 'left' | 'right'): Joint => ({
   name: '',
   pivot: [0, 0, 0],
@@ -25,9 +32,9 @@ const frontLeg = (side: 'left' | 'right', x: number): Joint => ({
   children: [
     {
       name: `${side}Elbow`,
-      pivot: [0, -0.16, 0],
-      boxes: [box([0.06, 0.17, 0.06], [0, -0.085, 0])],
-      children: [{ ...paw(side), name: `${side}FrontPaw`, pivot: [0, -0.17, 0] }],
+      pivot: [0, -FORE_UPPER, 0],
+      boxes: [box([0.06, FORE_LOWER, 0.06], [0, -FORE_LOWER / 2, 0])],
+      children: [{ ...paw(side), name: `${side}FrontPaw`, pivot: [0, -FORE_LOWER, 0] }],
     },
   ],
 })
@@ -39,14 +46,14 @@ const hindLeg = (side: 'left' | 'right', x: number): Joint => ({
   children: [
     {
       name: `${side}Stifle`,
-      pivot: [0, -0.15, 0],
-      boxes: [box([0.065, 0.16, 0.065], [0, -0.075, 0])],
+      pivot: [0, -THIGH, 0],
+      boxes: [box([0.065, SHIN + 0.01, 0.065], [0, -SHIN / 2, 0])],
       children: [
         {
           name: `${side}Hock`,
-          pivot: [0, -0.15, 0],
+          pivot: [0, -SHIN, 0],
           boxes: [box([0.055, 0.1, 0.055], [0, -0.045, 0])],
-          children: [{ ...paw(side), name: `${side}HindPaw`, pivot: [0, -0.09, 0] }],
+          children: [{ ...paw(side), name: `${side}HindPaw`, pivot: [0, -HOCK, 0] }],
         },
       ],
     },
@@ -141,7 +148,7 @@ export type DogGait = 'walk' | 'trot'
  * The trunk's height when the legs carry it (standing, walking, trotting): low enough for
  * a straight foreleg to reach a paw half a stride ahead or behind.
  */
-export const DOG_STANDING_HEIGHT = 0.385
+export const DOG_STANDING_HEIGHT = 0.4
 
 const PAW_X = 0.065
 const FRONT_Z = 0.22
@@ -162,25 +169,39 @@ export const DOG_FEET: Record<DogGait, FootSpec[]> = {
     { name: 'leftHindPaw', neutral: [PAW_X, HIND_Z], offset: 0 },
     { name: 'rightHindPaw', neutral: [-PAW_X, HIND_Z], offset: 0.5 },
   ],
+  // Trotting, a diagonal pair moves as one.
   trot: [
-    { name: 'leftFrontPaw', neutral: [PAW_X, FRONT_Z], offset: 0 },
-    { name: 'rightFrontPaw', neutral: [-PAW_X, FRONT_Z], offset: 0.5 },
-    { name: 'leftHindPaw', neutral: [PAW_X, HIND_Z], offset: 0.5 },
-    { name: 'rightHindPaw', neutral: [-PAW_X, HIND_Z], offset: 0 },
+    { name: 'leftFrontPaw', neutral: [PAW_X, FRONT_Z], offset: 0, pair: 0 },
+    { name: 'rightFrontPaw', neutral: [-PAW_X, FRONT_Z], offset: 0.5, pair: 1 },
+    { name: 'leftHindPaw', neutral: [PAW_X, HIND_Z], offset: 0.5, pair: 1 },
+    { name: 'rightHindPaw', neutral: [-PAW_X, HIND_Z], offset: 0, pair: 0 },
   ],
 }
 
 /**
- * A border collie trots at heel at about 2.5 strides a second. A dog turning in place takes
- * many short steps: a paw carries some 25° of a turn between two steps (`turnLength`).
+ * A border collie trots at heel with long, easy strides, about two a second. Turning, each
+ * paw steps as far as its own place moves: the paws near the turn only shuffle round, the
+ * others step out; a planted paw turns a little on its pads.
  */
-export const dogStep = (gait: DogGait): StepGait =>
-  gait === 'trot'
-    ? { stance: 0.5, cycleLength: 0.46, clearance: 0.07, turnLength: 0.9, sideways: 2.5 }
-    : { stance: 0.6, cycleLength: 0.4, clearance: 0.05, turnLength: 0.9, sideways: 2.5 }
+export const dogStep = (gait: DogGait): StepGait => ({
+  ...(gait === 'trot'
+    ? { stance: 0.5, cycleLength: 0.56, clearance: 0.07 }
+    : { stance: 0.6, cycleLength: 0.48, clearance: 0.05 }),
+  turnLength: 0.25,
+  sideways: 2,
+  swingTime: gait === 'trot' ? 0.18 : 0.22,
+  pivot: 0.3,
+  reach: 1.1,
+  // A dog's leg reaches little sideways (it swings out some 15°).
+  reachAside: 0.3,
+  // A dog never has more than two paws in the air.
+  support: 2,
+  // It changes between walk and trot within a stride.
+  catchUp: 1,
+})
 
-/** A dog's legs hardly turn or swing sideways: about 20° and 17° out, 15° in (under the body). */
-const DOG_LIMITS: LegLimits = { yaw: 0.35, out: 0.3, in: 0.26 }
+/** A dog's legs hardly turn or swing sideways: about 20°, 20° out and 17° in (under the body). */
+const DOG_LIMITS: LegLimits = { yaw: 0.35, out: 0.35, in: 0.3 }
 
 /**
  * The leg angles that put the paws where the stepper has them, the trunk level at its
@@ -206,8 +227,8 @@ export const dogLegs = (feet: readonly FootState[], body: Body): Pose => {
     if (spec.name.endsWith('FrontPaw')) {
       const leg = limitedLeg(
         [paw[0] - x, paw[1] + 0.05, paw[2] - FRONT_Z],
-        0.16,
-        0.17,
+        FORE_UPPER,
+        FORE_LOWER,
         yaw,
         'back',
         DOG_LIMITS,
@@ -222,14 +243,14 @@ export const dogLegs = (feet: readonly FootState[], body: Body): Pose => {
       // swings out: the stifle and hip reach for its top, found in two passes.
       const solve = (roll: number, turn: number) => {
         const hock = [
-          0.09 * Math.sin(roll) * Math.cos(turn),
-          -0.09 * Math.cos(roll),
-          -0.09 * Math.sin(roll) * Math.sin(turn),
+          HOCK * Math.sin(roll) * Math.cos(turn),
+          -HOCK * Math.cos(roll),
+          -HOCK * Math.sin(roll) * Math.sin(turn),
         ]
         return limitedLeg(
           [paw[0] - hock[0]! - x, paw[1] - hock[1]! + 0.04, paw[2] - hock[2]! + 0.22],
-          0.15,
-          0.15,
+          THIGH,
+          SHIN,
           yaw,
           'forward',
           DOG_LIMITS,

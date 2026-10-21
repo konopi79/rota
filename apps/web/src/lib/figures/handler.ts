@@ -172,7 +172,12 @@ export const handlerStep = (pace: HandlerPace): StepGait => ({
   stance: PACES[pace].stance,
   cycleLength: PACES[pace].cycleLength,
   clearance: PACES[pace].clearance,
-  turnLength: 0.65,
+  // Turning on the spot, a person points the stepping foot well into the new direction and
+  // turns a little on the planted one: two or three steps for a half turn.
+  turnLength: 0.3,
+  pivot: 0.5,
+  swingTime: 0.45,
+  shared: true,
   sideways: 2,
   backShift: PACES[pace].backShift,
   support: 1,
@@ -181,7 +186,7 @@ export const handlerStep = (pace: HandlerPace): StepGait => ({
 })
 
 /** A human hip: turns the leg about 40° either way, swings it 25° out and 20° in. */
-const HIP_LIMITS: LegLimits = { yaw: 0.7, out: 0.45, in: 0.35 }
+const HIP_LIMITS: LegLimits = { yaw: 0.69, out: 0.45, in: 0.35 }
 
 /** The longest a walking leg stretches: nearly straight, never locked. */
 const WALKING_LEG = LEG * 0.996
