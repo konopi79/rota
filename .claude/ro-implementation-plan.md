@@ -545,6 +545,9 @@ gesture for audio).
 - [x] Switch showing where the exercise starts — the 120 cm square of §5.3.1 (a handler's suggestion, 2026-10-21); eyes and hair for the handler; camera kept above the ground
 - [x] Z-014 Předsednutí with D0a–d (2026-10-21): the dog goes along paths of its own round the standing handler (`paths.ts`); to the front and straight to heel it leads with its front and swings its rear round (the author: "dotočit to zadkem"), round the handler on an ellipse; it gets up before it turns, trots when spinning, its body waits for its paws. The handler stops in the middle of the square instead of stepping back (the regulation allows up to four steps back; the author's suggestion). The D0 card stands next to the main card, chosen under the exercise
 - [x] The paces Z-015–Z-017 (2026-10-21): slow a slow walk with the dog walking, fast a jog (the video) — the handler runs: feet down a third of the time, both in the air between steps, heel kick with the foot square to the shin, knees and elbows bent; Z-017 after slow or fast (a choice under the exercise). A change of pace blends speed, arms, lean and stride over about a second; arms and trunk never jump (tested), nor the ankle beyond human range (tested)
+- [x] Z-023, Z-024, Z-028–Z-031 (2026-10-21): the dog round the handler from the front; one step forward and the other foot closing up; 225° on the spot; Z-030/Z-031 in three steps set by hand as the author does them (inner foot ahead turned 45°, outer foot round it into the new direction, inner foot closing up) — `footwork` steps, the body following its feet
+- [ ] Cones and bowls: spirals Z-018, Z-019, Z-026, Z-027, slaloms Z-020, Z-021, figure eight Z-022
+- [ ] A step back: Z-025, Z-032; and Z-010 (the dog behind the handler)
 
 Each phase ends green on `bun run format && bun run typecheck && bun run lint` plus its
 own tests, and is committed separately.

@@ -93,7 +93,15 @@ const REACH_ASIDE = 0.6
 const clamp = (x: number, limit: number) => Math.max(-limit, Math.min(limit, x))
 
 type Aim = { x: number; z: number; yaw: number }
+/** A step set by hand: this foot (0 left, 1 right) to there, pointing that way. */
+export type FootTarget = { foot: number; x: number; z: number; yaw: number }
+
+/** A step set by hand takes this long in the air, seconds — a deliberate step. */
+const SCRIPTED_STEP = 0.55
+
 type Swing = {
+  /** A step set by hand lands exactly here. */
+  fixed?: Aim
   from: Aim
   aim: Aim | null
   time: number
@@ -272,7 +280,11 @@ export class BipedStepper {
    * `rest`: where the body will come to a stand, when it is stopping — the last step lands
    * right there, so a stop is the last step and the other foot closing up beside it.
    */
-  update(dt: number, body: Body, gait: StepGait, rest?: Body): FootState[] {
+  /**
+   * `script`: a step set by hand — that foot steps exactly there once both feet have been
+   * down a moment; the stepper takes no steps of its own meanwhile.
+   */
+  update(dt: number, body: Body, gait: StepGait, rest?: Body, script?: FootTarget): FootState[] {
     const prev = this.last
     this.last = { ...body }
     const { vx, vz, spin, speed, still } = motionOf(prev, body, dt)
@@ -313,7 +325,24 @@ export class BipedStepper {
     const canStep = this.swings.every(
       (swing) => !swing || (running && swing.time >= RUN_PUSH_OFF * swing.duration),
     )
-    if (canStep) {
+    if (script) {
+      const f = this.state[script.foot]!
+      const there =
+        Math.hypot(f.x - script.x, f.z - script.z) < 0.01 &&
+        Math.abs(angleTo(f.yaw, script.yaw)) < 0.02
+      if (!this.swings.some(Boolean) && !there && this.down.every((d) => d >= ds)) {
+        this.lastStep = script.foot
+        this.swings[script.foot] = {
+          fixed: { x: script.x, z: script.z, yaw: script.yaw },
+          from: { x: f.x, z: f.z, yaw: f.yaw },
+          aim: null,
+          time: 0,
+          duration: SCRIPTED_STEP,
+          clearance: gait.clearance,
+          kick: false,
+        }
+      }
+    } else if (canStep) {
       // Which foot steps next, if any.
       let next = -1
       let worst = 0
@@ -387,7 +416,8 @@ export class BipedStepper {
           still || lead <= 0 ? 0 : Math.min(1, Math.max(0, (lead - o.along) / (2 * lead)))
         return {
           ...foot,
-          yaw: pivoted(foot, body.heading, gait.pivot),
+          // Planted, it turns on the spot to stay with the body (not in steps set by hand).
+          yaw: script ? foot.yaw : pivoted(foot, body.heading, gait.pivot),
           lift: 0,
           swing: null,
           stance,
@@ -398,7 +428,9 @@ export class BipedStepper {
       // Where it will land: under the body as it will be then (or where it comes to rest),
       // half a stride ahead along the way it goes.
       let wanted: Aim
-      if (rest) {
+      if (swing.fixed) {
+        wanted = swing.fixed
+      } else if (rest) {
         const [x, z] = this.specs[i]!.neutral
         wanted = { ...placeUnder(rest, [x, z]), yaw: rest.heading }
       } else {
@@ -417,11 +449,12 @@ export class BipedStepper {
       // It lands to its own side of the other foot, and swings past it on that side.
       const side = Math.sign(this.specs[i]!.neutral[0])
       const other = this.state[1 - i]!
-      wanted = movedAcross(
-        wanted,
-        wanted.yaw,
-        side * shortOfApart(wanted, other, wanted.yaw, side, false),
-      )
+      if (!swing.fixed)
+        wanted = movedAcross(
+          wanted,
+          wanted.yaw,
+          side * shortOfApart(wanted, other, wanted.yaw, side, false),
+        )
       let next = swingStep(swing, wanted, dt, gait.clearance, running)
       const inAir = Math.sin(Math.PI * (next.swing ?? 0))
       const clear = shortOfApart(next, other, body.heading, side, true)

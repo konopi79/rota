@@ -1,14 +1,16 @@
 import type { DogPosture } from './dog'
-import type { HandlerPace } from './handler'
+import { HEEL, type HandlerPace } from './handler'
 import { angleTo } from './math'
 import {
   AROUND_DOG,
+  DOG_AROUND_FROM_HEEL,
   DOG_AROUND_HANDLER,
   DOG_TO_FRONT,
   DOG_TO_HEEL,
   bendAhead,
   type Path,
 } from './paths'
+import type { FootTarget } from './locomotion'
 import { SETTLE_RATE, TeamAnimator, onField, type TeamControls, type TeamFrame } from './team'
 
 /**
@@ -23,6 +25,12 @@ export type ExerciseStep = { caption: string } & (
   | { around: 'dog' } // the handler walks around the dog and back to the base place
   | { dogPath: DogPath } // the dog goes along a path round the standing handler
   /**
+   * The handler's steps set by hand, one foot after the other: where each foot lands, in
+   * the frame of the handler's place as the step starts (+x left, +z ahead); the body
+   * follows its feet, the dog keeps to its place at heel.
+   */
+  | { footwork: FootTarget[] }
+  /**
    * The team turns by `turn` degrees, positive to the right, the handler walking an arc of
    * `radius` metres — 0 turns the handler on the spot, the dog going round at heel.
    */
@@ -35,11 +43,12 @@ const PATHS: Record<'dog', Path> = { dog: AROUND_DOG }
  * The dog's paths round the handler (`paths.ts`) and where each one leaves the dog: in front
  * of the handler, or at heel.
  */
-export type DogPath = 'toFront' | 'aroundHandler' | 'toHeel'
+export type DogPath = 'toFront' | 'aroundHandler' | 'toHeel' | 'aroundFromHeel'
 const DOG_PATHS: Record<DogPath, { path: Path; ends: TeamControls['place'] }> = {
   toFront: { path: DOG_TO_FRONT, ends: 'front' },
   aroundHandler: { path: DOG_AROUND_HANDLER, ends: 'left' },
   toHeel: { path: DOG_TO_HEEL, ends: 'left' },
+  aroundFromHeel: { path: DOG_AROUND_FROM_HEEL, ends: 'left' },
 }
 /** The dog on its own: trotting speed, m/s, and how fast it turns at most, rad/s. */
 const DOG_PATH_SPEED = 1.4
@@ -48,6 +57,10 @@ const DOG_MAX_SPIN = 3.5
 const DOG_BRAKING = 3
 /** How far the dog's paws are from its middle, metres: turning, they go round that far out. */
 const PAW_SWING_ARM = 0.23
+/** From the heels to the point the body stands over, metres (the handler's feet). */
+const HEEL_TO_BODY = -HEEL[1]
+/** Steps set by hand: each foot is down this long before the next one lifts, seconds. */
+const FOOTWORK_DWELL = 0.12
 /** The dog's path waits for its body once that is this far behind, metres. */
 const DOG_FALLS_BEHIND = 0.08
 /** The dog has arrived when its body is this near the end of its path, metres. */
@@ -127,6 +140,23 @@ const rotateAbout = (p: Pose, cx: number, cz: number, angle: number): Pose => {
     x: cx + dx * Math.cos(angle) + dz * Math.sin(angle),
     z: cz - dx * Math.sin(angle) + dz * Math.cos(angle),
     heading: p.heading + angle,
+  }
+}
+
+/**
+ * Where a body stands over its feet: between the heels, a heel's length ahead of them, facing
+ * the way the feet point between them.
+ */
+const bodyOver = (feet: readonly { x: number; z: number; yaw: number }[]): Pose => {
+  const [a, b] = feet as [
+    { x: number; z: number; yaw: number },
+    { x: number; z: number; yaw: number },
+  ]
+  const heading = Math.atan2(Math.sin(a.yaw) + Math.sin(b.yaw), Math.cos(a.yaw) + Math.cos(b.yaw))
+  return {
+    x: (a.x + b.x) / 2 + HEEL_TO_BODY * Math.sin(heading),
+    z: (a.z + b.z) / 2 + HEEL_TO_BODY * Math.cos(heading),
+    heading,
   }
 }
 
@@ -223,6 +253,11 @@ export class ExercisePlayer {
   /** Coming to rest before a turn on the spot. */
   private braking = false
   private dogTrots = false
+  /** Steps set by hand: where the handler stood as they began, which is next, how long down. */
+  private footworkBase: Pose = { x: 0, z: 0, heading: 0 }
+  private footworkIndex = 0
+  private footworkDwell = 0
+  private footworkOffset: Pose = { x: 0, z: 0, heading: 0 }
   /** Where the dog keeps to when it is not on a path of its own. */
   private dogPlace: TeamControls['place'] = 'left'
   /** Metres the dog has gone along its current path, and how fast it goes. */
@@ -322,6 +357,46 @@ export class ExercisePlayer {
         this.dogPlace = ends
         this.dogPathSpeed = 0
       }
+    } else if (current && 'footwork' in current) {
+      const feet = this.last?.feet.handler
+      if (starting) {
+        this.footworkBase = { ...this.team }
+        this.footworkIndex = 0
+        this.footworkDwell = 0
+        // Where the body stands off the point between its feet (they stand a little apart
+        // from exactly side by side): kept as it is, so the body never jumps.
+        const over = feet ? bodyOver(feet) : this.team
+        const c = Math.cos(over.heading)
+        const s = Math.sin(over.heading)
+        const dx = this.team.x - over.x
+        const dz = this.team.z - over.z
+        this.footworkOffset = {
+          x: c * dx - s * dz,
+          z: s * dx + c * dz,
+          heading: angleTo(over.heading, this.team.heading),
+        }
+      }
+      // The body is where its feet have taken it.
+      if (feet) this.team = onField(bodyOver(feet), this.footworkOffset)
+      this.posture = 'stand'
+      const target = current.footwork[Math.min(this.footworkIndex, current.footwork.length - 1)]!
+      const at = onField(this.footworkBase, { x: target.x, z: target.z, heading: target.yaw })
+      controls = {
+        dog: dogGait(this.pace),
+        place: this.dogPlace,
+        handler: 'stand',
+        footstep: { foot: target.foot, x: at.x, z: at.z, yaw: at.heading },
+      }
+      // On to the next step once this one has landed there and taken the weight.
+      const foot = this.last?.feet.handler[target.foot]
+      const landed =
+        foot !== undefined && foot.swing === null && Math.hypot(foot.x - at.x, foot.z - at.z) < 0.01
+      this.footworkDwell = landed ? this.footworkDwell + dt : 0
+      if (this.footworkDwell >= FOOTWORK_DWELL) {
+        this.footworkIndex++
+        this.footworkDwell = 0
+      }
+      done = this.footworkIndex >= current.footwork.length
     } else if (current && 'turn' in current) {
       if (starting) {
         this.turnLeft = (Math.abs(current.turn) * Math.PI) / 180

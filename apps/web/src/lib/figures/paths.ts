@@ -149,6 +149,18 @@ export const DOG_AROUND_HANDLER: Path = pathFromCurve(
 )
 
 /**
+ * Z-023 "Pes oběhne psovoda zepředu" (p. 26): from heel the dog goes ahead and across in front
+ * of the handler, then round the handler's right side and behind them back into heel — the
+ * same ellipse round the handler as for D0a.
+ */
+export const DOG_AROUND_FROM_HEEL: Path = pathFromCurve(
+  chain(bezier([0.42, -0.2], [0.42, 0.35], [0.3, 0.6], [0, 0.6]), (u) => {
+    const angle = u * (Math.PI + 1.2)
+    return { x: -0.45 * Math.sin(angle), z: 0.6 * Math.cos(angle) }
+  }),
+)
+
+/**
  * D0b/D0d "Přiřazení přímo" (p. 17): from the front straight to the left leg, without going
  * round the handler: the dog's front steps across to the handler's left leg while its rear
  * swings out to the left and round behind, into heel.

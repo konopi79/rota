@@ -1,4 +1,5 @@
 import type { Exercise } from './exercise'
+import type { FootTarget } from './locomotion'
 
 /**
  * RO-Z exercises as scripts. Each cites the regulation (Zkušební řád RO v ČR 2026,
@@ -242,6 +243,87 @@ export const Z016 = changePace('Z-016', 'fast', 'fastPace')
 export const Z017 = changePace('Z-017', 'normal', 'normalPace', 'slow')
 export const Z017_FROM_FAST = changePace('Z-017', 'normal', 'normalPace', 'fast')
 
+/**
+ * Z-023 Stop – pes okolo psovoda – stop (p. 26): "Tým zastaví u karty … a zaujme základní
+ * pozici. Pes oběhne psovoda zepředu a poté opět usedá u nohy psovoda. Psovod zůstává stát po
+ * celou dobu cviku (tj. nehýbe nohama)." In the video the dog sits, then runs round in about
+ * two seconds and sits again.
+ */
+export const Z023: Exercise = {
+  code: 'Z-023',
+  steps: [
+    { walk: 3.5, caption: 'approach' },
+    { stop: true, caption: 'stop' },
+    { dog: 'sit', caption: 'sit' },
+    { wait: 0.8, caption: 'basePosition' },
+    { dogPath: 'aroundFromHeel', caption: 'dogAroundHandler' },
+    { dog: 'sit', caption: 'finishSit' },
+    { wait: 1, caption: 'basePosition' },
+    { walk: 3, caption: 'leave' },
+  ],
+}
+
+/**
+ * Z-024 Stop – jeden krok vpřed – stop (p. 26): "Na povel psovoda tým postoupí o jeden krok
+ * vpřed a zaujímá základní pozici." One step and the other foot closing up; the dog gets up,
+ * comes along and sits again.
+ */
+export const Z024: Exercise = {
+  code: 'Z-024',
+  steps: [
+    { walk: 3.5, caption: 'approach' },
+    { stop: true, caption: 'stop' },
+    { dog: 'sit', caption: 'sit' },
+    { wait: 1, caption: 'basePosition' },
+    { walk: 0.3, pace: 'slow', caption: 'oneStep' },
+    { stop: true, caption: 'oneStep' },
+    { dog: 'sit', caption: 'finishSit' },
+    { wait: 1, caption: 'basePosition' },
+    { walk: 3, pace: 'normal', caption: 'leave' },
+  ],
+}
+
+/** Z-028 225° vpravo (p. 28): "psovod provádí obrat na místě … Pes … zůstává stále u nohy." */
+export const Z028 = turnOnTheSpot('Z-028', 225, 'turnRight225', 'ahead')
+/** Z-029 225° vlevo — p. 28. */
+export const Z029 = turnOnTheSpot('Z-029', -225, 'turnLeft225', 'ahead')
+
+/**
+ * Z-030/Z-031 Stop – vpravo / vlevo – stop (p. 29): "Tým se zastaví před kartou a zaujme
+ * základní pozici. Poté psovod společně se psem během obratu vpravo provede 3 kroky, a
+ * následně tým opět zaujme základní pozici." A change of direction, so the card stands ahead.
+ * The three steps as the author does them, turning left: the left foot a short step ahead,
+ * turned 45°; the right foot round it into the new direction; the left foot closing up
+ * beside it. Turning right, the same mirrored.
+ */
+const turnSteps = (sign: 1 | -1): FootTarget[] => {
+  const [inner, outer] = sign === 1 ? [0, 1] : [1, 0]
+  return [
+    { foot: inner, x: sign * 0.1, z: 0.05, yaw: (sign * Math.PI) / 4 },
+    { foot: outer, x: sign * 0.15, z: 0.38, yaw: (sign * Math.PI) / 2 },
+    { foot: inner, x: sign * 0.15, z: 0.18, yaw: (sign * Math.PI) / 2 },
+  ]
+}
+
+const stopTurnStop = (code: string, sign: 1 | -1, caption: string): Exercise => ({
+  code,
+  card: 'ahead',
+  steps: [
+    { walk: 3.5, caption: 'approachTurn' },
+    { stop: true, caption: 'stopAhead' },
+    { dog: 'sit', caption: 'sit' },
+    { wait: 1, caption: 'basePosition' },
+    { footwork: turnSteps(sign), caption },
+    { dog: 'sit', caption: 'finishSit' },
+    { wait: 1, caption: 'basePosition' },
+    { walk: 3, caption: 'leaveTurn' },
+  ],
+})
+
+// Left turns the heading up (towards +x, the handler's left).
+export const Z030 = stopTurnStop('Z-030', -1, 'stopTurnRight')
+export const Z031 = stopTurnStop('Z-031', 1, 'stopTurnLeft')
+
 /** The exercises the page can play, in card order (Z-014 once per supplementary card). */
 export const EXERCISES: Exercise[] = [
   Z001,
@@ -264,4 +346,10 @@ export const EXERCISES: Exercise[] = [
   Z016,
   Z017,
   Z017_FROM_FAST,
+  Z023,
+  Z024,
+  Z028,
+  Z029,
+  Z030,
+  Z031,
 ]
