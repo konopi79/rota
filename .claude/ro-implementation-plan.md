@@ -537,7 +537,11 @@ gesture for audio).
 - [x] Exercise scripts played on the field (`ExercisePlayer`): walk, stop, dog position, wait, the handler around the dog (`lib/figures/paths.ts`); card in a stand on the ground right in front of the team (§5.3.1)
 - [x] Z-001–Z-004 scripted from the regulation, timing from the Psí škola ABS video
 - [x] Page `/animace`, not linked, `noindex`: exercise choice, captions, tap / space to pause, camera views and orbit, slow motion, shadows switch
-- [ ] Ask the community whether it is wanted (author, 2026-10-21) — then decide: more cards, the card detail, or ⏭️
+- [x] Ask the community whether it is wanted (author, 2026-10-21): yes — beginners say each card would be quicker to understand ("každou kartu bych rychleji pochopila"); continue with more cards
+- [x] The author's physiology rules (2026-10-21): every move of a body is made by its legs — planted feet and paws never slide, joints within human and dog ranges, nothing jumps between frames, the handler's legs never cross (`locomotion.ts`: a reactive biped stepper and a paw stepper; the dog's body waits for its paws; tests check every frame of every exercise)
+- [x] Turns Z-005–Z-009, Z-011–Z-013: small arcs per the regulation (90° 35 cm, 180° 20 cm as in the video), on the spot after braking; the card 120 cm ahead for a change of direction (§5.3.1)
+- [x] Switch showing where the exercise starts — the 120 cm square of §5.3.1 (a handler's suggestion, 2026-10-21); eyes and hair for the handler; camera kept above the ground
+- [ ] Z-014 Předsednutí with D0a–d (the dog to the front and back to heel — used by 14 cards), then the paces Z-015–Z-017
 
 Each phase ends green on `bun run format && bun run typecheck && bun run lint` plus its
 own tests, and is committed separately.
