@@ -315,26 +315,13 @@
     "finishRight": "Do cíle se psem vpravo. Hotovo."
   },
   "figures": {
-    "title": "Animace cviků – zkouška postav",
-    "hint": "Pracovní stránka. Klepnutím (nebo mezerníkem) animaci zastavíš a znovu pustíš, tažením otočíš kameru, sevřením prstů přiblížíš.",
+    "title": "Animace cviků – ukázka",
+    "intro": "Zkouška, jak by mohly vypadat animace cviků: kostičkový psovod a pes předvedou cvik u karty podle zkušebního řádu. Zatím jen pár karet RO-Z.",
+    "hint": "Klepnutím (na počítači i mezerníkem) animaci zastavíš a znovu pustíš. Pohled otočíš tažením jedním prstem nebo myší, přiblížíš sevřením dvou prstů nebo kolečkem myši, posuneš tažením dvěma prsty nebo pravým tlačítkem myši.",
     "paused": "Pauza – klepni pro pokračování",
     "back": "ROTA",
-    "dog": {
-      "label": "Pes",
-      "stand": "Stůj",
-      "sit": "Sedni",
-      "down": "Lehni",
-      "walk": "Krok",
-      "trot": "Klus"
-    },
-    "place": { "label": "Kde je pes", "left": "Vlevo", "right": "Vpravo", "front": "Předsednutí" },
-    "handler": {
-      "label": "Psovod",
-      "stand": "Stojí",
-      "slow": "Pomalu",
-      "normal": "Chůze",
-      "fast": "Rychle"
-    },
+    "exercise": { "label": "Cvik" },
+    "shadows": "Stíny",
     "view": {
       "label": "Kamera",
       "behind": "Zezadu",
@@ -344,7 +331,6 @@
       "front": "Zepředu"
     },
     "speed": { "label": "Rychlost", "quarter": "¼×", "half": "½×", "full": "1×" },
-    "mode": { "label": "Ukázka", "figures": "Postavy" },
     "caption": {
       "approach": "Tým jde ke kartě",
       "stop": "Psovod zastaví vlevo před kartou",

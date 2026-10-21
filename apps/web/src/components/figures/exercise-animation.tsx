@@ -3,17 +3,18 @@
 import { CZ_CARDS } from '@rota/content'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { SRGBColorSpace, TextureLoader, type GridHelper, type Group } from 'three'
+import { SRGBColorSpace, TextureLoader, type Group } from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { useTranslation } from 'react-i18next'
 import { Play } from 'lucide-react'
 
 import { Figure, type FigureHandle } from '@/components/figures/figure'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { DOG } from '@/lib/figures/dog'
 import { EXERCISES, ExercisePlayer, stationOf, type Exercise } from '@/lib/figures/exercise'
 import { HANDLER } from '@/lib/figures/handler'
-import { TeamAnimator, type TeamControls } from '@/lib/figures/team'
 
 type CameraView = 'behind' | 'angle' | 'side' | 'top' | 'front'
 
@@ -33,30 +34,6 @@ const SLOW_MOTION = { quarter: 0.25, half: 0.5, full: 1 }
 /** A press that moves less than this (px) and lasts less than this (ms) is a tap, not a drag. */
 const TAP_MOVE = 8
 const TAP_TIME = 350
-
-/** The figures walk on the spot; the ground slides back under them. */
-function LabTeam({ controls, slowMotion }: { controls: TeamControls; slowMotion: number }) {
-  const animator = useMemo(() => new TeamAnimator(), [])
-  const dog = useRef<FigureHandle>(null)
-  const handler = useRef<FigureHandle>(null)
-  const grid = useRef<GridHelper>(null)
-
-  useFrame((_, delta) => {
-    // A dropped frame (tab in the background) must not make the figures jump.
-    const frame = animator.step(Math.min(delta, 0.1) * slowMotion, controls)
-    dog.current?.apply(frame.dog)
-    handler.current?.apply(frame.handler)
-    grid.current?.position.setZ(-(frame.travelled % 1))
-  })
-
-  return (
-    <>
-      <Figure rig={DOG} ref={dog} />
-      <Figure rig={HANDLER} ref={handler} />
-      <gridHelper ref={grid} args={[30, 30, '#5f8f4a', '#6f9f58']} position={[0, 0.002, 0]} />
-    </>
-  )
-}
 
 /** The card's tilt back from upright, and half its height. */
 const CARD_TILT = 0.3
@@ -125,6 +102,7 @@ function ExerciseTeam({
 
   useFrame((_, delta) => {
     player.current ??= new ExercisePlayer(exercise)
+    // A dropped frame (tab in the background) must not make the figures jump.
     const frame = player.current.step(Math.min(delta, 0.1) * slowMotion)
     if (frame.finished) player.current = null
     dog.current?.apply(frame.dog)
@@ -150,8 +128,8 @@ function ExerciseTeam({
   )
 }
 
-/** Orbit controls; the camera keeps its offset and follows `focusRef` (z) when given. */
-function CameraRig({ view, focusRef }: { view: CameraView; focusRef?: RefObject<number> }) {
+/** Orbit controls; the camera keeps its offset and follows the team (`focusRef`, z). */
+function CameraRig({ view, focusRef }: { view: CameraView; focusRef: RefObject<number> }) {
   const { camera, gl } = useThree()
   const controlsRef = useRef<OrbitControls>(null)
   const followed = useRef(0)
@@ -164,7 +142,7 @@ function CameraRig({ view, focusRef }: { view: CameraView; focusRef?: RefObject<
   useEffect(() => {
     const controls = controlsRef.current
     if (!controls) return
-    const z = focusRef?.current ?? 0
+    const z = focusRef.current
     const [ox, oy, oz] = VIEWS[view]
     controls.target.set(TARGET[0], TARGET[1], TARGET[2] + z)
     controls.object.position.set(TARGET[0] + ox, TARGET[1] + oy, TARGET[2] + z + oz)
@@ -174,7 +152,7 @@ function CameraRig({ view, focusRef }: { view: CameraView; focusRef?: RefObject<
 
   useFrame(() => {
     const controls = controlsRef.current
-    if (!focusRef || !controls) return
+    if (!controls) return
     const shift = focusRef.current - followed.current
     followed.current = focusRef.current
     controls.target.z += shift
@@ -185,28 +163,22 @@ function CameraRig({ view, focusRef }: { view: CameraView; focusRef?: RefObject<
   return null
 }
 
-/** An exercise code, or the figures on their own. */
-type Mode = string
-const FIGURES = 'figures'
 const cardName = (code: string) => CZ_CARDS.find((c) => c.code === code)?.name ?? ''
 
-export function FiguresLab() {
+/** Exercise animations (POC): pick an exercise, watch the box-figure team perform it. */
+export function ExerciseAnimation() {
   const { t } = useTranslation()
-  const [mode, setMode] = useState<Mode>(EXERCISES[0]!.code)
-  const [controls, setControls] = useState<TeamControls>({
-    dog: 'stand',
-    place: 'left',
-    handler: 'stand',
-  })
+  const [code, setCode] = useState(EXERCISES[0]!.code)
   const [view, setView] = useState<CameraView>('behind')
   const [slowMotion, setSlowMotion] = useState<keyof typeof SLOW_MOTION>('full')
   const [paused, setPaused] = useState(false)
+  const [shadows, setShadows] = useState(true)
   const [caption, setCaption] = useState<string | null>(null)
   const focusRef = useRef(0)
   const press = useRef<{ x: number; y: number; time: number } | null>(null)
-  const speed = paused ? 0 : SLOW_MOTION[slowMotion]
+  const exercise = EXERCISES.find((e) => e.code === code)!
 
-  // Space pauses and resumes too, unless a button has the focus (space presses it).
+  // Space pauses and resumes too, unless a control has the focus (space presses it).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== ' ' || (e.target as HTMLElement).closest('button, input')) return
@@ -216,7 +188,6 @@ export function FiguresLab() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
-  const update = (patch: Partial<TeamControls>) => setControls((c) => ({ ...c, ...patch }))
 
   const choice = <T extends string>(
     group: string,
@@ -245,8 +216,12 @@ export function FiguresLab() {
   return (
     <div className="flex flex-1 flex-col">
       <div className="mx-auto w-full max-w-md px-4 pb-3">
-        {choice('mode', mode, [...EXERCISES.map((e) => e.code), FIGURES], setMode, (o) =>
-          o === FIGURES ? t('figures.mode.figures') : `${o} ${cardName(o)}`,
+        {choice(
+          'exercise',
+          code,
+          EXERCISES.map((e) => e.code),
+          setCode,
+          (o) => `${o} ${cardName(o)}`,
         )}
       </div>
       <div
@@ -266,36 +241,27 @@ export function FiguresLab() {
             setPaused((p) => !p)
         }}
       >
-        <Canvas shadows camera={{ position: VIEWS.angle, fov: 40 }}>
+        <Canvas shadows camera={{ position: VIEWS.behind, fov: 40 }}>
           <color attach="background" args={['#cfe6f5']} />
           <hemisphereLight args={['#ffffff', '#6f9f58', 1.2]} />
           <directionalLight
             position={[3, 6, 2]}
             intensity={2}
-            castShadow
+            castShadow={shadows}
             shadow-mapSize={[1024, 1024]}
           />
           <mesh rotation-x={-Math.PI / 2} receiveShadow>
             <planeGeometry args={[30, 30]} />
             <meshStandardMaterial color="#86b86b" />
           </mesh>
-          {mode === FIGURES ? (
-            <>
-              <LabTeam controls={controls} slowMotion={speed} />
-              <CameraRig view={view} />
-            </>
-          ) : (
-            <>
-              <ExerciseTeam
-                key={mode}
-                exercise={EXERCISES.find((e) => e.code === mode)!}
-                slowMotion={speed}
-                focusRef={focusRef}
-                onCaption={setCaption}
-              />
-              <CameraRig view={view} focusRef={focusRef} />
-            </>
-          )}
+          <ExerciseTeam
+            key={code}
+            exercise={exercise}
+            slowMotion={paused ? 0 : SLOW_MOTION[slowMotion]}
+            focusRef={focusRef}
+            onCaption={setCaption}
+          />
+          <CameraRig view={view} focusRef={focusRef} />
         </Canvas>
         {paused && (
           // Small and at the top: the scene is what a paused viewer wants to see.
@@ -306,7 +272,7 @@ export function FiguresLab() {
             </div>
           </div>
         )}
-        {mode !== FIGURES && caption && (
+        {caption && (
           <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-4">
             <div className="bg-background/85 rounded-lg px-3 py-1.5 text-center font-medium shadow">
               {t(`figures.caption.${caption}`)}
@@ -315,24 +281,17 @@ export function FiguresLab() {
         )}
       </div>
       <div className="mx-auto grid w-full max-w-md gap-3 px-4 py-4">
-        {mode === FIGURES && (
-          <>
-            {choice('dog', controls.dog, ['stand', 'sit', 'down', 'walk', 'trot'], (dog) =>
-              update({ dog }),
-            )}
-            {choice('place', controls.place, ['left', 'right', 'front'], (place) =>
-              update({ place }),
-            )}
-            {choice('handler', controls.handler, ['stand', 'slow', 'normal', 'fast'], (handler) =>
-              update({ handler }),
-            )}
-          </>
-        )}
         {choice('view', view, ['behind', 'angle', 'side', 'top', 'front'], setView)}
         {choice('speed', slowMotion, ['quarter', 'half', 'full'], (v) => {
           setSlowMotion(v)
           setPaused(false)
         })}
+        <div className="flex items-center justify-between gap-4">
+          <Label htmlFor="shadows" className="text-base">
+            {t('figures.shadows')}
+          </Label>
+          <Switch id="shadows" checked={shadows} onCheckedChange={setShadows} />
+        </div>
       </div>
     </div>
   )
