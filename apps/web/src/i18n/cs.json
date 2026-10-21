@@ -352,6 +352,10 @@
       "basePosition": "Základní pozice: pes sedí u levé nohy",
       "down": "Na povel si pes lehne",
       "downHold": "Pes leží, psovod stojí vedle něj",
+      "sitAgain": "Na další povel si pes sedne",
+      "stay": "Psovod může dát povel „zůstaň“",
+      "aroundDog": "Psovod obejde psa zepředu, pes sedí dál",
+      "aroundDone": "Zpět v základní pozici, krátce vydržet",
       "leave": "Tým pokračuje dál"
     }
   }

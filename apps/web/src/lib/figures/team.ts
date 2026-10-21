@@ -15,6 +15,8 @@ export type TeamControls = {
   /** Where the dog is relative to the handler. */
   place: 'left' | 'right' | 'front'
   handler: 'stand' | HandlerPace
+  /** The team stays where it is while the handler walks (around the dog). */
+  stay?: boolean
 }
 
 export type FigureFrame = {
@@ -30,6 +32,8 @@ export type TeamFrame = {
   handler: FigureFrame
   /** Metres the team has walked forward so far. */
   travelled: number
+  /** Metres the handler has walked so far, the team's way or not. */
+  walked: number
   /** Current walking speed, m/s. */
   speed: number
 }
@@ -61,6 +65,7 @@ const isGait = (dog: TeamControls['dog']): dog is DogGait => dog === 'walk' || d
  */
 export class TeamAnimator {
   private travelled = 0
+  private walked = 0
   private handlerPhase = 0
   private dogPhase = 0
   private dogPosture: Pose = DOG_POSTURES.stand
@@ -83,7 +88,8 @@ export class TeamAnimator {
     this.handlerGaitWeight = approach(this.handlerGaitWeight, walking ? 1 : 0, dt)
     const pace = HANDLER_PACE[this.lastPace]
     this.speed = approach(this.speed, walking ? pace.speed : 0, dt)
-    this.travelled += this.speed * dt
+    this.walked += this.speed * dt
+    if (!controls.stay) this.travelled += this.speed * dt
     this.handlerPhase += (this.speed * dt) / (pace.speed / pace.rate)
     // A dog trotting next to a standing handler (lab page) moves at its own speed.
     const dogSpeed = this.speed > 0.01 ? this.speed : dogGaitOn ? DOG_GAIT_SPEED[this.lastGait] : 0
@@ -114,6 +120,7 @@ export class TeamAnimator {
         heading: 0,
       },
       travelled: this.travelled,
+      walked: this.walked,
       speed: this.speed,
     }
   }

@@ -1,7 +1,15 @@
 import { describe, expect, test } from 'bun:test'
 
 import { DOG, DOG_POSTURES, dogGait, type DogPosture } from '../figures/dog'
-import { ExercisePlayer, stationOf, Z001, Z002 } from '../figures/exercise'
+import {
+  ExercisePlayer,
+  stationOf,
+  Z001,
+  Z002,
+  Z003,
+  Z004,
+  type Exercise,
+} from '../figures/exercise'
 import {
   HANDLER,
   HANDLER_GAITS,
@@ -190,6 +198,69 @@ describe('Z-002 Stop – lehni', () => {
       expect(clearance(DOG, f.dog.pose, { ...DOG, children: [] })).toBeLessThan(0.03)
     }
     expect(frames.at(-1)!.travelled - station).toBeGreaterThan(2.5)
+  })
+})
+
+const playAll = (exercise: Exercise) => {
+  const player = new ExercisePlayer(exercise)
+  const frames = [player.step(0)]
+  while (!frames.at(-1)!.finished && frames.length < 60 * 60) frames.push(player.step(1 / 60))
+  return frames
+}
+
+describe('Z-003 Stop – lehni – sedni', () => {
+  test('sit, down, sit again, then walks on', () => {
+    const frames = playAll(Z003)
+    const captions = frames.map((f) => f.caption).filter((c, i, all) => c !== all[i - 1])
+    expect(captions).toEqual([
+      'approach',
+      'stop',
+      'sit',
+      'basePosition',
+      'down',
+      'downHold',
+      'sitAgain',
+      'basePosition',
+      'leave',
+      null,
+    ])
+    const lastHold = frames.findLast((f) => f.caption === 'basePosition')!
+    expect(lastHold.dog.pose.trunk).toBeCloseTo(DOG_POSTURES.sit.trunk ?? NaN, 1)
+  })
+})
+
+describe('Z-004 Stop – okolo psa', () => {
+  const frames = playAll(Z004)
+  const around = frames.filter((f) => f.caption === 'aroundDog')
+
+  test('the dog keeps sitting and the team stays put while the handler walks around', () => {
+    expect(around.length / 60).toBeGreaterThan(2.5)
+    const station = stationOf(Z004)
+    for (const f of around) {
+      expect(f.travelled).toBeCloseTo(station, 2)
+      expect(f.dog.pose.trunk).toBeCloseTo(DOG_POSTURES.sit.trunk ?? NaN, 1)
+    }
+  })
+
+  test('goes round in front of the dog first, never through it', () => {
+    // In front of the dog (ahead, on its side) before behind it.
+    const firstAhead = around.findIndex((f) => f.handler.z > 0.5 && f.handler.x > 0.3)
+    const firstBehind = around.findIndex((f) => f.handler.z < -0.5 && f.handler.x > 0.3)
+    expect(firstAhead).toBeGreaterThan(-1)
+    expect(firstBehind).toBeGreaterThan(firstAhead)
+    // The sitting dog takes about x 0.32–0.52, z −0.55–0.25; the handler is ~0.2 m wide.
+    for (const { handler: h } of around) {
+      const dx = Math.max(0.32 - h.x, 0, h.x - 0.52)
+      const dz = Math.max(-0.55 - h.z, 0, h.z - 0.25)
+      expect(Math.hypot(dx, dz)).toBeGreaterThan(0.15)
+    }
+  })
+
+  test('ends back in the base position, facing ahead', () => {
+    const done = frames.filter((f) => f.caption === 'aroundDone').at(-1)!
+    expect(Math.abs(done.handler.x)).toBeLessThan(0.02)
+    expect(Math.abs(done.handler.z)).toBeLessThan(0.02)
+    expect(Math.abs(done.handler.heading)).toBeLessThan(0.05)
   })
 })
 
