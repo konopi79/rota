@@ -1,7 +1,7 @@
 import { limitedLeg, type LegLimits } from './ik'
 import type { Body, FootSpec, FootState, StepGait } from './locomotion'
 import { angleTo, ease } from './math'
-import { pitchPoint, type Box, type Joint, type Pose, type Vec3 } from './rig'
+import { jointFrames, pitchPoint, type Box, type Joint, type Pose, type Vec3 } from './rig'
 
 /**
  * The handler (~1.78 m) out of boxes. The root joint is the centre of the pelvis. Feet
@@ -108,7 +108,11 @@ export const HANDLER_STAND: Pose = {
 
 export type HandlerPace = 'slow' | 'normal' | 'fast'
 
-type Pace = {
+/**
+ * How a pace looks. Changing pace, the team blends from one to the next over about a second
+ * (`blendPaceStyle`), so arms, lean and stride change smoothly, never at once.
+ */
+export type PaceStyle = {
   /** How much further back the feet land walking than standing, metres. */
   backShift: number
   /** Step cycles per second at full speed. */
@@ -124,9 +128,20 @@ type Pace = {
   clearance: number
   /** How far the arms swing forward and back, radians. */
   arms: number
+  /**
+   * How much lower than standing the pelvis rides at full pace, metres: the knees a little
+   * soft walking, well bent running.
+   */
+  sink: number
+  /** How far the trunk leans forward at full pace, radians. */
+  lean: number
+  /** How much more the elbows bend at full pace, radians (a runner's arms). */
+  elbows: number
+  /** 1 for a run — between steps both feet are in the air — 0 for a walk. */
+  run: number
 }
 
-const PACES: Record<HandlerPace, Pace> = {
+const PACES: Record<HandlerPace, PaceStyle> = {
   slow: {
     backShift: 0.05,
     rate: 0.6,
@@ -136,6 +151,10 @@ const PACES: Record<HandlerPace, Pace> = {
     pushOff: 0.4,
     clearance: 0.1,
     arms: 0.24,
+    sink: 0.012,
+    lean: 0.03,
+    elbows: 0.1,
+    run: 0,
   },
   normal: {
     backShift: 0.11,
@@ -146,18 +165,41 @@ const PACES: Record<HandlerPace, Pace> = {
     pushOff: 0.55,
     clearance: 0.12,
     arms: 0.34,
+    sink: 0.012,
+    lean: 0.03,
+    elbows: 0.1,
+    run: 0,
   },
+  // Rychlé tempo is a jog (the video): about 170 steps a minute, a foot down a third of the
+  // time, landing flatter than walking.
   fast: {
-    backShift: 0.14,
-    rate: 1.3,
-    cycleLength: 1.53,
-    stance: 0.55,
-    strike: -0.35,
-    pushOff: 0.7,
-    clearance: 0.15,
-    arms: 0.48,
+    // A runner lands under the body, not ahead of it.
+    backShift: 0,
+    rate: 1.4,
+    cycleLength: 1.5,
+    stance: 0.37,
+    strike: -0.15,
+    pushOff: 0.6,
+    clearance: 0.25,
+    arms: 0.4,
+    sink: 0.03,
+    lean: 0.12,
+    elbows: 1.2,
+    run: 1,
   },
 }
+
+/** How a pace looks. */
+export const paceStyle = (pace: HandlerPace): PaceStyle => PACES[pace]
+
+/** `from` moved `k` (0–1) of the way to `to`, every measure alike. */
+export const blendPaceStyle = (from: PaceStyle, to: PaceStyle, k: number): PaceStyle =>
+  Object.fromEntries(
+    (Object.keys(from) as (keyof PaceStyle)[]).map((key) => [
+      key,
+      from[key] + (to[key] - from[key]) * k,
+    ]),
+  ) as PaceStyle
 
 /** Walking speed in m/s and step cycles per second for each pace. */
 export const HANDLER_PACE: Record<HandlerPace, { speed: number; rate: number }> = {
@@ -182,11 +224,27 @@ export const handlerStep = (pace: HandlerPace): StepGait => ({
   clearance: PACES[pace].clearance,
   swingTime: (1 - PACES[pace].stance) / PACES[pace].rate,
   doubleSupport: 0.08,
+  run: PACES[pace].run ? { stanceTime: PACES[pace].stance / PACES[pace].rate } : undefined,
   backShift: PACES[pace].backShift,
   // Turning on the spot, a person sets the stepping foot well into the new direction and
   // turns a little on the planted heel (řád p. 9: a 90° turn is one such step).
   pivot: 0.5,
 })
+
+/**
+ * Above this share of its full speed the fast pace is a run; below it — setting off,
+ * stopping — the handler walks.
+ */
+export const RUNNING_MOTION = 0.65
+/**
+ * Running, how far above the landing leg's reach the pelvis may still be at the last part of
+ * a step in the air (metres per remaining step): it settles onto that leg as the foot comes down.
+ */
+const LANDING_SETTLE = 0.3
+/** A relaxed foot in the air points a little down from square to the shin, radians. */
+const RELAXED_ANKLE = 0.15
+/** How far a runner's pelvis sinks halfway through a step on the ground, metres. */
+const RUN_BOUNCE = 0.04
 
 /** A human hip: turns the leg about 40° either way, swings it 25° out and 20° in. */
 const HIP_LIMITS: LegLimits = { yaw: 0.69, out: 0.45, in: 0.35 }
@@ -195,12 +253,6 @@ const HIP_LIMITS: LegLimits = { yaw: 0.69, out: 0.45, in: 0.35 }
 const WALKING_LEG = LEG * 0.996
 /** The pelvis root standing straight: ankle height + leg + hip joint. */
 const STANDING = 0.08 + WALKING_LEG + HIP_DROP
-/**
- * Walking, a person keeps the knees a little soft and the pelvis this much lower than
- * standing (metres, at full pace): it then rides level over the planted leg and dips only
- * as far as the spread feet need, instead of bobbing up to full height every step.
- */
-const WALK_SINK = 0.012
 
 /**
  * The legs, feet and arms that put the feet where the stepper has them. The feet roll
@@ -212,13 +264,12 @@ const WALK_SINK = 0.012
 export const handlerPose = (
   feet: readonly FootState[],
   body: Body,
-  pace: HandlerPace,
+  p: PaceStyle,
   cycle: number,
   motion: number,
   /** Each foot's pitch last frame and how far it may change by now: feet never snap. */
   previous?: { pitch: readonly number[]; maxChange: number; pelvis: number; maxRise: number },
-): Pose => {
-  const p = PACES[pace]
+): { pose: Pose; pelvis: number; pitch: number[] } => {
   const ankles = feet.map((foot, i) => {
     // A short step lands flatter than a full one…
     const k = Math.min(1, foot.step / (p.cycleLength * p.stance))
@@ -272,20 +323,42 @@ export const handlerPose = (
   })
 
   const hipX = [HIP_X, -HIP_X]
+  // A runner sinks onto the landing leg and springs off it: lowest halfway through its
+  // stance, highest between steps.
+  const bounce =
+    RUN_BOUNCE *
+    p.run *
+    motion *
+    Math.max(
+      0,
+      ...feet.map((f) => (f.swing === null ? Math.sin(Math.PI * Math.min(1, f.stance)) ** 2 : 0)),
+    )
   // As high as both legs reach — and rising no faster than a person rises off the back
   // foot: it drops when it must, but never pops up as a foot lifts.
   const pelvis = Math.min(
-    STANDING - WALK_SINK * motion,
+    // How low the pace carries it changes smoothly (only the legs' reach drops it at once).
+    Math.max(
+      STANDING - p.sink * motion - bounce,
+      previous ? previous.pelvis - previous.maxRise / 4 : 0,
+    ),
     previous ? previous.pelvis + previous.maxRise : Infinity,
     ...ankles.map((a, i) => {
       const flat = Math.hypot(a.x - hipX[i]!, a.z)
-      return a.y + Math.sqrt(Math.max(0, WALKING_LEG ** 2 - flat ** 2)) + HIP_DROP
+      const reach = a.y + Math.sqrt(Math.max(0, WALKING_LEG ** 2 - flat ** 2)) + HIP_DROP
+      // Running, a foot in the air does not hold the pelvis down: the knee folds instead —
+      // eased in with the run, and out again as the foot comes down, so the body is already
+      // settling onto the landing leg when it touches (the pelvis never drops at once).
+      const swing = feet[i]!.swing
+      if (swing === null) return reach
+      const running = Math.min(1, Math.max(0, (p.run * motion - 0.45) / 0.3))
+      const free = Math.min(0.5 * Math.sin(Math.PI * swing), LANDING_SETTLE * (1 - swing))
+      return reach + running * free
     }),
   )
 
   const pose: Pose = {
     ...HANDLER_STAND,
-    spine: (pace === 'fast' ? 0.12 : 0.03) * motion,
+    spine: p.lean * motion,
   }
   ;(['left', 'right'] as const).forEach((side, i) => {
     const a = ankles[i]!
@@ -300,7 +373,37 @@ export const handlerPose = (
     // Arms swing against the legs: the arm is back as far as its leg is ahead of the other.
     const apart = (ankles[i]!.z - ankles[1 - i]!.z) / (p.cycleLength * p.stance)
     pose[`${side}Shoulder`] = p.arms * Math.max(-1.2, Math.min(1.2, apart))
-    pose[`${side}Elbow`] = -0.25 - (pace === 'fast' ? 1.2 : 0.1) * motion
+    // A runner slowing down keeps the arms bent until nearly walking.
+    pose[`${side}Elbow`] = -0.25 - p.elbows * Math.min(1, 2 * motion)
   })
-  return pose
+  // A foot in the air hangs at about a right angle to the shin: kicked up behind, it points
+  // down rather than along the ground (an ankle bends up 20° at most). Blended in over the
+  // step, so it leaves the ground and lands as scheduled above.
+  if (feet.some((f) => f.swing !== null)) {
+    const frames = jointFrames(HANDLER, pose)
+    ;(['left', 'right'] as const).forEach((side, i) => {
+      const swing = feet[i]!.swing
+      if (swing === null) return
+      const knee = frames.get(`${side}Knee`)!.position
+      const ankle = frames.get(`${side}Foot`)!.position
+      // The shin's lean from upright, positive with the ankle ahead of the knee.
+      const lean = Math.atan2(ankle[2] - knee[2], knee[1] - ankle[1])
+      const square = RELAXED_ANKLE - lean
+      const scheduled = ankles[i]!.pitch
+      const wanted = scheduled + (square - scheduled) * Math.sin(Math.PI * swing)
+      // …but never with the toes through the ground: low over it, the foot stays flatter.
+      const height = pelvis + ankle[1]
+      const toesUp = (pitch: number) => height + pitchPoint(TOE[0], TOE[1], pitch)[0] >= 0.01
+      let [safe, tried] = [scheduled, wanted]
+      if (!toesUp(tried))
+        for (let n = 0; n < 12; n++) {
+          const mid = (safe + tried) / 2
+          if (toesUp(mid)) safe = mid
+          else tried = mid
+        }
+      pose[`${side}Foot`] = toesUp(wanted) ? wanted : safe
+    })
+  }
+  // The pitches as scheduled (what the next frame changes smoothly from).
+  return { pose, pelvis, pitch: ankles.map((a) => a.pitch) }
 }

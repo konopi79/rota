@@ -25,6 +25,10 @@ import {
   Z011,
   Z012,
   Z013,
+  Z014_D0A,
+  Z015,
+  Z016,
+  Z017,
 } from '../figures/roz-exercises'
 import { TeamAnimator, onField } from '../figures/team'
 
@@ -210,9 +214,34 @@ describe.each(EXERCISES.map((e) => [e.code, e] as const))('%s: feet', (_, exerci
     }
   })
 
+  test("the handler's arms and trunk move on smoothly, never at once", () => {
+    const parts = ['spine', 'leftShoulder', 'rightShoulder', 'leftElbow', 'rightElbow']
+    for (let i = 1; i < frames.length; i++)
+      for (const part of parts) {
+        const now = frames[i]!.handler.pose[part] ?? 0
+        const before = frames[i - 1]!.handler.pose[part] ?? 0
+        // A runner's arm swings some 250° a second at most: about 4° a frame.
+        if (Math.abs(now - before) > 0.09)
+          throw new Error(`${part} jumps ${(Math.abs(now - before) * 57.3).toFixed(1)}°`)
+      }
+  })
+
   test('joints stay within what a human and a dog can do', () => {
     const deg = Math.PI / 180
     for (const { handler, dog } of frames) {
+      // The ankle: between the shin and the foot about a right angle — bent up 35° at most
+      // (a lunge), stretched down 40° at most.
+      const legs = jointFrames(HANDLER, handler.pose)
+      for (const side of ['left', 'right']) {
+        const knee = legs.get(`${side}Knee`)!.position
+        const foot = legs.get(`${side}Foot`)!
+        const shin = knee.map((v, i) => v - foot.position[i]!)
+        const toes = apply(foot.rotation, [0, 0, 1])
+        const cos = shin.reduce((sum, v, i) => sum + v * toes[i]!, 0) / Math.hypot(...shin)
+        const ankle = Math.acos(cos) / deg
+        expect(ankle).toBeGreaterThan(55)
+        expect(ankle).toBeLessThan(130)
+      }
       for (const side of ['left', 'right']) {
         const out = side === 'left' ? 1 : -1
         expect(Math.abs(handler.pose[`${side}Hip.yaw`] ?? 0)).toBeLessThanOrEqual(40 * deg + 1e-9)
@@ -492,5 +521,61 @@ describe('Z-001 Stop', () => {
   test('walks on after the stop', () => {
     const frames = play()
     expect(frames.at(-1)!.travelled - stationOf(Z001)).toBeGreaterThan(2.5)
+  })
+})
+
+describe('Z-014 Předsednutí', () => {
+  const frames = playAll(Z014_D0A)
+
+  test('the dog sits in front, facing the handler, who does not move the feet', () => {
+    const sitting = frames.filter((f) => f.caption === 'frontHold')
+    expect(sitting.length).toBeGreaterThan(30)
+    for (const f of sitting) {
+      expect(Math.abs(f.dog.x)).toBeLessThan(0.05)
+      expect(f.dog.z).toBeGreaterThan(0.5)
+      expect(Math.cos(f.dog.heading)).toBeLessThan(-0.99)
+      expect(f.feet.handler.every((foot) => foot.swing === null)).toBe(true)
+    }
+  })
+
+  test('D0a: the dog runs round the handler’s right side into heel', () => {
+    const around = frames.filter((f) => f.caption === 'finishAround')
+    expect(Math.min(...around.map((f) => f.dog.x))).toBeLessThan(-0.35)
+    expect(Math.min(...around.map((f) => f.dog.z))).toBeLessThan(-0.4)
+    const sat = frames.findLast((f) => f.caption === 'basePosition')!
+    expect(sat.dog.x).toBeCloseTo(0.42, 1)
+    expect(sat.dog.z).toBeCloseTo(-0.2, 1)
+  })
+})
+
+describe('Z-015–Z-017 paces', () => {
+  const held = (exercise: Exercise, caption: string) =>
+    playAll(exercise).filter((f) => f.caption === caption)
+
+  test('slow: the team walks slowly, the dog at a walk', () => {
+    const slow = held(Z015, 'paceHold')
+    expect(Math.max(...slow.map((f) => f.speed))).toBeLessThan(0.6)
+    // A walking dog has three paws down most of the time.
+    const threeDown = slow.filter((f) => f.feet.dog.filter((p) => p.swing === null).length >= 3)
+    expect(threeDown.length / slow.length).toBeGreaterThan(0.5)
+  })
+
+  test('fast: the handler runs — between steps both feet are in the air', () => {
+    const fast = held(Z016, 'paceHold')
+    expect(Math.min(...fast.map((f) => f.speed))).toBeGreaterThan(1.9)
+    const flying = fast.filter((f) => f.feet.handler.every((foot) => foot.swing !== null))
+    expect(flying.length / fast.length).toBeGreaterThan(0.15)
+    // …and lands again: never long in the air.
+    expect(flying.length / fast.length).toBeLessThan(0.45)
+  })
+
+  test('walking, the handler always has a foot on the ground', () => {
+    for (const f of [...playAll(Z001), ...playAll(Z015), ...playAll(Z017)])
+      expect(f.feet.handler.some((foot) => foot.swing === null)).toBe(true)
+  })
+
+  test('normal: from slow back to a normal walk', () => {
+    const normal = held(Z017, 'leave')
+    expect(normal.at(-1)!.speed).toBeGreaterThan(1.05)
   })
 })

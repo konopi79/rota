@@ -330,6 +330,7 @@
     "back": "ROTA",
     "exercise": { "label": "Cvik" },
     "supplementary": { "label": "Doplňková karta" },
+    "fromPace": { "label": "Předchozí tempo", "slow": "Z pomalého", "fast": "Z rychlého" },
     "shadows": "Stíny",
     "space": {
       "label": "Místo pro provedení cviku",
@@ -347,6 +348,12 @@
     "speed": { "label": "Rychlost", "quarter": "¼×", "half": "½×", "full": "1×" },
     "caption": {
       "approach": "Tým jde ke kartě",
+      "approachSlow": "Tým jde ke kartě pomalým tempem (z předchozí karty)",
+      "approachFast": "Tým jde ke kartě rychlým tempem (z předchozí karty)",
+      "slowPace": "U karty tým zřetelně zpomalí – psovod i pes",
+      "fastPace": "U karty tým zřetelně zrychlí – psovod běží, pes klusá",
+      "normalPace": "U karty tým přejde do normální chůze",
+      "paceHold": "Tým drží tempo, dokud ho jiný cvik nezmění",
       "frontCommand": "Psovod zastaví a dá povel k předsednutí",
       "toFront": "Pes jde před psovoda, psovod stojí",
       "frontSit": "Pes si předsedne – sedí čelem k psovodovi",

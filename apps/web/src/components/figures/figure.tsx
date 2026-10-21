@@ -55,7 +55,7 @@ export function Figure({ rig, ref }: { rig: Joint; ref: Ref<FigureHandle> }) {
           group.quaternion.setFromRotationMatrix(matrix)
         }
         const root = joints.current.get(rig.name)
-        if (root) root.position.y = -lowestPoint(rig, frame.pose)
+        if (root) root.position.y = -lowestPoint(rig, frame.pose) + (frame.lift ?? 0)
         placement.current?.position.set(frame.x, 0, frame.z)
         placement.current?.rotation.set(0, frame.heading, 0)
       },

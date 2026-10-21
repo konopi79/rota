@@ -210,6 +210,38 @@ export const Z014_D0B = frontAndFinish('D0b')
 export const Z014_D0C = frontAndFinish('D0c')
 export const Z014_D0D = frontAndFinish('D0d')
 
+/**
+ * The paces, Z-015–Z-017 (p. 23): "V místě pro provedení cviku tým zpomalí / zrychlí své
+ * tempo. Změna tempa musí být u psovoda i psa zřetelná. Tým udržuje … tempo, dokud jiný
+ * cvik toto tempo nezmění." In the video the slow pace is a slow walk with the dog walking,
+ * the fast one a jog with the dog trotting. Normal pace makes sense only after slow or fast,
+ * so for Z-017 the team comes slowly from the card before.
+ */
+const APPROACH = { slow: 'approachSlow', normal: 'approach', fast: 'approachFast' }
+
+const changePace = (
+  code: string,
+  pace: 'slow' | 'normal' | 'fast',
+  caption: string,
+  from: 'slow' | 'normal' | 'fast' = 'normal',
+): Exercise => ({
+  code,
+  ...(from !== 'normal' && { fromPace: from }),
+  steps: [
+    { walk: 3.5, pace: from, caption: APPROACH[from] },
+    { walk: 1.5, pace, caption },
+    { walk: 3, pace, caption: pace === 'normal' ? 'leave' : 'paceHold' },
+  ],
+})
+
+/** Z-015 Pomalé tempo — p. 23. */
+export const Z015 = changePace('Z-015', 'slow', 'slowPace')
+/** Z-016 Rychlé tempo — p. 23. */
+export const Z016 = changePace('Z-016', 'fast', 'fastPace')
+/** Z-017 Normální tempo (chůze) — p. 23: after slow or fast pace, as the viewer picks. */
+export const Z017 = changePace('Z-017', 'normal', 'normalPace', 'slow')
+export const Z017_FROM_FAST = changePace('Z-017', 'normal', 'normalPace', 'fast')
+
 /** The exercises the page can play, in card order (Z-014 once per supplementary card). */
 export const EXERCISES: Exercise[] = [
   Z001,
@@ -228,4 +260,8 @@ export const EXERCISES: Exercise[] = [
   Z014_D0B,
   Z014_D0C,
   Z014_D0D,
+  Z015,
+  Z016,
+  Z017,
+  Z017_FROM_FAST,
 ]

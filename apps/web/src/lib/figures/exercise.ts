@@ -65,6 +65,8 @@ export type Exercise = {
   card?: 'side' | 'ahead'
   /** The supplementary card that ends the exercise (D0a–d), shown next to the main card. */
   supplementary?: 'D0a' | 'D0b' | 'D0c' | 'D0d'
+  /** The pace the team comes in, from the card before (Z-017 after slow or fast). */
+  fromPace?: 'slow' | 'fast'
   /**
    * Where in the exercise space the handler stops, from the usual place (metres, +x to the
    * left, +z towards the card): an exercise that needs room in front stops further back.
@@ -429,7 +431,8 @@ export class ExercisePlayer {
 export const stationOf = (exercise: Exercise): number => {
   let distance = 0
   for (const step of exercise.steps) {
-    if (!('walk' in step)) break
+    // A change of pace starts the exercise without stopping.
+    if (!('walk' in step) || (distance > 0 && step.pace)) break
     distance += step.walk
   }
   return distance

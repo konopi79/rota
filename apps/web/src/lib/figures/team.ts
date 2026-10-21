@@ -11,6 +11,10 @@ import {
   HANDLER,
   HANDLER_FEET,
   HANDLER_PACE,
+  blendPaceStyle,
+  paceStyle,
+  type PaceStyle,
+  RUNNING_MOTION,
   handlerPose,
   handlerStep,
   type HandlerPace,
@@ -42,6 +46,8 @@ export type FigureFrame = {
   x: number
   z: number
   heading: number
+  /** How far its lowest point is off the ground (a runner between steps), metres. */
+  lift?: number
 }
 
 export type TeamFrame = {
@@ -79,6 +85,14 @@ const FOOT_PITCH_RATE = 6
 
 /** The fastest the handler's pelvis rises, m/s. */
 const PELVIS_RISE = 0.5
+const PELVIS_RISE_RUNNING = 1.2
+
+/** Faster than this (m/s) a person runs rather than walks. */
+const FASTEST_WALK = 1.45
+
+/** The handler's arms and trunk, and the fastest they move, radians per second. */
+const UPPER_BODY = ['spine', 'leftShoulder', 'rightShoulder', 'leftElbow', 'rightElbow'] as const
+const UPPER_BODY_RATE = 5
 
 /** How fast the team picks up speed: the gap shrinks by e every 1/RATE seconds. */
 const SET_OFF_RATE = 2.5
@@ -112,6 +126,8 @@ export class TeamAnimator {
   private walked = 0
   private speed = 0
   private lastPace: HandlerPace = 'normal'
+  /** How the handler's pace looks right now (blending into a new pace). */
+  private style: PaceStyle = paceStyle('normal')
   private place = { ...PLACES.left }
   private dogPosture: Pose = DOG_POSTURES.stand
   /** 1 while the legs carry the dog (standing, moving), 0 sitting or lying. */
@@ -120,6 +136,8 @@ export class TeamAnimator {
   private handlerFeet: BipedStepper | null = null
   /** The handler's foot pitches last frame (they change smoothly). */
   private footPitch = [0, 0]
+  /** The handler's arms and trunk last frame. */
+  private upperBody: Partial<Record<(typeof UPPER_BODY)[number], number>> = {}
   /** The handler's pelvis height last frame. */
   private pelvis = Infinity
   private dogFeet: PawStepper | null = null
@@ -134,10 +152,11 @@ export class TeamAnimator {
     const walking = controls.handler !== 'stand'
     if (walking) this.lastPace = controls.handler as HandlerPace
     const pace = HANDLER_PACE[this.lastPace]
-    // A person sets off over about a step and stops more firmly.
+    // A person sets off over about a step and stops more firmly; walking on, a change of
+    // pace takes about a second either way.
     const wanted = walking ? Math.min(pace.speed, controls.maxSpeed ?? Infinity) : 0
     this.speed =
-      wanted > this.speed
+      wanted > this.speed || walking
         ? this.speed + (wanted - this.speed) * (1 - Math.exp(-SET_OFF_RATE * dt))
         : approach(this.speed, wanted, dt)
     // Stopping, the last few centimetres are one firm stop, not a long creep.
@@ -172,16 +191,44 @@ export class TeamAnimator {
           x: handler.x + Math.sin(handler.heading) * (this.speed / SETTLE_RATE),
           z: handler.z + Math.cos(handler.heading) * (this.speed / SETTLE_RATE),
         })
-    const feet = this.handlerFeet.update(dt, handler, handlerStep(handlerPace), rest)
-    const motion = Math.min(1, this.speed / HANDLER_PACE[handlerPace].speed)
-    const handlerPoseNow = handlerPose(feet, handler, handlerPace, this.handlerFeet.cycle, motion, {
+    // Too fast to walk — slowing down from a run to a walk — the handler runs on until the
+    // speed allows walking steps.
+    const gait = this.speed > FASTEST_WALK ? 'fast' : handlerPace
+    const feet = this.handlerFeet.update(dt, handler, handlerStep(gait), rest)
+    // How the pace looks changes over about a second, with the speed.
+    this.style = blendPaceStyle(
+      this.style,
+      paceStyle(handlerPace),
+      1 - Math.exp(-SET_OFF_RATE * dt),
+    )
+    const motion = Math.min(1, this.speed / (this.style.rate * this.style.cycleLength))
+    const {
+      pose: handlerPoseNow,
+      pelvis,
+      pitch,
+    } = handlerPose(feet, handler, this.style, this.handlerFeet.cycle, motion, {
       pitch: this.footPitch,
       maxChange: FOOT_PITCH_RATE * dt,
       pelvis: this.pelvis,
-      maxRise: PELVIS_RISE * dt,
+      // A runner bounds up off the foot quicker than a walker rises.
+      maxRise:
+        (this.style.run > 0.5 && motion > RUNNING_MOTION ? PELVIS_RISE_RUNNING : PELVIS_RISE) * dt,
     })
-    this.pelvis = -lowestPoint(HANDLER, handlerPoseNow)
-    this.footPitch = [handlerPoseNow.leftFoot ?? 0, handlerPoseNow.rightFoot ?? 0]
+    this.pelvis = pelvis
+    // Running, between steps both feet are off the ground: the body is that much higher
+    // than standing on its lowest point would put it.
+    const handlerLift = Math.max(0, pelvis + lowestPoint(HANDLER, handlerPoseNow))
+    this.footPitch = pitch
+    // The arms and trunk follow on: however the pace or speed changes, they move at most
+    // as fast as a runner swings an arm.
+    for (const part of UPPER_BODY) {
+      const before = this.upperBody[part]
+      const wanted = handlerPoseNow[part] ?? 0
+      const limit = UPPER_BODY_RATE * dt
+      handlerPoseNow[part] =
+        before === undefined ? wanted : before + Math.max(-limit, Math.min(limit, wanted - before))
+      this.upperBody[part] = handlerPoseNow[part]
+    }
 
     // The dog.
     const moving = isGait(controls.dog)
@@ -214,7 +261,7 @@ export class TeamAnimator {
 
     return {
       dog: { pose: dogPose, ...this.place },
-      handler: { pose: handlerPoseNow, x: 0, z: 0, heading: 0 },
+      handler: { pose: handlerPoseNow, x: 0, z: 0, heading: 0, lift: handlerLift },
       travelled: this.travelled,
       walked: this.walked,
       speed: this.speed,
