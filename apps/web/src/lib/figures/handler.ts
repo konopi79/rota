@@ -217,9 +217,11 @@ export const HANDLER_PACE: Record<HandlerPace, { speed: number; rate: number }> 
 /** How far the arms swing forward and back, radians. */
 const ARM_SWING: Record<HandlerPace, number> = { slow: 0.24, normal: 0.34, fast: 0.48 }
 
-/** The pose walking sets on top of the standing pose at time `t` (seconds). */
-export const handlerGait = (pace: HandlerPace, t: number): Pose => {
-  const { rate } = HANDLER_GAITS[pace]
+/**
+ * The pose walking sets on top of the standing pose at `phase` (step cycles; the left heel
+ * lands at whole numbers). One cycle covers `speed / rate` metres.
+ */
+export const handlerGait = (pace: HandlerPace, phase: number): Pose => {
   const out: Pose = { spine: pace === 'fast' ? 0.12 : 0.03 }
   const feet = (
     [
@@ -227,7 +229,7 @@ export const handlerGait = (pace: HandlerPace, t: number): Pose => {
       ['right', 0.5],
     ] as const
   ).map(([side, offset]) => {
-    const p = (((t * rate + offset) % 1) + 1) % 1
+    const p = (((phase + offset) % 1) + 1) % 1
     return { side, p, ...handlerFoot(pace, p) }
   })
   // The hips as high as both legs still reach their ankles.

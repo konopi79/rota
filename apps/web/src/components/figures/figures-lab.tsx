@@ -1,31 +1,35 @@
 'use client'
 
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import type { GridHelper } from 'three'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import { SRGBColorSpace, TextureLoader, type GridHelper, type Group } from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { useTranslation } from 'react-i18next'
 
 import { Figure, type FigureHandle } from '@/components/figures/figure'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { DOG } from '@/lib/figures/dog'
+import { ExercisePlayer, stationOf, Z001, type Exercise } from '@/lib/figures/exercise'
 import { HANDLER } from '@/lib/figures/handler'
 import { TeamAnimator, type TeamControls } from '@/lib/figures/team'
 
-type CameraView = 'angle' | 'side' | 'top' | 'front'
+type CameraView = 'behind' | 'angle' | 'side' | 'top' | 'front'
 
-/** Camera positions; all look at the team, a little above the ground. */
+/** Camera offsets from the point it looks at, a little above the ground by the team. */
 const VIEWS: Record<CameraView, [number, number, number]> = {
-  angle: [3.4, 2.6, 3.6],
-  side: [4.8, 1.1, 0.1],
-  top: [0.2, 6, 0.01],
-  front: [0.2, 1.5, 5],
+  // Over the handler's left shoulder: the way the team sees the card.
+  behind: [1.9, 1.75, -3.4],
+  angle: [3.2, 1.85, 3.5],
+  side: [4.6, 0.35, 0],
+  top: [0, 5.25, -0.01],
+  front: [0, 0.75, 4.9],
 }
 const TARGET: [number, number, number] = [0.2, 0.75, 0.1]
 
-const SLOW_MOTION = { quarter: 0.25, half: 0.5, full: 1 }
+const SLOW_MOTION = { pause: 0, quarter: 0.25, half: 0.5, full: 1 }
 
-function Team({ controls, slowMotion }: { controls: TeamControls; slowMotion: number }) {
+/** The figures walk on the spot; the ground slides back under them. */
+function LabTeam({ controls, slowMotion }: { controls: TeamControls; slowMotion: number }) {
   const animator = useMemo(() => new TeamAnimator(), [])
   const dog = useRef<FigureHandle>(null)
   const handler = useRef<FigureHandle>(null)
@@ -36,8 +40,7 @@ function Team({ controls, slowMotion }: { controls: TeamControls; slowMotion: nu
     const frame = animator.step(Math.min(delta, 0.1) * slowMotion, controls)
     dog.current?.apply(frame.dog)
     handler.current?.apply(frame.handler)
-    // The team walks on the spot; the ground slides back under it.
-    grid.current?.position.setZ(-frame.groundOffset)
+    grid.current?.position.setZ(-(frame.travelled % 1))
   })
 
   return (
@@ -49,29 +52,135 @@ function Team({ controls, slowMotion }: { controls: TeamControls; slowMotion: nu
   )
 }
 
-function CameraRig({ view }: { view: CameraView }) {
-  const { camera, gl } = useThree()
-  const controls = useMemo(() => new OrbitControls(camera, gl.domElement), [camera, gl])
+/**
+ * A card on its stand. The exercise starts in a square of at most 120 cm "vlevo před
+ * kartou" (regulation §5.3.1, p. 14): the card stands right of the team, a little ahead.
+ */
+function CardStand({ code, x, z }: { code: string; x: number; z: number }) {
+  const texture = useMemo(() => {
+    const map = new TextureLoader().load(`/cards/cz/${code.toLowerCase()}.webp`)
+    map.colorSpace = SRGBColorSpace
+    return map
+  }, [code])
+  useEffect(() => () => texture.dispose(), [texture])
 
-  useEffect(() => () => controls.dispose(), [controls])
+  // Facing the team that comes from −z, the top tilted back a little.
+  return (
+    <group position={[x, 0, z]} rotation-y={Math.PI}>
+      <mesh position={[0, 0.27, -0.03]} castShadow>
+        <boxGeometry args={[0.03, 0.54, 0.03]} />
+        <meshStandardMaterial color="#555b63" />
+      </mesh>
+      <mesh position={[0, 0.64, 0]} rotation-x={-0.3} castShadow>
+        <boxGeometry args={[0.5, 0.36, 0.01]} />
+        <meshStandardMaterial color="#e8e8e8" />
+        <mesh position={[0, 0, 0.006]}>
+          <planeGeometry args={[0.48, 0.34]} />
+          <meshBasicMaterial map={texture} toneMapped={false} />
+        </mesh>
+      </mesh>
+    </group>
+  )
+}
+
+/**
+ * The team walks over the field through the exercise; the station — where the team stops —
+ * is at the origin. Starts over when the script ends.
+ */
+function ExerciseTeam({
+  exercise,
+  slowMotion,
+  focusRef,
+  onCaption,
+}: {
+  exercise: Exercise
+  slowMotion: number
+  focusRef: RefObject<number>
+  onCaption: (caption: string | null) => void
+}) {
+  const station = useMemo(() => stationOf(exercise), [exercise])
+  const player = useRef<ExercisePlayer>(null)
+  const team = useRef<Group>(null)
+  const dog = useRef<FigureHandle>(null)
+  const handler = useRef<FigureHandle>(null)
+  const caption = useRef<string | null>(null)
+
+  useFrame((_, delta) => {
+    player.current ??= new ExercisePlayer(exercise)
+    const frame = player.current.step(Math.min(delta, 0.1) * slowMotion)
+    if (frame.finished) player.current = null
+    dog.current?.apply(frame.dog)
+    handler.current?.apply(frame.handler)
+    const z = frame.travelled - station
+    team.current?.position.setZ(z)
+    focusRef.current = z
+    if (frame.caption !== caption.current) {
+      caption.current = frame.caption
+      onCaption(frame.caption)
+    }
+  })
+
+  return (
+    <>
+      <group ref={team}>
+        <Figure rig={DOG} ref={dog} />
+        <Figure rig={HANDLER} ref={handler} />
+      </group>
+      <CardStand code={exercise.code} x={-0.75} z={0.45} />
+      <gridHelper args={[30, 30, '#5f8f4a', '#6f9f58']} position={[0, 0.002, 0]} />
+    </>
+  )
+}
+
+/** Orbit controls; the camera keeps its offset and follows `focusRef` (z) when given. */
+function CameraRig({ view, focusRef }: { view: CameraView; focusRef?: RefObject<number> }) {
+  const { camera, gl } = useThree()
+  const controlsRef = useRef<OrbitControls>(null)
+  const followed = useRef(0)
+
   useEffect(() => {
-    controls.object.position.set(...VIEWS[view])
-    controls.target.set(...TARGET)
+    const controls = new OrbitControls(camera, gl.domElement)
+    controlsRef.current = controls
+    return () => controls.dispose()
+  }, [camera, gl])
+  useEffect(() => {
+    const controls = controlsRef.current
+    if (!controls) return
+    const z = focusRef?.current ?? 0
+    const [ox, oy, oz] = VIEWS[view]
+    controls.target.set(TARGET[0], TARGET[1], TARGET[2] + z)
+    controls.object.position.set(TARGET[0] + ox, TARGET[1] + oy, TARGET[2] + z + oz)
+    followed.current = z
     controls.update()
-  }, [controls, view])
+  }, [view, focusRef])
+
+  useFrame(() => {
+    const controls = controlsRef.current
+    if (!focusRef || !controls) return
+    const shift = focusRef.current - followed.current
+    followed.current = focusRef.current
+    controls.target.z += shift
+    controls.object.position.z += shift
+    controls.update()
+  })
 
   return null
 }
 
+type Mode = 'figures' | 'z001'
+
 export function FiguresLab() {
   const { t } = useTranslation()
+  const [mode, setMode] = useState<Mode>('z001')
   const [controls, setControls] = useState<TeamControls>({
     dog: 'stand',
     place: 'left',
     handler: 'stand',
   })
-  const [view, setView] = useState<CameraView>('angle')
+  const [view, setView] = useState<CameraView>('behind')
   const [slowMotion, setSlowMotion] = useState<keyof typeof SLOW_MOTION>('full')
+  const [caption, setCaption] = useState<string | null>(null)
+  const focusRef = useRef(0)
   const update = (patch: Partial<TeamControls>) => setControls((c) => ({ ...c, ...patch }))
 
   const choice = <T extends string>(
@@ -99,7 +208,10 @@ export function FiguresLab() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="bg-card h-[55vh] min-h-72">
+      <div className="mx-auto w-full max-w-md px-4 pb-3">
+        {choice('mode', mode, ['z001', 'figures'], setMode)}
+      </div>
+      <div className="bg-card relative h-[55vh] min-h-72">
         <Canvas shadows camera={{ position: VIEWS.angle, fov: 40 }}>
           <color attach="background" args={['#cfe6f5']} />
           <hemisphereLight args={['#ffffff', '#6f9f58', 1.2]} />
@@ -113,20 +225,47 @@ export function FiguresLab() {
             <planeGeometry args={[30, 30]} />
             <meshStandardMaterial color="#86b86b" />
           </mesh>
-          <Team controls={controls} slowMotion={SLOW_MOTION[slowMotion]} />
-          <CameraRig view={view} />
+          {mode === 'figures' ? (
+            <>
+              <LabTeam controls={controls} slowMotion={SLOW_MOTION[slowMotion]} />
+              <CameraRig view={view} />
+            </>
+          ) : (
+            <>
+              <ExerciseTeam
+                exercise={Z001}
+                slowMotion={SLOW_MOTION[slowMotion]}
+                focusRef={focusRef}
+                onCaption={setCaption}
+              />
+              <CameraRig view={view} focusRef={focusRef} />
+            </>
+          )}
         </Canvas>
+        {mode !== 'figures' && caption && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-4">
+            <div className="bg-background/85 rounded-lg px-3 py-1.5 text-center font-medium shadow">
+              {t(`figures.caption.${caption}`)}
+            </div>
+          </div>
+        )}
       </div>
       <div className="mx-auto grid w-full max-w-md gap-3 px-4 py-4">
-        {choice('dog', controls.dog, ['stand', 'sit', 'down', 'walk', 'trot'], (dog) =>
-          update({ dog }),
+        {mode === 'figures' && (
+          <>
+            {choice('dog', controls.dog, ['stand', 'sit', 'down', 'walk', 'trot'], (dog) =>
+              update({ dog }),
+            )}
+            {choice('place', controls.place, ['left', 'right', 'front'], (place) =>
+              update({ place }),
+            )}
+            {choice('handler', controls.handler, ['stand', 'slow', 'normal', 'fast'], (handler) =>
+              update({ handler }),
+            )}
+          </>
         )}
-        {choice('place', controls.place, ['left', 'right', 'front'], (place) => update({ place }))}
-        {choice('handler', controls.handler, ['stand', 'slow', 'normal', 'fast'], (handler) =>
-          update({ handler }),
-        )}
-        {choice('view', view, ['angle', 'side', 'top', 'front'], setView)}
-        {choice('speed', slowMotion, ['quarter', 'half', 'full'], setSlowMotion)}
+        {choice('view', view, ['behind', 'angle', 'side', 'top', 'front'], setView)}
+        {choice('speed', slowMotion, ['pause', 'quarter', 'half', 'full'], setSlowMotion)}
       </div>
     </div>
   )

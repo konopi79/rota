@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import { DOG, DOG_POSTURES, dogGait, type DogPosture } from '../figures/dog'
+import { ExercisePlayer, stationOf, Z001 } from '../figures/exercise'
 import {
   HANDLER,
   HANDLER_GAITS,
@@ -106,8 +107,8 @@ describe('handler', () => {
       const swing = only(HANDLER, ['leftHip'])
       const highest = Math.max(
         ...Array.from({ length: 40 }, (_, i) => {
-          const t = i / 40 / HANDLER_PACE[pace].rate
-          return clearance(HANDLER, { ...HANDLER_STAND, ...handlerGait(pace, t) }, swing)
+          const phase = i / 40
+          return clearance(HANDLER, { ...HANDLER_STAND, ...handlerGait(pace, phase) }, swing)
         }),
       )
       expect(highest).toBeGreaterThan(0.08)
@@ -116,8 +117,8 @@ describe('handler', () => {
 
   test.each<HandlerPace>(['slow', 'normal', 'fast'])('%s: the hips do not bounce', (pace) => {
     const heights = Array.from({ length: 100 }, (_, i) => {
-      const t = i / 100 / HANDLER_PACE[pace].rate
-      return -lowestPoint(HANDLER, { ...HANDLER_STAND, ...handlerGait(pace, t) })
+      const phase = i / 100
+      return -lowestPoint(HANDLER, { ...HANDLER_STAND, ...handlerGait(pace, phase) })
     })
     expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(0.05)
   })
@@ -130,7 +131,7 @@ describe('handler', () => {
       // Ground position of a sole corner of the left foot at time t: on the ground (y = 0)
       // and, the ground sliding back at `speed`, at the same spot all the time.
       const corner = (t: number, [cy, cz]: [number, number]) => {
-        const pose = { ...HANDLER_STAND, ...handlerGait(pace, t) }
+        const pose = { ...HANDLER_STAND, ...handlerGait(pace, t * rate) }
         const foot = jointFrames(HANDLER, pose).get('leftFoot')!
         const [dy, dz] = pitchPoint(cy, cz, foot.pitch)
         return { y: foot.y + dy - lowestPoint(HANDLER, pose), z: foot.z + dz + speed * t }
@@ -164,10 +165,44 @@ describe('TeamAnimator', () => {
   test('the ground moves only while the handler walks', () => {
     const animator = new TeamAnimator()
     const still = animator.step(1, { dog: 'stand', place: 'left', handler: 'stand' })
-    expect(still.groundOffset).toBe(0)
+    expect(still.travelled).toBe(0)
     let moving = still
     for (let i = 0; i < 10; i++)
       moving = animator.step(0.05, { dog: 'walk', place: 'left', handler: 'normal' })
-    expect(moving.groundOffset).toBeGreaterThan(0)
+    expect(moving.travelled).toBeGreaterThan(0)
+  })
+})
+
+describe('Z-001 Stop', () => {
+  const play = () => {
+    const player = new ExercisePlayer(Z001)
+    const frames = [player.step(0)]
+    while (!frames.at(-1)!.finished && frames.length < 60 * 60) frames.push(player.step(1 / 60))
+    return frames
+  }
+
+  test('plays to the end in a few seconds', () => {
+    const frames = play()
+    expect(frames.at(-1)!.finished).toBe(true)
+    expect(frames.length / 60).toBeLessThan(15)
+  })
+
+  test('the team stops where the script says and stands still in the base position', () => {
+    const frames = play()
+    const station = stationOf(Z001)
+    expect(station).toBeCloseTo(3.5, 1)
+    const held = frames.filter((f) => f.caption === 'basePosition')
+    expect(held.length).toBeGreaterThan(60)
+    for (const f of held) {
+      expect(f.travelled).toBeCloseTo(station, 2)
+      // Dog sits at the handler's left, shoulder blade level with the handler's leg.
+      expect(f.dog.pose.trunk).toBeCloseTo(DOG_POSTURES.sit.trunk ?? NaN, 1)
+      expect(f.dog.x).toBeGreaterThan(0.3)
+    }
+  })
+
+  test('walks on after the stop', () => {
+    const frames = play()
+    expect(frames.at(-1)!.travelled - stationOf(Z001)).toBeGreaterThan(2.5)
   })
 })

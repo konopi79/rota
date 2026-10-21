@@ -143,22 +143,36 @@ const PHASES: Record<
   trot: { leftFront: 0, rightHind: 0, rightFront: 0.5, leftHind: 0.5 },
 }
 
-/** Cycles per second at the handler's normal and fast pace. */
-export const DOG_GAIT_RATE: Record<DogGait, number> = { walk: 1.4, trot: 2.2 }
+const REACH: Record<DogGait, number> = { walk: 0.32, trot: 0.45 }
+/** Shoulder to ground with the leg straight: the radius a planted paw swings about. */
+const LEG = 0.38
 
 /**
- * The swing a gait adds to the standing posture at time `t` (seconds): each leg swings
+ * Ground covered in one gait cycle: a paw sweeps back 2·LEG·sin(reach) in half a cycle.
+ * The animator advances the phase by distance / this, so the paws keep pace with the
+ * ground at any speed.
+ */
+export const DOG_CYCLE_LENGTH: Record<DogGait, number> = {
+  walk: 4 * LEG * Math.sin(REACH.walk),
+  trot: 4 * LEG * Math.sin(REACH.trot),
+}
+
+/** Speed of a dog moving on its own (the lab page, with the handler standing), m/s. */
+export const DOG_GAIT_SPEED: Record<DogGait, number> = { walk: 0.6, trot: 1.2 }
+
+/**
+ * The swing a gait adds to the standing posture at `phase` (cycles): each leg swings
  * forward and back, the lower leg folds while it is carried forward.
  */
-export const dogGait = (gait: DogGait, t: number): Pose => {
-  const reach = gait === 'trot' ? 0.45 : 0.32
+export const dogGait = (gait: DogGait, phase: number): Pose => {
+  const reach = REACH[gait]
   const lift = gait === 'trot' ? 0.9 : 0.6
   const out: Pose = {}
   for (const [leg, offset] of Object.entries(PHASES[gait])) {
-    const phase = 2 * Math.PI * (t * DOG_GAIT_RATE[gait] + offset)
+    const angle = 2 * Math.PI * (phase + offset)
     // −sin: forward first; the leg travels forward (swing) while cos > 0.
-    const swing = -reach * Math.sin(phase)
-    const carry = lift * Math.max(0, Math.cos(phase))
+    const swing = -reach * Math.sin(angle)
+    const carry = lift * Math.max(0, Math.cos(angle))
     const side = leg.startsWith('left') ? 'left' : 'right'
     if (leg.endsWith('Front')) {
       out[`${side}Shoulder`] = swing
@@ -170,6 +184,6 @@ export const dogGait = (gait: DogGait, t: number): Pose => {
     }
   }
   out.head = gait === 'trot' ? -0.15 : 0
-  out.tail = -0.15 * Math.sin(2 * Math.PI * t * DOG_GAIT_RATE[gait] * 2)
+  out.tail = -0.15 * Math.sin(4 * Math.PI * phase)
   return out
 }
