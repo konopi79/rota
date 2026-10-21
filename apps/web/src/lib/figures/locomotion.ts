@@ -202,6 +202,8 @@ export class BipedStepper {
   private down: number[]
   private travelled = 0
   private settled = true
+  /** The foot that stepped last. */
+  private lastStep = -1
 
   constructor(
     private readonly specs: readonly FootSpec[],
@@ -277,10 +279,10 @@ export class BipedStepper {
       let next = -1
       let worst = 0
       const level = Math.abs(offsets[0]!.along - offsets[1]!.along) < 0.1
-      this.state.forEach((_, i) => {
+      // Both feet down a moment (the one just landed takes the weight) before either lifts.
+      const ready = this.down.every((d) => d >= ds)
+      const strains = this.state.map((_, i) => {
         const o = offsets[i]!
-        const other = this.down[1 - i]!
-        if (other < ds) return
         let strain: number
         if (still) {
           strain = o.off > SETTLED_DISTANCE || o.turned > SETTLED_YAW ? 1 + o.off : 0
@@ -292,8 +294,15 @@ export class BipedStepper {
           const otherAlong = offsets[1 - i]!.along
           if (forward > WALKING && o.along < otherAlong - 0.05) strain = Math.max(strain, 1)
         }
-        if (strain >= 1 && strain > worst) [next, worst] = [i, strain]
+        return strain
       })
+      strains.forEach((strain, i) => {
+        if (ready && strain >= 1 && strain > worst) [next, worst] = [i, strain]
+      })
+      // Moving, the feet take turns: the foot that stepped last goes again only if the other
+      // one need not (turning sharply, the inner foot would otherwise step on and on).
+      const other = 1 - this.lastStep
+      if (!still && next === this.lastStep && strains[other]! >= 1) next = other
       // Setting off from side by side: the foot to lead is the one furthest behind (or the
       // right one if level), as soon as the body moves.
       if (next < 0 && level && !still && forward > 0.05 && this.down.every((d) => d >= ds)) {
@@ -302,6 +311,7 @@ export class BipedStepper {
         next = a < b - FIRST_STEP_AFTER ? 0 : 1
       }
       if (next >= 0) {
+        this.lastStep = next
         const f = this.state[next]!
         const duration = still ? gait.swingTime * 0.8 : gait.swingTime
         this.swings[next] = { from: { x: f.x, z: f.z, yaw: f.yaw }, aim: null, time: 0, duration }

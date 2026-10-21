@@ -16,7 +16,17 @@ export type Vec3 = V3
 
 /** Named colours, mapped to materials by the renderer. */
 export type Paint =
-  'coat' | 'coatDark' | 'nose' | 'leftMark' | 'rightMark' | 'skin' | 'shirt' | 'trousers' | 'shoe'
+  | 'coat'
+  | 'coatDark'
+  | 'nose'
+  | 'leftMark'
+  | 'rightMark'
+  | 'skin'
+  | 'hair'
+  | 'eye'
+  | 'shirt'
+  | 'trousers'
+  | 'shoe'
 
 export type Box = {
   /** Width (x), height (y), depth (z). */

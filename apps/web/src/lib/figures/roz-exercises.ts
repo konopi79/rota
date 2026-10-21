@@ -103,17 +103,24 @@ export const Z005: Exercise = {
 
 /**
  * The 90° and 180° turns are walked in a small arc ("Obrat v malém oblouku je dovolen",
- * p. 21); in the video the handler turns tightly right in front of the card. Turning to the
- * dog's side, the dog turns almost on the spot inside the arc.
+ * p. 21; the guidelines allow an arc in 006–009, p. 12, and příloha 2 docks "Příliš velké
+ * oblouky v obratech"). No size is given: in the video the handler turns tightly right in
+ * front of the card, about half a metre round for 90°, nearly on the spot for 180° —
+ * walking back some 40 cm beside the way in. Turning to the dog's side, the dog turns
+ * almost on the spot inside the arc.
  */
-const ARC = 0.35
+const ARC = { 90: 0.35, 180: 0.2 }
 
-const turnWhileWalking = (code: string, turn: number, caption: string): Exercise => ({
+const turnWhileWalking = (
+  code: string,
+  turn: 90 | -90 | 180 | -180,
+  caption: string,
+): Exercise => ({
   code,
   card: 'ahead',
   steps: [
     { walk: 3.5, caption: 'approachTurn' },
-    { turn, radius: ARC, caption },
+    { turn, radius: ARC[Math.abs(turn) as 90 | 180], caption },
     { walk: 3, caption: 'leaveTurn' },
   ],
 })

@@ -79,6 +79,43 @@ function CardStand({ code, x, z }: { code: string; x: number; z: number }) {
   )
 }
 
+/**
+ * The place where the exercise starts (regulation §5.3.1, p. 8), as a square on the ground in
+ * the station's frame: "ve čtverci o délce strany maximálně 120 cm, který se nachází vlevo
+ * před kartou" — the team stops in it, the card at its front right corner; for a change
+ * of direction "cca 120 cm přímo před příslušnou kartou", the square round that point.
+ */
+const SPACE = {
+  side: { x: 0.15, z: -0.15 },
+  ahead: { x: 0, z: 0 },
+}
+const SPACE_SIDE = 1.2
+const SPACE_LINE = 0.025
+
+function ExerciseSpace({ x, z }: { x: number; z: number }) {
+  const half = SPACE_SIDE / 2
+  const edges: [number, number, number, number][] = [
+    [0, half, SPACE_SIDE + SPACE_LINE, SPACE_LINE],
+    [0, -half, SPACE_SIDE + SPACE_LINE, SPACE_LINE],
+    [half, 0, SPACE_LINE, SPACE_SIDE],
+    [-half, 0, SPACE_LINE, SPACE_SIDE],
+  ]
+  return (
+    <group position={[x, 0.004, z]}>
+      <mesh rotation-x={-Math.PI / 2}>
+        <planeGeometry args={[SPACE_SIDE, SPACE_SIDE]} />
+        <meshBasicMaterial color="#fff6b0" transparent opacity={0.3} depthWrite={false} />
+      </mesh>
+      {edges.map(([ex, ez, w, d]) => (
+        <mesh key={`${ex},${ez}`} position={[ex, 0.001, ez]} rotation-x={-Math.PI / 2}>
+          <planeGeometry args={[w, d]} />
+          <meshBasicMaterial color="#fffbe0" />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
 /** Where the camera looks: the team's place on the field. */
 type Focus = { x: number; z: number }
 
@@ -95,11 +132,13 @@ const CARD_PLACE = { side: { x: -0.75, z: 0.45 }, ahead: { x: 0, z: 1.2 } }
 function ExerciseTeam({
   exercise,
   slowMotion,
+  showSpace,
   focusRef,
   onCaption,
 }: {
   exercise: Exercise
   slowMotion: number
+  showSpace: boolean
   focusRef: RefObject<Focus>
   onCaption: (caption: string | null) => void
 }) {
@@ -128,6 +167,7 @@ function ExerciseTeam({
   })
 
   const card = CARD_PLACE[exercise.card ?? 'side']
+  const space = SPACE[exercise.card ?? 'side']
   return (
     <>
       <group ref={team}>
@@ -135,6 +175,7 @@ function ExerciseTeam({
         <Figure rig={HANDLER} ref={handler} />
       </group>
       <CardStand code={exercise.code} x={card.x} z={card.z} />
+      {showSpace && <ExerciseSpace x={space.x} z={space.z} />}
       <gridHelper args={[30, 30, '#5f8f4a', '#6f9f58']} position={[0, 0.002, 0]} />
     </>
   )
@@ -152,6 +193,8 @@ function CameraRig({ view, focusRef }: { view: CameraView; focusRef: RefObject<F
     // pause; two fingers turn and zoom the view, as on an embedded map.
     controls.touches = { ONE: null, TWO: TOUCH.DOLLY_ROTATE }
     controls.domElement?.style.setProperty('touch-action', 'pan-y')
+    // The camera stays above the ground: nothing to see from below the field.
+    controls.maxPolarAngle = Math.PI / 2 - 0.05
     controlsRef.current = controls
     return () => controls.dispose()
   }, [camera, gl])
@@ -192,6 +235,7 @@ export function ExerciseAnimation() {
   const [slowMotion, setSlowMotion] = useState<keyof typeof SLOW_MOTION>('full')
   const [paused, setPaused] = useState(false)
   const [shadows, setShadows] = useState(true)
+  const [showSpace, setShowSpace] = useState(false)
   const [caption, setCaption] = useState<string | null>(null)
   const focusRef = useRef<Focus>({ x: 0, z: 0 })
   const press = useRef<{ x: number; y: number; time: number } | null>(null)
@@ -277,6 +321,7 @@ export function ExerciseAnimation() {
             key={code}
             exercise={exercise}
             slowMotion={paused ? 0 : SLOW_MOTION[slowMotion]}
+            showSpace={showSpace}
             focusRef={focusRef}
             onCaption={setCaption}
           />
@@ -310,6 +355,19 @@ export function ExerciseAnimation() {
             {t('figures.shadows')}
           </Label>
           <Switch id="shadows" checked={shadows} onCheckedChange={setShadows} />
+        </div>
+        <div className="space-y-1">
+          <div className="flex items-center justify-between gap-4">
+            <Label htmlFor="space" className="text-base">
+              {t('figures.space.label')}
+            </Label>
+            <Switch id="space" checked={showSpace} onCheckedChange={setShowSpace} />
+          </div>
+          {showSpace && (
+            <p className="text-muted-foreground text-sm">
+              {t(`figures.space.${exercise.card ?? 'side'}`)}
+            </p>
+          )}
         </div>
       </div>
     </div>

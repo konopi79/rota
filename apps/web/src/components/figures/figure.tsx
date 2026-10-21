@@ -17,6 +17,8 @@ const PAINT: Record<Paint, string> = {
   leftMark: '#2f6fe0',
   rightMark: '#f08a24',
   skin: '#e2b48f',
+  hair: '#5a3d2b',
+  eye: '#1c1c20',
   shirt: '#3b8f86',
   trousers: '#3d4452',
   shoe: '#26272b',

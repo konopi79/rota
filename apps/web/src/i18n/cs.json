@@ -322,6 +322,11 @@
     "back": "ROTA",
     "exercise": { "label": "Cvik" },
     "shadows": "Stíny",
+    "space": {
+      "label": "Místo pro provedení cviku",
+      "side": "Cvik začíná ve čtverci o straně nejvýš 120 cm vlevo před kartou. Za ukončený se považuje, když noha psovoda překročí zadní linii stojanu karty (řád, 5.3.1).",
+      "ahead": "Cvik se změnou směru začíná asi 120 cm přímo před kartou (řád, 5.3.1)."
+    },
     "view": {
       "label": "Kamera",
       "behind": "Zezadu",
