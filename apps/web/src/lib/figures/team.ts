@@ -16,6 +16,7 @@ import {
   type HandlerPace,
 } from './handler'
 import { BipedStepper, PawStepper, type Body, type FootState } from './locomotion'
+import { angleTo } from './math'
 import { blendPoses, lowestPoint, type Pose } from './rig'
 
 /** What the two figures are asked to do. */
@@ -31,6 +32,8 @@ export type TeamControls = {
   rest?: Body
   /** A tight bend ahead: the handler slows down to this, m/s. */
   maxSpeed?: number
+  /** The dog on a path of its own: its place right now (instead of `place`). */
+  dogAt?: { x: number; z: number; heading: number }
 }
 
 export type FigureFrame = {
@@ -83,6 +86,9 @@ const SET_OFF_RATE = 2.5
 /** How fast a change settles: the gap shrinks by e every 1/RATE seconds. */
 export const SETTLE_RATE = 5
 
+/** How fast the dog gets up from a sit or down: the gap shrinks by e every 1/RATE s. */
+const RISE_RATE = 9
+
 const approach = (from: number, to: number, dt: number) =>
   from + (to - from) * (1 - Math.exp(-SETTLE_RATE * dt))
 
@@ -120,7 +126,7 @@ export class TeamAnimator {
 
   /** How near the dog's planted paws are to the edge of their reach (`PawStepper.strain`). */
   get dogStrain() {
-    return this.dogStanding < 1 ? 0 : (this.dogFeet?.strain ?? 0)
+    return this.dogStanding < 0.98 ? 0 : (this.dogFeet?.strain ?? 0)
   }
 
   /** Speeds up or slows down; how far the team and the handler have gone; the dog's place. */
@@ -138,12 +144,16 @@ export class TeamAnimator {
     if (!walking && !controls.stay && this.speed < 0.08) this.speed = 0
     this.walked += this.speed * dt
     if (!controls.stay) this.travelled += this.speed * dt
-    const target = PLACES[controls.place]
-    this.place = {
-      x: approach(this.place.x, target.x, dt),
-      z: approach(this.place.z, target.z, dt),
-      heading: approach(this.place.heading, target.heading, dt),
-    }
+    const target = controls.dogAt ?? PLACES[controls.place]
+    // The heading turns the short way round, never by a whole turn at once.
+    const heading = this.place.heading + angleTo(this.place.heading, target.heading)
+    this.place = controls.dogAt
+      ? { x: target.x, z: target.z, heading }
+      : {
+          x: approach(this.place.x, target.x, dt),
+          z: approach(this.place.z, target.z, dt),
+          heading: approach(this.place.heading, heading, dt),
+        }
     return { travelled: this.travelled, walked: this.walked, speed: this.speed, place: this.place }
   }
 
@@ -177,12 +187,11 @@ export class TeamAnimator {
     const moving = isGait(controls.dog)
     const posture: DogPosture = moving ? 'stand' : (controls.dog as DogPosture)
     if (moving) this.dogGait = controls.dog as DogGait
-    this.dogPosture = blendPoses(
-      this.dogPosture,
-      DOG_POSTURES[posture],
-      1 - Math.exp(-SETTLE_RATE * dt),
-    )
-    this.dogStanding = approach(this.dogStanding, posture === 'stand' ? 1 : 0, dt)
+    // A dog springs up quicker than it settles down.
+    const rate = posture === 'stand' ? RISE_RATE : SETTLE_RATE
+    this.dogPosture = blendPoses(this.dogPosture, DOG_POSTURES[posture], 1 - Math.exp(-rate * dt))
+    const standing = posture === 'stand' ? 1 : 0
+    this.dogStanding += (standing - this.dogStanding) * (1 - Math.exp(-rate * dt))
     this.dogFeet ??= new PawStepper(DOG_FEET[this.dogGait], dog)
     this.dogFeet.setFeet(DOG_FEET[this.dogGait])
     const sitting = posture !== 'stand'

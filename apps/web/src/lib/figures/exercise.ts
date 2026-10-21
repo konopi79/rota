@@ -1,7 +1,14 @@
 import type { DogPosture } from './dog'
 import type { HandlerPace } from './handler'
 import { angleTo } from './math'
-import { AROUND_DOG, bendAhead, type Path } from './paths'
+import {
+  AROUND_DOG,
+  DOG_AROUND_HANDLER,
+  DOG_TO_FRONT,
+  DOG_TO_HEEL,
+  bendAhead,
+  type Path,
+} from './paths'
 import { SETTLE_RATE, TeamAnimator, onField, type TeamControls, type TeamFrame } from './team'
 
 /**
@@ -14,6 +21,7 @@ export type ExerciseStep = { caption: string } & (
   | { dog: DogPosture } // the dog changes position, the handler stands
   | { wait: number } // seconds
   | { around: 'dog' } // the handler walks around the dog and back to the base place
+  | { dogPath: DogPath } // the dog goes along a path round the standing handler
   /**
    * The team turns by `turn` degrees, positive to the right, the handler walking an arc of
    * `radius` metres — 0 turns the handler on the spot, the dog going round at heel.
@@ -22,6 +30,28 @@ export type ExerciseStep = { caption: string } & (
 )
 
 const PATHS: Record<'dog', Path> = { dog: AROUND_DOG }
+
+/**
+ * The dog's paths round the handler (`paths.ts`) and where each one leaves the dog: in front
+ * of the handler, or at heel.
+ */
+export type DogPath = 'toFront' | 'aroundHandler' | 'toHeel'
+const DOG_PATHS: Record<DogPath, { path: Path; ends: TeamControls['place'] }> = {
+  toFront: { path: DOG_TO_FRONT, ends: 'front' },
+  aroundHandler: { path: DOG_AROUND_HANDLER, ends: 'left' },
+  toHeel: { path: DOG_TO_HEEL, ends: 'left' },
+}
+/** The dog on its own: trotting speed, m/s, and how fast it turns at most, rad/s. */
+const DOG_PATH_SPEED = 1.4
+const DOG_MAX_SPIN = 3.5
+/** How hard the dog brakes at the end of its path, m/s². */
+const DOG_BRAKING = 3
+/** How far the dog's paws are from its middle, metres: turning, they go round that far out. */
+const PAW_SWING_ARM = 0.23
+/** The dog's path waits for its body once that is this far behind, metres. */
+const DOG_FALLS_BEHIND = 0.08
+/** The dog has arrived when its body is this near the end of its path, metres. */
+const DOG_ARRIVED = 0.03
 
 export type Exercise = {
   /** Card code, also the card image. */
@@ -33,6 +63,26 @@ export type Exercise = {
    * 120 cm přímo před příslušnou kartou".
    */
   card?: 'side' | 'ahead'
+  /** The supplementary card that ends the exercise (D0a–d), shown next to the main card. */
+  supplementary?: 'D0a' | 'D0b' | 'D0c' | 'D0d'
+  /**
+   * Where in the exercise space the handler stops, from the usual place (metres, +x to the
+   * left, +z towards the card): an exercise that needs room in front stops further back.
+   */
+  stopAt?: { x: number; z: number }
+}
+
+/**
+ * Where the card stands from the handler's usual stop, the team arriving along +z: right of
+ * the team and a little ahead, or 1.2 m straight ahead for a change of direction.
+ */
+const CARD_PLACE = { side: { x: -0.75, z: 0.45 }, ahead: { x: 0, z: 1.2 } }
+
+/** Where the card stands from where the handler stops in `exercise` (the station). */
+export const cardPlace = (exercise: Exercise) => {
+  const card = CARD_PLACE[exercise.card ?? 'side']
+  const stop = exercise.stopAt ?? { x: 0, z: 0 }
+  return { x: card.x - stop.x, z: card.z - stop.z }
 }
 
 /** How long a change of the dog's position takes before the next step starts. */
@@ -93,12 +143,23 @@ class Follower {
   private at: Pose | null = null
   private velocity = { x: 0, z: 0, heading: 0 }
 
-  /** How fast the target moves over the ground, m/s. */
+  /** How fast the target's paws must move over the ground, m/s. */
   get speed() {
     return this.targetSpeed
   }
   private target: Pose | null = null
   private targetSpeed = 0
+
+  /** How far the body is behind its target, metres (turning: at the end of a dog's body). */
+  get lag() {
+    return this.at && this.target
+      ? Math.hypot(
+          this.at.x - this.target.x,
+          this.at.z - this.target.z,
+          0.25 * angleTo(this.at.heading, this.target.heading),
+        )
+      : 0
+  }
 
   constructor(private readonly stiffness = 12) {}
 
@@ -117,7 +178,8 @@ class Follower {
       heading: turn / dt,
     }
     this.target = { ...target }
-    this.targetSpeed = Math.hypot(tv.x, tv.z)
+    // How fast its paws must go: the body's own speed and, turning, its ends swinging round.
+    this.targetSpeed = Math.hypot(tv.x, tv.z) + PAW_SWING_ARM * Math.abs(tv.heading)
     const gap = {
       x: target.x - this.at.x,
       z: target.z - this.at.z,
@@ -159,6 +221,11 @@ export class ExercisePlayer {
   /** Coming to rest before a turn on the spot. */
   private braking = false
   private dogTrots = false
+  /** Where the dog keeps to when it is not on a path of its own. */
+  private dogPlace: TeamControls['place'] = 'left'
+  /** Metres the dog has gone along its current path, and how fast it goes. */
+  private dogWalked = 0
+  private dogPathSpeed = 0
   private dogBody = new Follower()
 
   constructor(private readonly exercise: Exercise) {}
@@ -173,17 +240,17 @@ export class ExercisePlayer {
     this.stepTime += dt
 
     // The dog trots when its place moves briskly — at heel at a normal pace, round the
-    // outside of a turn — and walks when slow (by its place: a body held back for a paw to
-    // step does not change its gait).
+    // outside of a turn, spinning round in front of the handler — and walks when slow (by
+    // its place: a body held back for a paw to step does not change its gait).
     const dogSpeed = this.dogBody.speed
     if (dogSpeed > 0.75) this.dogTrots = true
     else if (dogSpeed < 0.6) this.dogTrots = false
     const dogGait = (_pace: HandlerPace) => (this.dogTrots ? 'trot' : 'walk')
-    let controls: TeamControls = { dog: this.posture, place: 'left', handler: 'stand' }
+    let controls: TeamControls = { dog: this.posture, place: this.dogPlace, handler: 'stand' }
     let done = false
     if (current && 'walk' in current) {
       this.pace = current.pace ?? this.pace
-      controls = { dog: dogGait(this.pace), place: 'left', handler: this.pace }
+      controls = { dog: dogGait(this.pace), place: this.dogPlace, handler: this.pace }
       this.posture = 'stand'
       const next = steps[this.index + 1]
       const brakes = next && ('stop' in next || ('turn' in next && next.radius === 0))
@@ -218,6 +285,41 @@ export class ExercisePlayer {
       }
       // Done once the handler stands in the base place on both feet.
       done = !walking && speed < 0.01 && (this.last?.feet.handlerStill ?? true)
+    } else if (current && 'dogPath' in current) {
+      const { path, ends } = DOG_PATHS[current.dogPath]
+      if (starting) this.dogWalked = 0
+      const left = path.length - this.dogWalked
+      // The dog gets up first (from a sit in front), then trots off, slows into tight bends
+      // and comes to a stand at the end.
+      const onLegs = this.last?.feet.dogOnLegs ?? true
+      // Its body follows only as fast as its paws can carry it: if it falls behind, the
+      // path waits for it.
+      const waiting = !onLegs || this.dogBody.lag > DOG_FALLS_BEHIND
+      const wanted = waiting
+        ? 0
+        : Math.min(
+            DOG_PATH_SPEED,
+            DOG_MAX_SPIN / Math.max(bendAhead(path, this.dogWalked), 1e-6),
+            Math.sqrt(2 * DOG_BRAKING * left),
+          )
+      this.dogPathSpeed =
+        wanted < this.dogPathSpeed
+          ? wanted
+          : this.dogPathSpeed + (wanted - this.dogPathSpeed) * (1 - Math.exp(-SETTLE_RATE * dt))
+      this.dogWalked = Math.min(path.length, this.dogWalked + this.dogPathSpeed * dt)
+      this.posture = 'stand'
+      controls = {
+        dog: dogGait(this.pace),
+        place: this.dogPlace,
+        handler: 'stand',
+        // Getting up it keeps to where it sat, facing the same way.
+        dogAt: onLegs ? path.at(this.dogWalked) : undefined,
+      }
+      done = this.dogWalked >= path.length && this.dogBody.lag < DOG_ARRIVED
+      if (done) {
+        this.dogPlace = ends
+        this.dogPathSpeed = 0
+      }
     } else if (current && 'turn' in current) {
       if (starting) {
         this.turnLeft = (Math.abs(current.turn) * Math.PI) / 180
@@ -230,10 +332,10 @@ export class ExercisePlayer {
       // Handlers slow down into a turn and pick up the pace after it (the video: a 90° turn
       // takes about a second, 180° two); on the spot they step slowly round.
       controls = this.braking
-        ? { dog: dogGait('slow'), place: 'left', handler: 'stand' }
+        ? { dog: dogGait('slow'), place: this.dogPlace, handler: 'stand' }
         : {
             dog: dogGait('slow'),
-            place: 'left',
+            place: this.dogPlace,
             handler: 'slow',
             stay: onTheSpot,
             maxSpeed: MAX_SPIN * (current.radius || PIVOT_RADIUS),

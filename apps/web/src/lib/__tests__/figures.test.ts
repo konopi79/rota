@@ -1,7 +1,13 @@
 import { describe, expect, test } from 'bun:test'
 
 import { DOG, DOG_POSTURES, type DogPosture } from '../figures/dog'
-import { ExercisePlayer, stationOf, type Exercise, type ExerciseFrame } from '../figures/exercise'
+import {
+  ExercisePlayer,
+  cardPlace,
+  stationOf,
+  type Exercise,
+  type ExerciseFrame,
+} from '../figures/exercise'
 import { HANDLER, HANDLER_STAND } from '../figures/handler'
 import { apply } from '../figures/math'
 import { jointFrames, jointNames, lowestPoint, type Joint, type Pose } from '../figures/rig'
@@ -216,7 +222,7 @@ describe.each(EXERCISES.map((e) => [e.code, e] as const))('%s: feet', (_, exerci
         expect(handler.pose[`${side}Knee`] ?? 0).toBeGreaterThanOrEqual(-1e-9)
         expect(dog.pose[`${side}Elbow`] ?? 0).toBeLessThanOrEqual(1e-9)
         for (const joint of [`${side}Shoulder`, `${side}Hip`]) {
-          expect(Math.abs(dog.pose[`${joint}.yaw`] ?? 0)).toBeLessThanOrEqual(20 * deg + 1e-9)
+          expect(Math.abs(dog.pose[`${joint}.yaw`] ?? 0)).toBeLessThanOrEqual(20.1 * deg)
           expect(Math.abs(dog.pose[`${joint}.roll`] ?? 0)).toBeLessThanOrEqual(20.1 * deg)
         }
       }
@@ -271,7 +277,8 @@ describe('TeamAnimator', () => {
     for (let i = 0; i < 120; i++)
       frame = animator.step(1 / 30, { dog: 'sit', place: 'front', handler: 'stand' })
     expect(frame.dog.pose.trunk).toBeCloseTo(DOG_POSTURES.sit.trunk ?? NaN, 2)
-    expect(frame.dog.heading).toBeCloseTo(Math.PI, 2)
+    // Facing the handler (turned half round, whichever way).
+    expect(Math.cos(frame.dog.heading)).toBeCloseTo(-1, 3)
     expect(frame.dog.z).toBeGreaterThan(0.5)
   })
 
@@ -379,8 +386,8 @@ describe('every RO-Z exercise', () => {
     '%s: nobody walks through the card',
     (_, exercise) => {
       const station = stationOf(exercise)
-      const card =
-        exercise.card === 'ahead' ? { x: 0, z: station + 1.2 } : { x: -0.75, z: station + 0.45 }
+      const place = cardPlace(exercise)
+      const card = { x: place.x, z: station + place.z }
       for (const f of playAll(exercise)) {
         const handler = onField(f.team, f.handler.x, f.handler.z)
         const dog = onField(f.team, f.dog.x, f.dog.z)

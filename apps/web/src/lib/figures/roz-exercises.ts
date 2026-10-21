@@ -164,7 +164,53 @@ export const Z012 = turnOnTheSpot('Z-012', -270, 'turnLeft270', 'ahead')
  */
 export const Z013 = turnOnTheSpot('Z-013', 360, 'turnRight360', 'side')
 
-/** The exercises the page can play, in card order. */
+/**
+ * Z-014 Předsednutí with a supplementary card (p. 22): "V místě pro provedení cviku dává
+ * psovod psovi povel k předsednutí. … Během předsednutí a během provádění cviku
+ * z doplňkové karty nesmí psovod pohybovat nohama." The handler may step back up to four
+ * times while the dog comes round — may, so here the handler stands. Then the D0 card
+ * (p. 17): a) round the handler's right side into heel, sit; b) straight to the left leg,
+ * sit; c), d) the same without sitting — level with the left leg, the team walks on. Timing
+ * from the video: the dog in front about a second after the stop, sitting a second, round
+ * the handler in about a second and a half.
+ */
+const frontAndFinish = (supplementary: 'D0a' | 'D0b' | 'D0c' | 'D0d'): Exercise => {
+  const around = supplementary === 'D0a' || supplementary === 'D0c'
+  const sits = supplementary === 'D0a' || supplementary === 'D0b'
+  return {
+    code: 'Z-014',
+    supplementary,
+    // The dog needs room in front: the handler stops in the middle of the square, further
+    // back than usual, so the dog sitting in front is still in it (the author's suggestion,
+    // instead of stepping back).
+    stopAt: { x: 0.15, z: -0.45 },
+    steps: [
+      { walk: 3.5, caption: 'approach' },
+      { stop: true, caption: 'frontCommand' },
+      { dogPath: 'toFront', caption: 'toFront' },
+      { dog: 'sit', caption: 'frontSit' },
+      { wait: 1, caption: 'frontHold' },
+      {
+        dogPath: around ? 'aroundHandler' : 'toHeel',
+        caption: around ? 'finishAround' : 'finishDirect',
+      },
+      ...(sits
+        ? ([
+            { dog: 'sit', caption: 'finishSit' },
+            { wait: 1, caption: 'basePosition' },
+            { walk: 3, caption: 'leave' },
+          ] as const)
+        : ([{ walk: 3, caption: 'leaveTogether' }] as const)),
+    ],
+  }
+}
+
+export const Z014_D0A = frontAndFinish('D0a')
+export const Z014_D0B = frontAndFinish('D0b')
+export const Z014_D0C = frontAndFinish('D0c')
+export const Z014_D0D = frontAndFinish('D0d')
+
+/** The exercises the page can play, in card order (Z-014 once per supplementary card). */
 export const EXERCISES: Exercise[] = [
   Z001,
   Z002,
@@ -178,4 +224,8 @@ export const EXERCISES: Exercise[] = [
   Z011,
   Z012,
   Z013,
+  Z014_D0A,
+  Z014_D0B,
+  Z014_D0C,
+  Z014_D0D,
 ]

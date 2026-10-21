@@ -1,3 +1,5 @@
+import { ease } from './math'
+
 /**
  * Paths the handler walks apart from the team — around the dog now, around cones later.
  * Coordinates are the team's: the handler's base place at the origin facing +z, +x to the
@@ -68,3 +70,91 @@ export const bendAhead = (path: Path, s: number, ahead = 0.4): number => {
   }
   return most
 }
+
+/** Pieces of a path, each over u ∈ [0, 1], walked one after another. */
+const chain =
+  (...pieces: ((u: number) => { x: number; z: number })[]) =>
+  (t: number) => {
+    const k = Math.min(pieces.length - 1, Math.floor(t * pieces.length))
+    return pieces[k]!(t * pieces.length - k)
+  }
+
+/** A cubic Bézier curve from p0 to p3: it leaves p0 towards p1 and arrives at p3 from p2. */
+const bezier =
+  (p0: [number, number], p1: [number, number], p2: [number, number], p3: [number, number]) =>
+  (u: number) => {
+    const v = 1 - u
+    const w = [v * v * v, 3 * v * v * u, 3 * v * u * u, u * u * u] as const
+    return {
+      x: w[0] * p0[0] + w[1] * p1[0] + w[2] * p2[0] + w[3] * p3[0],
+      z: w[0] * p0[1] + w[1] * p1[1] + w[2] * p2[1] + w[3] * p3[1],
+    }
+  }
+
+/**
+ * The dog's paths around the handler, who stands at the origin facing +z; the dog's places
+ * are those of `team.ts` — at heel (0.42, −0.2) and in front (0, 0.6) facing the handler.
+ */
+
+/** From a dog's middle to its shoulders (its front paws' line), metres. */
+const SHOULDERS = 0.22
+
+/**
+ * A dog that leads with its front and swings its rear round: its shoulders go along
+ * `front`, and it turns from heading `from` to `to` — the turn starting a little after the
+ * front sets off and ending a little after it arrives, the rear "drifting" into place.
+ * Measured in metres of the shoulders' way plus the turn (at the dog's half length), so a
+ * walker along it goes as far as the dog's paws do.
+ */
+const drift = (front: Path, from: number, to: number): Path => {
+  const turn = Math.abs(to - from) * SHOULDERS
+  const length = front.length + turn
+  return {
+    length,
+    at(s) {
+      const p = Math.min(1, Math.max(0, s / length))
+      const f = front.at(front.length * ease(p / 0.75))
+      const heading = from + (to - from) * ease((p - 0.15) / 0.85)
+      return {
+        x: f.x - SHOULDERS * Math.sin(heading),
+        z: f.z - SHOULDERS * Math.cos(heading),
+        heading,
+      }
+    },
+  }
+}
+
+/**
+ * Předsednutí (Z-014, p. 22): from heel the dog's front goes straight ahead and across in
+ * front of the handler, and its rear swings out to the left and round — the author: "jít
+ * předními přímo před psovoda a dotočit to zadkem". It ends sitting in front, facing them.
+ */
+export const DOG_TO_FRONT: Path = drift(
+  pathFromCurve(bezier([0.42, 0.02], [0.42, 0.3], [0.15, 0.42], [0, 0.38])),
+  0,
+  -Math.PI,
+)
+
+/**
+ * D0a/D0c "Přiřazení okolo" (p. 17): from the front the dog runs round the handler "z pravé
+ * strany" — past their right side, behind them — and comes up on the left into heel. It
+ * sets off the way it faces, bends out to the handler's right side and follows an ellipse
+ * round the handler, 0.45 m to the sides and 0.6 m behind.
+ */
+export const DOG_AROUND_HANDLER: Path = pathFromCurve(
+  chain(bezier([0, 0.6], [0, 0.45], [-0.45, 0.4], [-0.45, 0]), (u) => {
+    const angle = Math.PI / 2 + u * (Math.PI / 2 + 1.2)
+    return { x: -0.45 * Math.sin(angle), z: 0.6 * Math.cos(angle) }
+  }),
+)
+
+/**
+ * D0b/D0d "Přiřazení přímo" (p. 17): from the front straight to the left leg, without going
+ * round the handler: the dog's front steps across to the handler's left leg while its rear
+ * swings out to the left and round behind, into heel.
+ */
+export const DOG_TO_HEEL: Path = drift(
+  pathFromCurve(bezier([0, 0.38], [0.15, 0.3], [0.42, 0.2], [0.42, 0.02])),
+  Math.PI,
+  2 * Math.PI,
+)

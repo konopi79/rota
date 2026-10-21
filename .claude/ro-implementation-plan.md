@@ -543,7 +543,8 @@ gesture for audio).
 - [x] The author's physiology rules (2026-10-21): every move of a body is made by its legs — planted feet and paws never slide, joints within human and dog ranges, nothing jumps between frames, the handler's legs never cross (`locomotion.ts`: a reactive biped stepper and a paw stepper; the dog's body waits for its paws; tests check every frame of every exercise)
 - [x] Turns Z-005–Z-009, Z-011–Z-013: small arcs per the regulation (90° 35 cm, 180° 20 cm as in the video), on the spot after braking; the card 120 cm ahead for a change of direction (§5.3.1)
 - [x] Switch showing where the exercise starts — the 120 cm square of §5.3.1 (a handler's suggestion, 2026-10-21); eyes and hair for the handler; camera kept above the ground
-- [ ] Z-014 Předsednutí with D0a–d (the dog to the front and back to heel — used by 14 cards), then the paces Z-015–Z-017
+- [x] Z-014 Předsednutí with D0a–d (2026-10-21): the dog goes along paths of its own round the standing handler (`paths.ts`); to the front and straight to heel it leads with its front and swings its rear round (the author: "dotočit to zadkem"), round the handler on an ellipse; it gets up before it turns, trots when spinning, its body waits for its paws. The handler stops in the middle of the square instead of stepping back (the regulation allows up to four steps back; the author's suggestion). The D0 card stands next to the main card, chosen under the exercise
+- [ ] The paces Z-015–Z-017
 
 Each phase ends green on `bun run format && bun run typecheck && bun run lint` plus its
 own tests, and is committed separately.
