@@ -308,7 +308,6 @@ export class Stepper {
     this.state = this.state.map((foot, i) => {
       const spec = this.specs[i]!
       const home = placeUnder(body, homes[i]!)
-      const before = placeUnder(prev, homes[i]!)
       const own = still ? (unsettled[i] ? (SETTLE_SPEED * dt) / gait.cycleLength : 0) : rhythm[i]!
       let advance = own
       const othersDown = this.state.filter((f, k) => k !== i && f.swing === null).length
