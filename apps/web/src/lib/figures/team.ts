@@ -1,29 +1,30 @@
 import {
-  DOG_CYCLE_LENGTH,
-  DOG_GAIT_SPEED,
+  DOG_FEET,
   DOG_POSTURES,
-  dogGait,
+  dogLegs,
+  dogPawsOnGround,
+  dogStep,
   type DogGait,
   type DogPosture,
 } from './dog'
-import { HANDLER_PACE, HANDLER_STAND, handlerGait, type HandlerPace } from './handler'
-import { addPoses, blendPoses, type Pose } from './rig'
+import { HANDLER_FEET, HANDLER_PACE, handlerPose, handlerStep, type HandlerPace } from './handler'
+import { Stepper, type Body, type FootState } from './locomotion'
+import { blendPoses, type Pose } from './rig'
 
 /** What the two figures are asked to do. */
 export type TeamControls = {
+  /** A position, or moving at heel at a walk or a trot. */
   dog: DogPosture | DogGait
   /** Where the dog is relative to the handler. */
   place: 'left' | 'right' | 'front'
   handler: 'stand' | HandlerPace
   /** The team stays where it is while the handler walks (around the dog, on the spot). */
   stay?: boolean
-  /** The dog's own speed along the way it faces, m/s, negative backing up. */
-  dogSpeed?: number
 }
 
 export type FigureFrame = {
   pose: Pose
-  /** Position on the ground (x, z) and heading about y; 0 = facing +z. */
+  /** Position on the ground (x, z) and heading about y in the team's frame; 0 = facing +z. */
   x: number
   z: number
   heading: number
@@ -38,6 +39,8 @@ export type TeamFrame = {
   walked: number
   /** Current walking speed, m/s. */
   speed: number
+  /** Where the stepper has the feet and paws (for checking that the legs reach them). */
+  feet: { handler: readonly FootState[]; dog: readonly FootState[]; dogOnLegs: boolean }
 }
 
 /**
@@ -59,77 +62,105 @@ const approach = (from: number, to: number, dt: number) =>
 
 const isGait = (dog: TeamControls['dog']): dog is DogGait => dog === 'walk' || dog === 'trot'
 
+/** A team-frame place on the field, for a team at `team`. */
+export const onField = (team: Body, p: { x: number; z: number; heading: number }): Body => ({
+  x: team.x + p.x * Math.cos(team.heading) + p.z * Math.sin(team.heading),
+  z: team.z - p.x * Math.sin(team.heading) + p.z * Math.cos(team.heading),
+  heading: team.heading + p.heading,
+})
+
 /**
- * Keeps the figures' state between frames and eases every change: postures blend, a gait
- * fades in and out, the dog walks over to its new place, the team speeds up and slows
- * down. The step cycles advance with the distance walked, so the feet keep pace with the
- * ground while speeding up and slowing down too.
+ * Keeps the figures' state between frames. `advance` eases the speed and the dog's place;
+ * the caller then moves the bodies over the field and `pose` puts legs under them: every
+ * move of a body is carried by its feet (`locomotion.ts`). The dog stands, walks and
+ * trots on its paws; sitting and lying down are postures, blended in and out.
  */
 export class TeamAnimator {
   private travelled = 0
   private walked = 0
-  private handlerPhase = 0
-  private dogPhase = 0
-  private dogPosture: Pose = DOG_POSTURES.stand
-  private dogGaitWeight = 0
-  private lastGait: DogGait = 'walk'
-  private handlerGaitWeight = 0
-  private lastPace: HandlerPace = 'normal'
   private speed = 0
+  private lastPace: HandlerPace = 'normal'
   private place = { ...PLACES.left }
+  private dogPosture: Pose = DOG_POSTURES.stand
+  /** 1 while the legs carry the dog (standing, moving), 0 sitting or lying. */
+  private dogStanding = 1
+  private dogGait: DogGait = 'trot'
+  private handlerFeet: Stepper | null = null
+  private dogFeet: Stepper | null = null
 
-  step(dt: number, controls: TeamControls): TeamFrame {
-    const dogGaitOn = isGait(controls.dog)
-    if (dogGaitOn) this.lastGait = controls.dog as DogGait
-    const posture = DOG_POSTURES[dogGaitOn ? 'stand' : (controls.dog as DogPosture)]
-    this.dogPosture = blendPoses(this.dogPosture, posture, 1 - Math.exp(-SETTLE_RATE * dt))
-    this.dogGaitWeight = approach(this.dogGaitWeight, dogGaitOn ? 1 : 0, dt)
-
+  /** Speeds up or slows down; how far the team and the handler have gone; the dog's place. */
+  advance(dt: number, controls: TeamControls) {
     const walking = controls.handler !== 'stand'
     if (walking) this.lastPace = controls.handler as HandlerPace
-    this.handlerGaitWeight = approach(this.handlerGaitWeight, walking ? 1 : 0, dt)
     const pace = HANDLER_PACE[this.lastPace]
     this.speed = approach(this.speed, walking ? pace.speed : 0, dt)
     this.walked += this.speed * dt
     if (!controls.stay) this.travelled += this.speed * dt
-    this.handlerPhase += (this.speed * dt) / (pace.speed / pace.rate)
-    // The dog's legs follow its own motion when the caller knows it (turns: faster outside,
-    // backing up inside); otherwise the handler's, or its own speed beside a standing handler.
-    const dogSpeed =
-      controls.dogSpeed ??
-      (this.speed > 0.01 ? this.speed : dogGaitOn ? DOG_GAIT_SPEED[this.lastGait] : 0)
-    this.dogPhase += (dogSpeed * dt) / DOG_CYCLE_LENGTH[this.lastGait]
-
     const target = PLACES[controls.place]
     this.place = {
       x: approach(this.place.x, target.x, dt),
       z: approach(this.place.z, target.z, dt),
       heading: approach(this.place.heading, target.heading, dt),
     }
+    return { travelled: this.travelled, walked: this.walked, speed: this.speed, place: this.place }
+  }
+
+  /** Poses for the bodies where the caller has put them on the field this frame. */
+  pose(dt: number, controls: TeamControls, handler: Body, dog: Body): TeamFrame {
+    // The handler: feet under the body, the pelvis and legs solved to them.
+    this.handlerFeet ??= new Stepper(HANDLER_FEET, handler)
+    const handlerPace = this.lastPace
+    const feet = this.handlerFeet.update(dt, handler, handlerStep(handlerPace))
+    const motion = Math.min(1, this.speed / HANDLER_PACE[handlerPace].speed)
+    const handlerPoseNow = handlerPose(feet, handler, handlerPace, this.handlerFeet.cycle, motion)
+
+    // The dog.
+    const moving = isGait(controls.dog)
+    const posture: DogPosture = moving ? 'stand' : (controls.dog as DogPosture)
+    if (moving) this.dogGait = controls.dog as DogGait
+    this.dogPosture = blendPoses(
+      this.dogPosture,
+      DOG_POSTURES[posture],
+      1 - Math.exp(-SETTLE_RATE * dt),
+    )
+    this.dogStanding = approach(this.dogStanding, posture === 'stand' ? 1 : 0, dt)
+    this.dogFeet ??= new Stepper(DOG_FEET[this.dogGait], dog)
+    this.dogFeet.setFeet(DOG_FEET[this.dogGait])
+    const sitting = posture !== 'stand'
+    let dogPose = this.dogPosture
+    if (!sitting || this.dogStanding > 0.02) {
+      // On its legs (or still settling out of them): paws planted, legs solved to them.
+      const paws = sitting ? this.dogFeet.feet : this.dogFeet.update(dt, dog, dogStep(this.dogGait))
+      const tail = -0.15 * Math.sin(4 * Math.PI * this.dogFeet.cycle) * motion
+      const carried: Pose = {
+        ...DOG_POSTURES.stand,
+        head: (DOG_POSTURES.stand.head ?? 0) - (this.dogGait === 'trot' ? 0.15 * motion : 0),
+        tail: (DOG_POSTURES.stand.tail ?? 0) + tail,
+        ...dogLegs(paws, dog),
+      }
+      dogPose = blendPoses(this.dogPosture, carried, this.dogStanding)
+    }
+    // Sitting or lying: the paws are where the posture puts them, ready to carry the dog
+    // from there when it gets up.
+    if (sitting && this.dogStanding <= 0.02) this.dogFeet.plant(dogPawsOnGround(dogPose, dog), dog)
 
     return {
-      dog: {
-        pose: addPoses(
-          this.dogPosture,
-          scalePose(dogGait(this.lastGait, this.dogPhase), this.dogGaitWeight),
-        ),
-        ...this.place,
-      },
-      handler: {
-        pose: addPoses(
-          HANDLER_STAND,
-          scalePose(handlerGait(this.lastPace, this.handlerPhase), this.handlerGaitWeight),
-        ),
-        x: 0,
-        z: 0,
-        heading: 0,
-      },
+      dog: { pose: dogPose, ...this.place },
+      handler: { pose: handlerPoseNow, x: 0, z: 0, heading: 0 },
       travelled: this.travelled,
       walked: this.walked,
       speed: this.speed,
+      feet: {
+        handler: feet,
+        dog: this.dogFeet.feet,
+        dogOnLegs: !sitting && this.dogStanding > 0.98,
+      },
     }
   }
-}
 
-const scalePose = (pose: Pose, k: number): Pose =>
-  Object.fromEntries(Object.entries(pose).map(([name, angle]) => [name, angle * k]))
+  /** `advance` and `pose` for a team standing at the origin (the bodies don't move). */
+  step(dt: number, controls: TeamControls): TeamFrame {
+    const { place } = this.advance(dt, controls)
+    return this.pose(dt, controls, { x: 0, z: 0, heading: 0 }, { ...place })
+  }
+}

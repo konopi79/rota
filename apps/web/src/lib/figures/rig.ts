@@ -1,15 +1,18 @@
+import { IDENTITY, add, apply, mul, rotX, rotY, rotZ, transpose, type M3, type V3 } from './math'
+
 /**
- * Box figures for the exercise animations (POC): a figure is a tree of joints, each with
- * boxes attached, posed by one angle per joint. The tree is plain data, so the renderer
- * (`components/figures/`) and the ground solver below read the same description.
+ * Box figures for the exercise animations: a figure is a tree of joints, each with boxes
+ * attached. The tree is plain data, so the renderer (`components/figures/`), the ground
+ * solver and the leg solvers read the same description.
  *
  * Coordinates are three.js ones, in metres: the figure faces +z, y is up, +x is the
- * figure's **left**. Every joint rotates about its local x axis only (pitch): a positive
- * angle swings a limb that hangs down **backwards** and tips the nose of a body that
- * points forward **down**. That keeps the ground solver two-dimensional (y, z).
+ * figure's **left**. A joint turns by three angles, applied yaw (about y) → roll (about z)
+ * → pitch (about x): a positive pitch swings a limb that hangs down **backwards** and tips
+ * the nose of a body that points forward **down**; a positive roll swings a hanging limb
+ * towards +x; a positive yaw turns +z towards +x.
  */
 
-export type Vec3 = readonly [number, number, number]
+export type Vec3 = V3
 
 /** Named colours, mapped to materials by the renderer. */
 export type Paint =
@@ -29,14 +32,18 @@ export type Joint = {
   pivot: Vec3
   boxes: Box[]
   /**
-   * The joint's pitch is measured from the ground, not from its parent (feet, paws): with
-   * no angle in the pose its boxes stay level whatever the leg above does.
+   * The joint is turned relative to the figure, not to its parent (feet, paws): its yaw
+   * and pitch are measured from the figure's own frame and it is never rolled, so with no
+   * angles in the pose it stays level whatever the leg above does.
    */
   level?: boolean
   children?: Joint[]
 }
 
-/** Joint name → pitch in radians; a missing joint stays at 0. */
+/**
+ * Joint angles in radians: `name` is the pitch, `name.yaw` and `name.roll` the other two.
+ * A missing angle is 0.
+ */
 export type Pose = Record<string, number>
 
 /** Every joint name of a figure, root first. */
@@ -51,37 +58,33 @@ export const pitchPoint = (y: number, z: number, pitch: number): [number, number
   y * Math.sin(pitch) + z * Math.cos(pitch),
 ]
 
-/** The angle actually applied to each joint: `level` joints have the inherited pitch removed. */
-export const resolvePose = (root: Joint, pose: Pose): Pose => {
-  const out: Pose = {}
-  const walk = (joint: Joint, inherited: number) => {
-    const angle = (pose[joint.name] ?? 0) - (joint.level ? inherited : 0)
-    out[joint.name] = angle
-    for (const child of joint.children ?? []) walk(child, inherited + angle)
-  }
-  walk(root, 0)
-  return out
+/** A joint's rotation from its pose angles: yaw → roll → pitch. */
+const rotationOf = (pose: Pose, name: string): M3 =>
+  mul(mul(rotY(pose[`${name}.yaw`] ?? 0), rotZ(pose[`${name}.roll`] ?? 0)), rotX(pose[name] ?? 0))
+
+export type JointFrame = {
+  joint: Joint
+  /** Where the joint is, with the root joint at the origin, in the figure's frame. */
+  position: V3
+  /** Its rotation in the figure's frame, and relative to its parent (what the renderer sets). */
+  rotation: M3
+  local: M3
 }
 
-/** Where each joint is (y, z) and its world pitch, with the root joint at the origin. */
-export const jointFrames = (
-  root: Joint,
-  pose: Pose,
-): Map<string, { joint: Joint; y: number; z: number; pitch: number }> => {
-  const angles = resolvePose(root, pose)
-  const out = new Map<string, { joint: Joint; y: number; z: number; pitch: number }>()
-  const walk = (joint: Joint, oy: number, oz: number, parentPitch: number) => {
-    const [dy, dz] = pitchPoint(joint.pivot[1], joint.pivot[2], parentPitch)
-    const frame = {
-      joint,
-      y: oy + dy,
-      z: oz + dz,
-      pitch: parentPitch + (angles[joint.name] ?? 0),
-    }
-    out.set(joint.name, frame)
-    for (const child of joint.children ?? []) walk(child, frame.y, frame.z, frame.pitch)
+/** Every joint's place and rotation for a pose. */
+export const jointFrames = (root: Joint, pose: Pose): Map<string, JointFrame> => {
+  const out = new Map<string, JointFrame>()
+  const walk = (joint: Joint, origin: V3, parent: M3) => {
+    const own = rotationOf(pose, joint.name)
+    const rotation = joint.level
+      ? mul(rotY(pose[`${joint.name}.yaw`] ?? 0), rotX(pose[joint.name] ?? 0))
+      : mul(parent, own)
+    const local = joint.level ? mul(transpose(parent), rotation) : own
+    const position = add(origin, apply(parent, joint.pivot))
+    out.set(joint.name, { joint, position, rotation, local })
+    for (const child of joint.children ?? []) walk(child, position, rotation)
   }
-  walk(root, 0, 0, 0)
+  walk(root, [0, 0, 0], IDENTITY)
   return out
 }
 
@@ -91,20 +94,21 @@ export const jointFrames = (
  */
 export const lowestPoint = (root: Joint, pose: Pose): number => {
   let lowest = Infinity
-  for (const { joint, y, pitch } of jointFrames(root, pose).values()) {
+  for (const { joint, position, rotation } of jointFrames(root, pose).values()) {
     for (const box of joint.boxes) {
-      const [, h, d] = box.size
-      for (const cy of [box.at[1] - h / 2, box.at[1] + h / 2]) {
-        for (const cz of [box.at[2] - d / 2, box.at[2] + d / 2]) {
-          lowest = Math.min(lowest, y + pitchPoint(cy, cz, pitch)[0])
-        }
-      }
+      const [w, h, d] = box.size
+      for (const cx of [-w / 2, w / 2])
+        for (const cy of [-h / 2, h / 2])
+          for (const cz of [-d / 2, d / 2]) {
+            const corner = apply(rotation, [box.at[0] + cx, box.at[1] + cy, box.at[2] + cz])
+            lowest = Math.min(lowest, position[1] + corner[1])
+          }
     }
   }
   return lowest
 }
 
-/** Linear blend of two poses; joints missing in one count as 0. */
+/** Linear blend of two poses; angles missing in one count as 0. */
 export const blendPoses = (a: Pose, b: Pose, t: number): Pose => {
   const out: Pose = {}
   for (const name of new Set([...Object.keys(a), ...Object.keys(b)])) {
@@ -114,7 +118,7 @@ export const blendPoses = (a: Pose, b: Pose, t: number): Pose => {
   return out
 }
 
-/** Sum of poses — a gait's swing added on top of a base pose. */
+/** Sum of poses — a swing added on top of a base pose. */
 export const addPoses = (...poses: Pose[]): Pose => {
   const out: Pose = {}
   for (const pose of poses) {
@@ -122,3 +126,7 @@ export const addPoses = (...poses: Pose[]): Pose => {
   }
   return out
 }
+
+/** Pose scaled by `k` — a swing faded in or out. */
+export const scalePose = (pose: Pose, k: number): Pose =>
+  Object.fromEntries(Object.entries(pose).map(([name, angle]) => [name, angle * k]))

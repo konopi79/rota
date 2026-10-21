@@ -1,7 +1,10 @@
 import { describe, expect, test } from 'bun:test'
 
-import { DOG, DOG_POSTURES, dogGait, type DogPosture } from '../figures/dog'
-import { ExercisePlayer, stationOf, type Exercise } from '../figures/exercise'
+import { DOG, DOG_POSTURES, type DogPosture } from '../figures/dog'
+import { ExercisePlayer, stationOf, type Exercise, type ExerciseFrame } from '../figures/exercise'
+import { HANDLER, HANDLER_STAND } from '../figures/handler'
+import { apply } from '../figures/math'
+import { jointFrames, jointNames, lowestPoint, type Joint, type Pose } from '../figures/rig'
 import {
   EXERCISES,
   Z001,
@@ -17,26 +20,7 @@ import {
   Z012,
   Z013,
 } from '../figures/roz-exercises'
-import {
-  HANDLER,
-  HANDLER_GAITS,
-  HANDLER_PACE,
-  HANDLER_STAND,
-  HEEL,
-  TOE,
-  handlerGait,
-  type HandlerPace,
-} from '../figures/handler'
-import {
-  jointFrames,
-  jointNames,
-  lowestPoint,
-  pitchPoint,
-  resolvePose,
-  type Joint,
-  type Pose,
-} from '../figures/rig'
-import { TeamAnimator } from '../figures/team'
+import { TeamAnimator, onField } from '../figures/team'
 
 /** The figure with only the named top-level limbs (and no root boxes). */
 const only = (rig: Joint, names: string[]): Joint => ({
@@ -49,6 +33,66 @@ const only = (rig: Joint, names: string[]): Joint => ({
 const clearance = (rig: Joint, pose: Pose, part: Joint) =>
   lowestPoint(part, pose) - lowestPoint(rig, pose)
 
+const playAll = (exercise: Exercise) => {
+  const player = new ExercisePlayer(exercise)
+  const frames = [player.step(0)]
+  while (!frames.at(-1)!.finished && frames.length < 60 * 60) frames.push(player.step(1 / 60))
+  return frames
+}
+
+/** A point of a joint (in the joint's frame) on the field, the figure standing on the ground. */
+const onGround = (
+  rig: Joint,
+  pose: Pose,
+  place: { x: number; z: number; heading: number },
+  joint: string,
+  point: [number, number, number],
+) => {
+  const frame = jointFrames(rig, pose).get(joint)!
+  const p = apply(frame.rotation, point)
+  const x = frame.position[0] + p[0]
+  const z = frame.position[2] + p[2]
+  const c = Math.cos(place.heading)
+  const s = Math.sin(place.heading)
+  return {
+    x: place.x + c * x + s * z,
+    y: frame.position[1] + p[1] - lowestPoint(rig, pose),
+    z: place.z - s * x + c * z,
+  }
+}
+
+const PAWS = ['leftFrontPaw', 'rightFrontPaw', 'leftHindPaw', 'rightHindPaw']
+
+/**
+ * How far each planted foot is, as drawn, from where it stands on the ground: the handler's
+ * heel or toes (whichever carries the weight), the dog's paws while on its legs.
+ */
+const misses = (frame: ExerciseFrame) => {
+  const handlerAt = onField(frame.team, frame.handler)
+  const dogAt = onField(frame.team, frame.dog)
+  const out: { who: string; miss: number }[] = []
+  frame.feet.handler.forEach((foot, i) => {
+    if (foot.swing !== null) return
+    const joint = i === 0 ? 'leftFoot' : 'rightFoot'
+    const heel = onGround(HANDLER, frame.handler.pose, handlerAt, joint, [0, -0.08, -0.08])
+    const toe = onGround(HANDLER, frame.handler.pose, handlerAt, joint, [0, -0.08, 0.2])
+    const toeX = foot.x + Math.sin(foot.yaw) * 0.28
+    const toeZ = foot.z + Math.cos(foot.yaw) * 0.28
+    const miss = Math.min(
+      Math.hypot(heel.x - foot.x, heel.z - foot.z, heel.y),
+      Math.hypot(toe.x - toeX, toe.z - toeZ, toe.y),
+    )
+    out.push({ who: joint, miss })
+  })
+  if (frame.feet.dogOnLegs)
+    frame.feet.dog.forEach((paw, i) => {
+      if (paw.swing !== null) return
+      const at = onGround(DOG, frame.dog.pose, dogAt, PAWS[i]!, [0, 0, 0])
+      out.push({ who: PAWS[i]!, miss: Math.hypot(at.x - paw.x, at.z - paw.z, at.y - 0.04) })
+    })
+  return out
+}
+
 describe('rigs', () => {
   test.each([
     ['dog', DOG],
@@ -58,20 +102,19 @@ describe('rigs', () => {
     expect(new Set(names).size).toBe(names.length)
   })
 
-  test('gaits and postures only move existing joints', () => {
+  test('postures only move existing joints', () => {
     const dogJoints = new Set(jointNames(DOG))
     const handlerJoints = new Set(jointNames(HANDLER))
-    for (const pose of [...Object.values(DOG_POSTURES), dogGait('walk', 0.3), dogGait('trot', 0.3)])
-      for (const name of Object.keys(pose)) expect(dogJoints).toContain(name)
-    for (const pose of [HANDLER_STAND, handlerGait('normal', 0.3), handlerGait('fast', 0.3)])
-      for (const name of Object.keys(pose)) expect(handlerJoints).toContain(name)
+    for (const pose of Object.values(DOG_POSTURES))
+      for (const name of Object.keys(pose)) expect(dogJoints.has(name.split('.')[0]!)).toBe(true)
+    for (const name of Object.keys(HANDLER_STAND))
+      expect(handlerJoints.has(name.split('.')[0]!)).toBe(true)
   })
 
-  test('level joints cancel their parents', () => {
-    const angles = resolvePose(DOG, DOG_POSTURES.sit)
-    // Trunk + shoulder + elbow + paw = 0: the paw lies flat.
-    const chain = ['trunk', 'leftShoulder', 'leftElbow', 'leftFrontPaw']
-    expect(chain.reduce((sum, joint) => sum + (angles[joint] ?? NaN), 0)).toBeCloseTo(0)
+  test('level joints stay level whatever the leg above does', () => {
+    const paw = jointFrames(DOG, DOG_POSTURES.sit).get('leftFrontPaw')!
+    // The paw's up axis is still up.
+    expect(paw.rotation[4]).toBeCloseTo(1, 5)
   })
 })
 
@@ -101,69 +144,65 @@ describe('dog postures', () => {
   })
 })
 
-describe('handler', () => {
-  test('stands on both feet', () => {
-    for (const leg of ['leftHip', 'rightHip'])
-      expect(clearance(HANDLER, HANDLER_STAND, only(HANDLER, [leg]))).toBeLessThan(0.001)
+/**
+ * The author's rule: any move of the body is made by the legs — a foot on the ground stays
+ * where it is, the body moves and turns by stepping. Checked on every frame of every
+ * exercise, as drawn.
+ */
+describe.each(EXERCISES.map((e) => [e.code, e] as const))('%s: feet', (_, exercise) => {
+  const frames = playAll(exercise)
+
+  test('a planted foot or paw never slides: the legs reach it where it stands', () => {
+    for (const frame of frames)
+      for (const { who, miss } of misses(frame))
+        if (miss > (who.endsWith('Paw') ? 0.01 : 0.005))
+          throw new Error(`${who} drawn ${(miss * 100).toFixed(1)} cm off (${frame.caption})`)
   })
 
-  test('walking lifts one foot at a time', () => {
-    for (let t = 0; t < 1; t += 0.05) {
-      const pose = { ...HANDLER_STAND, ...handlerGait('normal', t) }
-      const left = clearance(HANDLER, pose, only(HANDLER, ['leftHip']))
-      const right = clearance(HANDLER, pose, only(HANDLER, ['rightHip']))
-      expect(Math.min(left, right)).toBeLessThan(0.001)
+  test('joints stay within what a human and a dog can do', () => {
+    const deg = Math.PI / 180
+    for (const { handler, dog } of frames) {
+      for (const side of ['left', 'right']) {
+        const out = side === 'left' ? 1 : -1
+        expect(Math.abs(handler.pose[`${side}Hip.yaw`] ?? 0)).toBeLessThanOrEqual(40 * deg + 1e-9)
+        expect(out * (handler.pose[`${side}Hip.roll`] ?? 0)).toBeLessThanOrEqual(26 * deg)
+        expect(out * (handler.pose[`${side}Hip.roll`] ?? 0)).toBeGreaterThanOrEqual(-20.5 * deg)
+        // Knees bend forward only, elbows of the forelegs back only.
+        expect(handler.pose[`${side}Knee`] ?? 0).toBeGreaterThanOrEqual(-1e-9)
+        expect(dog.pose[`${side}Elbow`] ?? 0).toBeLessThanOrEqual(1e-9)
+        for (const joint of [`${side}Shoulder`, `${side}Hip`]) {
+          expect(Math.abs(dog.pose[`${joint}.yaw`] ?? 0)).toBeLessThanOrEqual(20 * deg + 1e-9)
+          expect(Math.abs(dog.pose[`${joint}.roll`] ?? 0)).toBeLessThanOrEqual(17.5 * deg)
+        }
+      }
     }
   })
+})
 
-  test.each<HandlerPace>(['slow', 'normal', 'fast'])(
-    '%s: the swinging foot is lifted, not shuffled',
-    (pace) => {
-      const swing = only(HANDLER, ['leftHip'])
-      const highest = Math.max(
-        ...Array.from({ length: 40 }, (_, i) => {
-          const phase = i / 40
-          return clearance(HANDLER, { ...HANDLER_STAND, ...handlerGait(pace, phase) }, swing)
-        }),
-      )
-      expect(highest).toBeGreaterThan(0.08)
-    },
-  )
+describe('walking', () => {
+  // Walking on at a steady normal pace.
+  const walk = playAll(Z001).filter((f) => f.caption === 'approach' && f.speed > 1.1)
 
-  test.each<HandlerPace>(['slow', 'normal', 'fast'])('%s: the hips do not bounce', (pace) => {
-    const heights = Array.from({ length: 100 }, (_, i) => {
-      const phase = i / 100
-      return -lowestPoint(HANDLER, { ...HANDLER_STAND, ...handlerGait(pace, phase) })
-    })
+  test('the handler lifts each foot clear of the ground', () => {
+    for (const i of [0, 1])
+      expect(Math.max(...walk.map((f) => f.feet.handler[i]!.lift))).toBeGreaterThan(0.08)
+  })
+
+  test('the hips do not bounce', () => {
+    const heights = walk.map((f) => -lowestPoint(HANDLER, f.handler.pose))
     expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(0.05)
   })
 
-  test.each<HandlerPace>(['slow', 'normal', 'fast'])(
-    '%s: the planted heel, then the toes, stay put on the sliding ground',
-    (pace) => {
-      const { rate, stance, heelOff } = HANDLER_GAITS[pace]
-      const { speed } = HANDLER_PACE[pace]
-      // Ground position of a sole corner of the left foot at time t: on the ground (y = 0)
-      // and, the ground sliding back at `speed`, at the same spot all the time.
-      const corner = (t: number, [cy, cz]: [number, number]) => {
-        const pose = { ...HANDLER_STAND, ...handlerGait(pace, t * rate) }
-        const foot = jointFrames(HANDLER, pose).get('leftFoot')!
-        const [dy, dz] = pitchPoint(cy, cz, foot.pitch)
-        return { y: foot.y + dy - lowestPoint(HANDLER, pose), z: foot.z + dz + speed * t }
-      }
-      for (const [from, to, point] of [
-        [0, heelOff * stance, HEEL],
-        [(heelOff + 0.01) * stance, stance * 0.99, TOE],
-      ] as const) {
-        const first = corner(from / rate, point)
-        for (let p = from; p <= to; p += 0.01) {
-          const now = corner(p / rate, point)
-          expect(now.y).toBeLessThan(0.002)
-          expect(Math.abs(now.z - first.z)).toBeLessThan(0.005)
-        }
-      }
-    },
-  )
+  test('the dog trots: diagonal paws move together', () => {
+    const swinging = walk.map((f) => f.feet.dog.map((p) => p.swing !== null))
+    const together = swinging.filter((s) => s[0] === s[3] && s[1] === s[2]).length
+    expect(together / swinging.length).toBeGreaterThan(0.9)
+  })
+
+  test('the handler stands on both feet when standing', () => {
+    for (const leg of ['leftHip', 'rightHip'])
+      expect(clearance(HANDLER, HANDLER_STAND, only(HANDLER, [leg]))).toBeLessThan(0.001)
+  })
 })
 
 describe('TeamAnimator', () => {
@@ -177,13 +216,13 @@ describe('TeamAnimator', () => {
     expect(frame.dog.z).toBeGreaterThan(0.5)
   })
 
-  test('the ground moves only while the handler walks', () => {
+  test('the team moves only while the handler walks', () => {
     const animator = new TeamAnimator()
     const still = animator.step(1, { dog: 'stand', place: 'left', handler: 'stand' })
     expect(still.travelled).toBe(0)
     let moving = still
     for (let i = 0; i < 10; i++)
-      moving = animator.step(0.05, { dog: 'walk', place: 'left', handler: 'normal' })
+      moving = animator.step(0.05, { dog: 'trot', place: 'left', handler: 'normal' })
     expect(moving.travelled).toBeGreaterThan(0)
   })
 })
@@ -207,13 +246,6 @@ describe('Z-002 Stop – lehni', () => {
     expect(frames.at(-1)!.travelled - station).toBeGreaterThan(2.5)
   })
 })
-
-const playAll = (exercise: Exercise) => {
-  const player = new ExercisePlayer(exercise)
-  const frames = [player.step(0)]
-  while (!frames.at(-1)!.finished && frames.length < 60 * 60) frames.push(player.step(1 / 60))
-  return frames
-}
 
 describe('Z-003 Stop – lehni – sedni', () => {
   test('sit, down, sit again, then walks on', () => {
