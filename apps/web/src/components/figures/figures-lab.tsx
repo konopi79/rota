@@ -52,9 +52,14 @@ function LabTeam({ controls, slowMotion }: { controls: TeamControls; slowMotion:
   )
 }
 
+/** The card's tilt back from upright, and half its height. */
+const CARD_TILT = 0.3
+const CARD_HALF = 0.18
+
 /**
- * A card on its stand. The exercise starts in a square of at most 120 cm "vlevo před
- * kartou" (regulation §5.3.1, p. 14): the card stands right of the team, a little ahead.
+ * A card in a stand on the ground, as on a course. The exercise starts in a square of at
+ * most 120 cm "vlevo před kartou" (regulation §5.3.1, p. 14): the card stands right of the
+ * team, a little ahead.
  */
 function CardStand({ code, x, z }: { code: string; x: number; z: number }) {
   const texture = useMemo(() => {
@@ -64,20 +69,27 @@ function CardStand({ code, x, z }: { code: string; x: number; z: number }) {
   }, [code])
   useEffect(() => () => texture.dispose(), [texture])
 
-  // Facing the team that comes from −z, the top tilted back a little.
+  // Facing the team that comes from −z, the top tilted back, the bottom edge on the
+  // ground; a back leg from the top edge makes it a tent.
+  const top = 2 * CARD_HALF * Math.cos(CARD_TILT)
+  const back = 0.2
   return (
     <group position={[x, 0, z]} rotation-y={Math.PI}>
-      <mesh position={[0, 0.27, -0.03]} castShadow>
-        <boxGeometry args={[0.03, 0.54, 0.03]} />
-        <meshStandardMaterial color="#555b63" />
-      </mesh>
-      <mesh position={[0, 0.64, 0]} rotation-x={-0.3} castShadow>
-        <boxGeometry args={[0.5, 0.36, 0.01]} />
+      <mesh position={[0, top / 2 + 0.005, 0]} rotation-x={-CARD_TILT} castShadow>
+        <boxGeometry args={[0.5, 2 * CARD_HALF, 0.01]} />
         <meshStandardMaterial color="#e8e8e8" />
         <mesh position={[0, 0, 0.006]}>
-          <planeGeometry args={[0.48, 0.34]} />
+          <planeGeometry args={[0.48, 2 * CARD_HALF - 0.02]} />
           <meshBasicMaterial map={texture} toneMapped={false} />
         </mesh>
+      </mesh>
+      <mesh
+        position={[0, top / 2, -(CARD_HALF * Math.sin(CARD_TILT) + back / 2)]}
+        rotation-x={Math.atan2(back, top)}
+        castShadow
+      >
+        <boxGeometry args={[0.46, Math.hypot(top, back), 0.006]} />
+        <meshStandardMaterial color="#c9ccd1" />
       </mesh>
     </group>
   )
