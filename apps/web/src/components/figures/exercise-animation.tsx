@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { DOG } from '@/lib/figures/dog'
-import { ExercisePlayer, stationOf, type Exercise } from '@/lib/figures/exercise'
+import { ExercisePlayer, cardPlace, stationOf, type Exercise } from '@/lib/figures/exercise'
 import { EXERCISES } from '@/lib/figures/roz-exercises'
 import { HANDLER } from '@/lib/figures/handler'
 
@@ -119,11 +119,12 @@ function ExerciseSpace({ x, z }: { x: number; z: number }) {
 /** Where the camera looks: the team's place on the field. */
 type Focus = { x: number; z: number }
 
-/**
- * Where the card stands relative to the station, the team arriving along +z: in the usual
- * place right of the team and a little ahead, or 1.2 m straight ahead for a turn.
- */
-const CARD_PLACE = { side: { x: -0.75, z: 0.45 }, ahead: { x: 0, z: 1.2 } }
+/** How far right of the main card its supplementary card stands, metres. */
+const SUPPLEMENTARY_GAP = 0.55
+/** The cards the page can play, once each (Z-014 has a variant per supplementary card). */
+const CODES = [...new Set(EXERCISES.map((e) => e.code))]
+/** Which variant of a card an exercise plays: its supplementary card or the pace before. */
+const variantOf = (e: Exercise) => e.supplementary ?? e.fromPace
 
 /**
  * The team walks over the field through the exercise; the station — where the exercise
@@ -166,8 +167,10 @@ function ExerciseTeam({
     }
   })
 
-  const card = CARD_PLACE[exercise.card ?? 'side']
+  const card = cardPlace(exercise)
+  const stop = exercise.stopAt ?? { x: 0, z: 0 }
   const space = SPACE[exercise.card ?? 'side']
+  const supplementary = exercise.supplementary
   return (
     <>
       <group ref={team}>
@@ -175,7 +178,11 @@ function ExerciseTeam({
         <Figure rig={HANDLER} ref={handler} />
       </group>
       <CardStand code={exercise.code} x={card.x} z={card.z} />
-      {showSpace && <ExerciseSpace x={space.x} z={space.z} />}
+      {supplementary && (
+        // As on a course: the supplementary card stands right next to the main one.
+        <CardStand code={supplementary} x={card.x - SUPPLEMENTARY_GAP} z={card.z} />
+      )}
+      {showSpace && <ExerciseSpace x={space.x - stop.x} z={space.z - stop.z} />}
       <gridHelper args={[30, 30, '#5f8f4a', '#6f9f58']} position={[0, 0.002, 0]} />
     </>
   )
@@ -230,7 +237,8 @@ const cardName = (code: string) => CZ_CARDS.find((c) => c.code === code)?.name ?
 /** Exercise animations (POC): pick an exercise, watch the box-figure team perform it. */
 export function ExerciseAnimation() {
   const { t } = useTranslation()
-  const [code, setCode] = useState(EXERCISES[0]!.code)
+  const [code, setCode] = useState(CODES[0]!)
+  const [variant, setVariant] = useState<string | undefined>(undefined)
   const [view, setView] = useState<CameraView>('behind')
   const [slowMotion, setSlowMotion] = useState<keyof typeof SLOW_MOTION>('full')
   const [paused, setPaused] = useState(false)
@@ -239,7 +247,9 @@ export function ExerciseAnimation() {
   const [caption, setCaption] = useState<string | null>(null)
   const focusRef = useRef<Focus>({ x: 0, z: 0 })
   const press = useRef<{ x: number; y: number; time: number } | null>(null)
-  const exercise = EXERCISES.find((e) => e.code === code)!
+  const variants = EXERCISES.filter((e) => e.code === code)
+  const exercise = variants.find((e) => variantOf(e) === variant) ?? variants[0]!
+  const variantGroup = variants[0]!.supplementary ? 'supplementary' : 'fromPace'
 
   // Space pauses and resumes too, unless a control has the focus (space presses it).
   useEffect(() => {
@@ -282,9 +292,23 @@ export function ExerciseAnimation() {
         {choice(
           'exercise',
           code,
-          EXERCISES.map((e) => e.code),
-          setCode,
+          CODES,
+          (c) => {
+            setCode(c)
+            setVariant(undefined)
+          },
           (o) => `${o} ${cardName(o)}`,
+        )}
+        {variants.length > 1 && (
+          <div className="pt-3">
+            {choice(
+              variantGroup,
+              variantOf(exercise)!,
+              variants.map((e) => variantOf(e)!),
+              setVariant,
+              variantGroup === 'supplementary' ? (o) => `${o} ${cardName(o)}` : undefined,
+            )}
+          </div>
         )}
       </div>
       <div
@@ -318,7 +342,7 @@ export function ExerciseAnimation() {
             <meshStandardMaterial color="#86b86b" />
           </mesh>
           <ExerciseTeam
-            key={code}
+            key={`${code} ${variantOf(exercise) ?? ''}`}
             exercise={exercise}
             slowMotion={paused ? 0 : SLOW_MOTION[slowMotion]}
             showSpace={showSpace}

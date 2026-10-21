@@ -36,6 +36,11 @@ export type StepGait = {
   /** Handler: both feet on the ground between steps at least this long, seconds. */
   doubleSupport?: number
   /**
+   * Handler: a run — a foot is down only this long (seconds, less than a step in the air),
+   * pushes off before the other one lands, and between steps both are in the air.
+   */
+  run?: { stanceTime: number }
+  /**
    * Walking on, the feet land this much further back than where they stand still, metres:
    * a person's heel lands just ahead of the hips and pushes off far behind them.
    */
@@ -88,10 +93,24 @@ const REACH_ASIDE = 0.6
 const clamp = (x: number, limit: number) => Math.max(-limit, Math.min(limit, x))
 
 type Aim = { x: number; z: number; yaw: number }
-type Swing = { from: Aim; aim: Aim | null; time: number; duration: number }
+type Swing = {
+  from: Aim
+  aim: Aim | null
+  time: number
+  duration: number
+  /** How high and how (a runner's heel kick) the step lifts the foot — set as it lifts. */
+  clearance?: number
+  kick?: boolean
+}
 
 /** One step through the air: from where the foot lifted towards its (eased) aim. */
-const swingStep = (swing: Swing, wanted: Aim, dt: number, clearance: number): FootState => {
+const swingStep = (
+  swing: Swing,
+  wanted: Aim,
+  dt: number,
+  clearance: number,
+  kick = false,
+): FootState => {
   const follow = Math.min(1, AIM_RATE * dt)
   const aim: Aim = swing.aim
     ? {
@@ -109,7 +128,16 @@ const swingStep = (swing: Swing, wanted: Aim, dt: number, clearance: number): Fo
     z: swing.from.z + (aim.z - swing.from.z) * k,
     yaw: swing.from.yaw + angleTo(swing.from.yaw, aim.yaw) * k,
     // Short steps (closing up, shuffling round) lift less than full ones.
-    lift: clearance * Math.sin(Math.PI * progress) * Math.min(1, step / 0.15 + 0.2),
+    // A runner kicks the heel up behind: the foot is highest before halfway through.
+    lift:
+      (swing.clearance ?? clearance) *
+      Math.sin(
+        Math.PI *
+          ((swing.kick ?? kick)
+            ? progress + (0.4 * Math.sin(Math.PI * progress)) / Math.PI
+            : progress),
+      ) *
+      Math.min(1, step / 0.15 + 0.2),
     swing: progress,
     stance: 0,
     step,
@@ -135,6 +163,10 @@ const motionOf = (prev: Body, body: Body, dt: number) => {
 
 /** Above this the body walks on (m/s): the feet step in rhythm, not only when they must. */
 const WALKING = 0.3
+/** Above this a runner runs (m/s); below it, setting off or stopping, it walks. */
+const RUNNING = 1.3
+/** Running, a foot pushes off once the other one is this far through its step. */
+const RUN_PUSH_OFF = 0.5
 /** A planted foot lets the body turn this far past it before it steps round (share of pivot). */
 const TURN_TRIGGER = 0.85
 /** Setting off with the feet side by side, the foot behind by this much leads (else the right). */
@@ -254,10 +286,13 @@ export class BipedStepper {
       const [x, z] = this.specs[i]!.neutral
       return placeUnder(b, [x, z - back])
     }
-    const ds = gait.doubleSupport ?? 0.08
-    // How far the body carries a planted foot while the other one steps, and so how far
-    // ahead a foot lands: half of that.
-    const lead = Math.max(0, forward) * (gait.swingTime + 2 * ds) * 0.5
+    // Running only once the body moves at a run; setting off and stopping, it walks.
+    const running = gait.run !== undefined && forward > RUNNING
+    const ds = running ? 0 : (gait.doubleSupport ?? 0.08)
+    // How far the body carries a planted foot while it is down — walking, while the other
+    // one steps — and so how far ahead a foot lands: half of that.
+    const stanceTime = running ? gait.run!.stanceTime : gait.swingTime + 2 * ds
+    const lead = Math.max(0, forward) * stanceTime * 0.5
     const reach = Math.max(lead, 0.12)
     const pivot = gait.pivot ?? 0.5
 
@@ -273,16 +308,21 @@ export class BipedStepper {
       }
     })
 
-    const anySwinging = this.swings.some(Boolean)
-    if (!anySwinging) {
+    // Walking, a foot lifts only with the other one down; running, it pushes off once the
+    // other one is on its way down — a moment in the air between steps.
+    const canStep = this.swings.every(
+      (swing) => !swing || (running && swing.time >= RUN_PUSH_OFF * swing.duration),
+    )
+    if (canStep) {
       // Which foot steps next, if any.
       let next = -1
       let worst = 0
       const level = Math.abs(offsets[0]!.along - offsets[1]!.along) < 0.1
       // Both feet down a moment (the one just landed takes the weight) before either lifts.
-      const ready = this.down.every((d) => d >= ds)
+      const ready = running || this.down.every((d) => d >= ds)
       const strains = this.state.map((_, i) => {
         const o = offsets[i]!
+        if (this.swings[i]) return 0
         let strain: number
         if (still) {
           strain = o.off > SETTLED_DISTANCE || o.turned > SETTLED_YAW ? 1 + o.off : 0
@@ -292,7 +332,8 @@ export class BipedStepper {
           // Walking on, the feet keep their rhythm: the foot behind steps as soon as the one
           // ahead has landed and taken the weight.
           const otherAlong = offsets[1 - i]!.along
-          if (forward > WALKING && o.along < otherAlong - 0.05) strain = Math.max(strain, 1)
+          if (!running && forward > WALKING && o.along < otherAlong - 0.05)
+            strain = Math.max(strain, 1)
         }
         return strain
       })
@@ -305,7 +346,15 @@ export class BipedStepper {
       if (!still && next === this.lastStep && strains[other]! >= 1) next = other
       // Setting off from side by side: the foot to lead is the one furthest behind (or the
       // right one if level), as soon as the body moves.
-      if (next < 0 && level && !still && forward > 0.05 && this.down.every((d) => d >= ds)) {
+      const bothDown = !this.swings.some(Boolean)
+      if (
+        next < 0 &&
+        bothDown &&
+        level &&
+        !still &&
+        forward > 0.05 &&
+        this.down.every((d) => d >= ds)
+      ) {
         const a = offsets[0]!.along
         const b = offsets[1]!.along
         next = a < b - FIRST_STEP_AFTER ? 0 : 1
@@ -314,7 +363,14 @@ export class BipedStepper {
         this.lastStep = next
         const f = this.state[next]!
         const duration = still ? gait.swingTime * 0.8 : gait.swingTime
-        this.swings[next] = { from: { x: f.x, z: f.z, yaw: f.yaw }, aim: null, time: 0, duration }
+        this.swings[next] = {
+          from: { x: f.x, z: f.z, yaw: f.yaw },
+          aim: null,
+          time: 0,
+          duration,
+          clearance: gait.clearance,
+          kick: running,
+        }
       }
     }
     this.settled =
@@ -366,7 +422,7 @@ export class BipedStepper {
         wanted.yaw,
         side * shortOfApart(wanted, other, wanted.yaw, side, false),
       )
-      let next = swingStep(swing, wanted, dt, gait.clearance)
+      let next = swingStep(swing, wanted, dt, gait.clearance, running)
       const inAir = Math.sin(Math.PI * (next.swing ?? 0))
       const clear = shortOfApart(next, other, body.heading, side, true)
       next = movedAcross(next, body.heading, side * clear * inAir)
