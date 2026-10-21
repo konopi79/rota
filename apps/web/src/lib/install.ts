@@ -29,11 +29,13 @@ export function subscribeInstall(onChange: () => void) {
   return () => listeners.delete(onChange)
 }
 
+/** Runs as an app from the home screen; iOS before 16.4 only sets `navigator.standalone`. */
+export const runsInstalled = () =>
+  window.matchMedia('(display-mode: standalone)').matches ||
+  (navigator as Navigator & { standalone?: boolean }).standalone === true
+
 export function installMode(): InstallMode {
-  const standalone =
-    window.matchMedia('(display-mode: standalone)').matches ||
-    (navigator as Navigator & { standalone?: boolean }).standalone === true
-  if (standalone) return 'installed'
+  if (runsInstalled()) return 'installed'
   if (deferred) return 'prompt'
   // iOS has no install prompt, but every iOS browser (all are WebKit) can add to the
   // home screen from its share menu since iOS 16.4. iPadOS reports itself as a Mac.

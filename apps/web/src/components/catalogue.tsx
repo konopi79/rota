@@ -9,6 +9,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { cardImageUrl } from '@/components/deck/card-image'
+import { FeedbackLink } from '@/components/feedback'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Toggle } from '@/components/ui/toggle'
@@ -153,6 +154,12 @@ export function Catalogue({
           ))}
         </ul>
       )}
+      <FeedbackLink
+        kind="card"
+        className="text-muted-foreground self-center text-sm underline underline-offset-4"
+      >
+        {t('feedback.catalogue')}
+      </FeedbackLink>
     </main>
   )
 }

@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
+import { Suspense } from 'react'
 
 import { Analytics } from '@/components/analytics'
+import { RememberPage } from '@/components/feedback'
 import { I18nProvider } from '@/components/i18n-provider'
 import { ServiceWorkerRegistration } from '@/components/pwa'
 import './globals.css'
@@ -40,6 +42,9 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
         <I18nProvider>{children}</I18nProvider>
         <ServiceWorkerRegistration />
         <Analytics />
+        <Suspense>
+          <RememberPage />
+        </Suspense>
       </body>
     </html>
   )

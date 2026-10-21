@@ -20,7 +20,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'custom-course'
+export const LATEST_FEATURE_ID = 'feedback'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -140,6 +140,11 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
         id: 'privacy',
         title: 'Bez registrace a cookies',
         desc: 'Nastavení a výsledky kvízu zůstávají jen v tvém telefonu. Návštěvy a chyby aplikace počítá jen anonymní počítadlo bez cookies.',
+      },
+      {
+        id: 'feedback',
+        title: 'Nahlášení chyby nebo nápadu',
+        desc: 'Odkazem na hlavní stránce, u tříd a karet nebo na konci balíčku otevřeš krátký formulář bez přihlašování. Stránku, verzi a zařízení do něj aplikace doplní sama, včetně naposledy otevřeného balíčku, takže napíšeš jen, co nesedí nebo co by se ti hodilo.',
       },
       {
         id: 'free',

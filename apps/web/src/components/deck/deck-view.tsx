@@ -27,6 +27,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { useTranslation } from 'react-i18next'
 
 import { useOpenInEditor } from '@/components/course-editor'
+import { FeedbackLink } from '@/components/feedback'
 import { FieldPlan } from '@/components/field-plan'
 import { SubParts } from '@/components/sub-parts'
 import { Badge } from '@/components/ui/badge'
@@ -353,6 +354,13 @@ function FinishScreen({ cls, count }: { cls: RoClass; count: number }) {
     <>
       {finish && <CardImage card={finish} className="w-full flex-1" />}
       <p className="text-center font-medium">{t('deck.finished', { count })}</p>
+      {/* Not a tap on the deck: the pointer stays out of its tap zones. */}
+      <FeedbackLink
+        className="text-muted-foreground text-sm underline underline-offset-4"
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        {t('feedback.deck')}
+      </FeedbackLink>
     </>
   )
 }

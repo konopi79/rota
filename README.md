@@ -23,7 +23,8 @@ always binding.
 
 ## Found a mistake?
 
-A wrong card, description or sequencing rule is a bug — please
+A wrong card, description or sequencing rule is a bug — please report it with the link
+under the card in the app (a short form, no account needed), or
 [open an issue](https://github.com/konopi79/rota/issues/new/choose) with the card code
 and, ideally, the page of the regulation.
 
