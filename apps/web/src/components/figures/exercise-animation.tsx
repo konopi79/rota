@@ -3,7 +3,7 @@
 import { CZ_CARDS } from '@rota/content'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
-import { SRGBColorSpace, TextureLoader, type Group } from 'three'
+import { SRGBColorSpace, TextureLoader, TOUCH, type Group } from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { useTranslation } from 'react-i18next'
 import { Play } from 'lucide-react'
@@ -136,6 +136,10 @@ function CameraRig({ view, focusRef }: { view: CameraView; focusRef: RefObject<n
 
   useEffect(() => {
     const controls = new OrbitControls(camera, gl.domElement)
+    // On a phone one finger scrolls the page (the scene fills most of the screen) and taps
+    // pause; two fingers turn and zoom the view, as on an embedded map.
+    controls.touches = { ONE: null, TWO: TOUCH.DOLLY_ROTATE }
+    controls.domElement?.style.setProperty('touch-action', 'pan-y')
     controlsRef.current = controls
     return () => controls.dispose()
   }, [camera, gl])
