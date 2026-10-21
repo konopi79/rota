@@ -201,6 +201,13 @@ describe('Z-001 Stop', () => {
     }
   })
 
+  test('the dog sits half a second after the handler stops', () => {
+    const frames = play()
+    const stop = frames.findIndex((f) => f.caption === 'stop')
+    const sit = frames.findIndex((f) => f.caption === 'sit')
+    expect((sit - stop) / 60).toBeCloseTo(0.5, 1)
+  })
+
   test('walks on after the stop', () => {
     const frames = play()
     expect(frames.at(-1)!.travelled - stationOf(Z001)).toBeGreaterThan(2.5)

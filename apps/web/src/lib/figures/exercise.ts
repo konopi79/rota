@@ -38,6 +38,12 @@ export const Z001: Exercise = {
 
 /** How long a change of the dog's position takes before the next step starts. */
 const POSTURE_TIME = 0.9
+/**
+ * From the handler's stop to the next step: the dog sits about half a second after the
+ * handler stops (Psí škola ABS video, confirmed by the author). The handler's last
+ * centimetres of slowing down run on under the next step.
+ */
+const STOP_TIME = 0.5
 /** Pause at the end before the exercise starts over. */
 const END_PAUSE = 1.2
 
@@ -80,7 +86,7 @@ export class ExercisePlayer {
       const braking = next && 'stop' in next ? speed / SETTLE_RATE : 0
       done = travelled - this.stepStart >= current.walk - braking
     } else if (current && 'stop' in current) {
-      done = speed < 0.01
+      done = this.stepTime >= STOP_TIME
     } else if (current && 'dog' in current) {
       this.posture = current.dog
       controls = { ...controls, dog: current.dog }
@@ -108,14 +114,15 @@ export class ExercisePlayer {
 }
 
 /**
- * Where the team stands at the station — at the end of the first stop — in metres walked.
- * The card is placed relative to it.
+ * Where the team stands at the station — at rest after the first stop, when it walks on —
+ * in metres walked. The card is placed relative to it.
  */
 export const stationOf = (exercise: Exercise): number => {
   const player = new ExercisePlayer(exercise)
   const firstStop = exercise.steps.findIndex((s) => 'stop' in s)
+  const walkOn = exercise.steps.findIndex((s, i) => i > firstStop && 'walk' in s)
   let frame = player.step(0)
-  for (let i = 0; i < 60 * 60 && !frame.finished && frame.stepIndex <= firstStop; i++)
+  for (let i = 0; i < 60 * 60 && !frame.finished && frame.stepIndex < walkOn; i++)
     frame = player.step(1 / 60)
   return frame.travelled
 }
