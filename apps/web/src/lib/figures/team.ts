@@ -9,14 +9,16 @@ import {
 import { HANDLER_PACE, HANDLER_STAND, handlerGait, type HandlerPace } from './handler'
 import { addPoses, blendPoses, type Pose } from './rig'
 
-/** What the lab page asks the two figures to do. */
+/** What the two figures are asked to do. */
 export type TeamControls = {
   dog: DogPosture | DogGait
   /** Where the dog is relative to the handler. */
   place: 'left' | 'right' | 'front'
   handler: 'stand' | HandlerPace
-  /** The team stays where it is while the handler walks (around the dog). */
+  /** The team stays where it is while the handler walks (around the dog, on the spot). */
   stay?: boolean
+  /** The dog's own speed along the way it faces, m/s, negative backing up. */
+  dogSpeed?: number
 }
 
 export type FigureFrame = {
@@ -91,8 +93,11 @@ export class TeamAnimator {
     this.walked += this.speed * dt
     if (!controls.stay) this.travelled += this.speed * dt
     this.handlerPhase += (this.speed * dt) / (pace.speed / pace.rate)
-    // A dog trotting next to a standing handler (lab page) moves at its own speed.
-    const dogSpeed = this.speed > 0.01 ? this.speed : dogGaitOn ? DOG_GAIT_SPEED[this.lastGait] : 0
+    // The dog's legs follow its own motion when the caller knows it (turns: faster outside,
+    // backing up inside); otherwise the handler's, or its own speed beside a standing handler.
+    const dogSpeed =
+      controls.dogSpeed ??
+      (this.speed > 0.01 ? this.speed : dogGaitOn ? DOG_GAIT_SPEED[this.lastGait] : 0)
     this.dogPhase += (dogSpeed * dt) / DOG_CYCLE_LENGTH[this.lastGait]
 
     const target = PLACES[controls.place]

@@ -13,7 +13,8 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { DOG } from '@/lib/figures/dog'
-import { EXERCISES, ExercisePlayer, stationOf, type Exercise } from '@/lib/figures/exercise'
+import { ExercisePlayer, stationOf, type Exercise } from '@/lib/figures/exercise'
+import { EXERCISES } from '@/lib/figures/roz-exercises'
 import { HANDLER } from '@/lib/figures/handler'
 
 type CameraView = 'behind' | 'angle' | 'side' | 'top' | 'front'
@@ -78,9 +79,18 @@ function CardStand({ code, x, z }: { code: string; x: number; z: number }) {
   )
 }
 
+/** Where the camera looks: the team's place on the field. */
+type Focus = { x: number; z: number }
+
 /**
- * The team walks over the field through the exercise; the station — where the team stops —
- * is at the origin. Starts over when the script ends.
+ * Where the card stands relative to the station, the team arriving along +z: in the usual
+ * place right of the team and a little ahead, or 1.2 m straight ahead for a turn.
+ */
+const CARD_PLACE = { side: { x: -0.75, z: 0.45 }, ahead: { x: 0, z: 1.2 } }
+
+/**
+ * The team walks over the field through the exercise; the station — where the exercise
+ * starts — is at the origin. Starts over when the script ends.
  */
 function ExerciseTeam({
   exercise,
@@ -90,10 +100,10 @@ function ExerciseTeam({
 }: {
   exercise: Exercise
   slowMotion: number
-  focusRef: RefObject<number>
+  focusRef: RefObject<Focus>
   onCaption: (caption: string | null) => void
 }) {
-  const station = useMemo(() => stationOf(exercise), [exercise])
+  const station = stationOf(exercise)
   const player = useRef<ExercisePlayer>(null)
   const team = useRef<Group>(null)
   const dog = useRef<FigureHandle>(null)
@@ -107,32 +117,34 @@ function ExerciseTeam({
     if (frame.finished) player.current = null
     dog.current?.apply(frame.dog)
     handler.current?.apply(frame.handler)
-    const z = frame.travelled - station
-    team.current?.position.setZ(z)
-    focusRef.current = z
+    const place = { x: frame.team.x, z: frame.team.z - station }
+    team.current?.position.set(place.x, 0, place.z)
+    team.current?.rotation.set(0, frame.team.heading, 0)
+    focusRef.current = place
     if (frame.caption !== caption.current) {
       caption.current = frame.caption
       onCaption(frame.caption)
     }
   })
 
+  const card = CARD_PLACE[exercise.card ?? 'side']
   return (
     <>
       <group ref={team}>
         <Figure rig={DOG} ref={dog} />
         <Figure rig={HANDLER} ref={handler} />
       </group>
-      <CardStand code={exercise.code} x={-0.75} z={0.45} />
+      <CardStand code={exercise.code} x={card.x} z={card.z} />
       <gridHelper args={[30, 30, '#5f8f4a', '#6f9f58']} position={[0, 0.002, 0]} />
     </>
   )
 }
 
-/** Orbit controls; the camera keeps its offset and follows the team (`focusRef`, z). */
-function CameraRig({ view, focusRef }: { view: CameraView; focusRef: RefObject<number> }) {
+/** Orbit controls; the camera keeps its offset and follows the team (`focusRef`). */
+function CameraRig({ view, focusRef }: { view: CameraView; focusRef: RefObject<Focus> }) {
   const { camera, gl } = useThree()
   const controlsRef = useRef<OrbitControls>(null)
-  const followed = useRef(0)
+  const followed = useRef<Focus>({ x: 0, z: 0 })
 
   useEffect(() => {
     const controls = new OrbitControls(camera, gl.domElement)
@@ -146,21 +158,24 @@ function CameraRig({ view, focusRef }: { view: CameraView; focusRef: RefObject<n
   useEffect(() => {
     const controls = controlsRef.current
     if (!controls) return
-    const z = focusRef.current
+    const { x, z } = focusRef.current
     const [ox, oy, oz] = VIEWS[view]
-    controls.target.set(TARGET[0], TARGET[1], TARGET[2] + z)
-    controls.object.position.set(TARGET[0] + ox, TARGET[1] + oy, TARGET[2] + z + oz)
-    followed.current = z
+    controls.target.set(TARGET[0] + x, TARGET[1], TARGET[2] + z)
+    controls.object.position.set(TARGET[0] + x + ox, TARGET[1] + oy, TARGET[2] + z + oz)
+    followed.current = { x, z }
     controls.update()
   }, [view, focusRef])
 
   useFrame(() => {
     const controls = controlsRef.current
     if (!controls) return
-    const shift = focusRef.current - followed.current
-    followed.current = focusRef.current
-    controls.target.z += shift
-    controls.object.position.z += shift
+    const dx = focusRef.current.x - followed.current.x
+    const dz = focusRef.current.z - followed.current.z
+    followed.current = { ...focusRef.current }
+    controls.target.x += dx
+    controls.target.z += dz
+    controls.object.position.x += dx
+    controls.object.position.z += dz
     controls.update()
   })
 
@@ -178,7 +193,7 @@ export function ExerciseAnimation() {
   const [paused, setPaused] = useState(false)
   const [shadows, setShadows] = useState(true)
   const [caption, setCaption] = useState<string | null>(null)
-  const focusRef = useRef(0)
+  const focusRef = useRef<Focus>({ x: 0, z: 0 })
   const press = useRef<{ x: number; y: number; time: number } | null>(null)
   const exercise = EXERCISES.find((e) => e.code === code)!
 

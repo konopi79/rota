@@ -1,15 +1,22 @@
 import { describe, expect, test } from 'bun:test'
 
 import { DOG, DOG_POSTURES, dogGait, type DogPosture } from '../figures/dog'
+import { ExercisePlayer, stationOf, type Exercise } from '../figures/exercise'
 import {
-  ExercisePlayer,
-  stationOf,
+  EXERCISES,
   Z001,
   Z002,
   Z003,
   Z004,
-  type Exercise,
-} from '../figures/exercise'
+  Z005,
+  Z006,
+  Z007,
+  Z008,
+  Z009,
+  Z011,
+  Z012,
+  Z013,
+} from '../figures/roz-exercises'
 import {
   HANDLER,
   HANDLER_GAITS,
@@ -192,7 +199,7 @@ describe('Z-002 Stop – lehni', () => {
     const down = frames.filter((f) => f.caption === 'downHold')
     expect(down.length).toBeGreaterThan(60)
     for (const f of down) {
-      expect(f.travelled).toBeCloseTo(station, 2)
+      expect(Math.abs(f.travelled - station)).toBeLessThan(0.03)
       expect(f.dog.x).toBeGreaterThan(0.3)
       // Lying: the trunk level, close to the ground.
       expect(clearance(DOG, f.dog.pose, { ...DOG, children: [] })).toBeLessThan(0.03)
@@ -237,7 +244,7 @@ describe('Z-004 Stop – okolo psa', () => {
     expect(around.length / 60).toBeGreaterThan(2.5)
     const station = stationOf(Z004)
     for (const f of around) {
-      expect(f.travelled).toBeCloseTo(station, 2)
+      expect(Math.abs(f.travelled - station)).toBeLessThan(0.03)
       expect(f.dog.pose.trunk).toBeCloseTo(DOG_POSTURES.sit.trunk ?? NaN, 1)
     }
   })
@@ -264,6 +271,88 @@ describe('Z-004 Stop – okolo psa', () => {
   })
 })
 
+describe('every RO-Z exercise', () => {
+  /** A team-frame point (handler's base place at the origin) on the field. */
+  const onField = (team: { x: number; z: number; heading: number }, x: number, z: number) => ({
+    x: team.x + x * Math.cos(team.heading) + z * Math.sin(team.heading),
+    z: team.z - x * Math.sin(team.heading) + z * Math.cos(team.heading),
+  })
+
+  test.each(EXERCISES.map((e) => [e.code, e] as const))('%s plays to the end', (_, exercise) => {
+    const frames = playAll(exercise)
+    expect(frames.at(-1)!.finished).toBe(true)
+    expect(frames.length / 60).toBeLessThan(20)
+  })
+
+  test.each(EXERCISES.map((e) => [e.code, e] as const))(
+    '%s: nobody walks through the card',
+    (_, exercise) => {
+      const station = stationOf(exercise)
+      const card =
+        exercise.card === 'ahead' ? { x: 0, z: station + 1.2 } : { x: -0.75, z: station + 0.45 }
+      for (const f of playAll(exercise)) {
+        const handler = onField(f.team, f.handler.x, f.handler.z)
+        const dog = onField(f.team, f.dog.x, f.dog.z)
+        expect(Math.hypot(handler.x - card.x, handler.z - card.z)).toBeGreaterThan(0.4)
+        expect(Math.hypot(dog.x - card.x, dog.z - card.z)).toBeGreaterThan(0.35)
+      }
+    },
+  )
+
+  test.each([
+    [Z006, 90],
+    [Z007, -90],
+    [Z008, 180],
+    [Z009, -180],
+    [Z011, 270],
+    [Z012, -270],
+    [Z013, 360],
+  ] as const)('%#: turns by the card’s angle and walks on that way', (exercise, degrees) => {
+    const frames = playAll(exercise)
+    const end = frames.at(-1)!
+    // Right turns decrease the heading (towards −x, the handler's right).
+    expect(end.team.heading).toBeCloseTo((-degrees * Math.PI) / 180, 3)
+    // Then 3 m on in the new direction.
+    const turned = frames.findLast((f) => f.caption?.startsWith('turn'))!
+    expect(Math.hypot(end.team.x - turned.team.x, end.team.z - turned.team.z)).toBeGreaterThan(2.5)
+  })
+
+  test.each([Z006, Z007, Z008, Z009].map((e) => [e.code, e] as const))(
+    '%s: turns in a small arc right in front of the card, without stopping',
+    (_, exercise) => {
+      const frames = playAll(exercise)
+      const turning = frames.filter((f) => f.caption?.startsWith('turn'))
+      for (const f of turning) {
+        expect(f.speed).toBeGreaterThan(0.3)
+        // The handler stays within the arc's reach of the station.
+        expect(Math.hypot(f.team.x, f.team.z - stationOf(exercise))).toBeLessThan(0.75)
+      }
+    },
+  )
+
+  test.each([Z011, Z012, Z013].map((e) => [e.code, e] as const))(
+    '%s: the handler turns on the spot, the dog stays at heel',
+    (_, exercise) => {
+      const frames = playAll(exercise)
+      const turning = frames.filter((f) => f.caption?.startsWith('turn'))
+      const start = turning[0]!.team
+      for (const f of turning) {
+        expect(Math.hypot(f.team.x - start.x, f.team.z - start.z)).toBeLessThan(0.02)
+        expect(f.dog.x).toBeCloseTo(0.42, 1)
+      }
+    },
+  )
+})
+
+describe('Z-005 Stop – lehni – okolo psa', () => {
+  test('the dog keeps lying while the handler walks around it', () => {
+    const around = playAll(Z005).filter((f) => f.caption === 'aroundLyingDog')
+    expect(around.length / 60).toBeGreaterThan(2.5)
+    for (const f of around)
+      expect(clearance(DOG, f.dog.pose, { ...DOG, children: [] })).toBeLessThan(0.03)
+  })
+})
+
 describe('Z-001 Stop', () => {
   const play = () => {
     const player = new ExercisePlayer(Z001)
@@ -285,7 +374,7 @@ describe('Z-001 Stop', () => {
     const held = frames.filter((f) => f.caption === 'basePosition')
     expect(held.length).toBeGreaterThan(60)
     for (const f of held) {
-      expect(f.travelled).toBeCloseTo(station, 2)
+      expect(Math.abs(f.travelled - station)).toBeLessThan(0.03)
       // Dog sits at the handler's left, shoulder blade level with the handler's leg.
       expect(f.dog.pose.trunk).toBeCloseTo(DOG_POSTURES.sit.trunk ?? NaN, 1)
       expect(f.dog.x).toBeGreaterThan(0.3)

@@ -342,6 +342,18 @@
       "stay": "Psovod může dát povel „zůstaň“",
       "aroundDog": "Psovod obejde psa zepředu, pes sedí dál",
       "aroundDone": "Zpět v základní pozici, krátce vydržet",
+      "stayDown": "Psovod může dát povel „zůstaň“",
+      "aroundLyingDog": "Psovod obejde psa zepředu, pes leží dál",
+      "aroundDoneDown": "Psovod stojí vedle ležícího psa, krátce vydržet",
+      "approachTurn": "Tým jde ke kartě, obrat 1,2 m před ní",
+      "leaveTurn": "Tým pokračuje novým směrem",
+      "turnRight90": "Obrat vpravo o 90° bez zastavení, pes jde po vnější straně",
+      "turnLeft90": "Obrat vlevo o 90° bez zastavení, pes se otáčí uvnitř",
+      "turnRight180": "Obrat zpět vpravo v malém oblouku, pes jde po vnější straně",
+      "turnLeft180": "Obrat zpět vlevo v malém oblouku, pes se otáčí uvnitř",
+      "turnRight270": "Psovod se otočí na místě o 270° vpravo, pes obíhá u nohy",
+      "turnLeft270": "Psovod se otočí na místě o 270° vlevo, pes couvá a otáčí se u nohy",
+      "turnRight360": "Psovod se otočí na místě o 360° vpravo, pes obíhá u nohy",
       "leave": "Tým pokračuje dál"
     }
   }
