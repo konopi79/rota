@@ -316,7 +316,8 @@
   },
   "figures": {
     "title": "Animace cviků – zkouška postav",
-    "hint": "Pracovní stránka: kostičkový pes a psovod. Kameru otočíš tažením, přiblížíš sevřením prstů.",
+    "hint": "Pracovní stránka. Klepnutím (nebo mezerníkem) animaci zastavíš a znovu pustíš, tažením otočíš kameru, sevřením prstů přiblížíš.",
+    "paused": "Pauza – klepni pro pokračování",
     "back": "ROTA",
     "dog": {
       "label": "Pes",
@@ -342,7 +343,7 @@
       "top": "Shora",
       "front": "Zepředu"
     },
-    "speed": { "label": "Rychlost", "pause": "Pauza", "quarter": "¼×", "half": "½×", "full": "1×" },
+    "speed": { "label": "Rychlost", "quarter": "¼×", "half": "½×", "full": "1×" },
     "mode": { "label": "Ukázka", "z001": "Z-001 Stop", "figures": "Postavy" },
     "caption": {
       "approach": "Tým jde ke kartě",

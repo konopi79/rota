@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { SRGBColorSpace, TextureLoader, type GridHelper, type Group } from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { useTranslation } from 'react-i18next'
+import { Play } from 'lucide-react'
 
 import { Figure, type FigureHandle } from '@/components/figures/figure'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -26,7 +27,11 @@ const VIEWS: Record<CameraView, [number, number, number]> = {
 }
 const TARGET: [number, number, number] = [0.2, 0.75, 0.1]
 
-const SLOW_MOTION = { pause: 0, quarter: 0.25, half: 0.5, full: 1 }
+const SLOW_MOTION = { quarter: 0.25, half: 0.5, full: 1 }
+
+/** A press that moves less than this (px) and lasts less than this (ms) is a tap, not a drag. */
+const TAP_MOVE = 8
+const TAP_TIME = 350
 
 /** The figures walk on the spot; the ground slides back under them. */
 function LabTeam({ controls, slowMotion }: { controls: TeamControls; slowMotion: number }) {
@@ -191,8 +196,22 @@ export function FiguresLab() {
   })
   const [view, setView] = useState<CameraView>('behind')
   const [slowMotion, setSlowMotion] = useState<keyof typeof SLOW_MOTION>('full')
+  const [paused, setPaused] = useState(false)
   const [caption, setCaption] = useState<string | null>(null)
   const focusRef = useRef(0)
+  const press = useRef<{ x: number; y: number; time: number } | null>(null)
+  const speed = paused ? 0 : SLOW_MOTION[slowMotion]
+
+  // Space pauses and resumes too, unless a button has the focus (space presses it).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== ' ' || (e.target as HTMLElement).closest('button, input')) return
+      e.preventDefault()
+      setPaused((p) => !p)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
   const update = (patch: Partial<TeamControls>) => setControls((c) => ({ ...c, ...patch }))
 
   const choice = <T extends string>(
@@ -223,7 +242,23 @@ export function FiguresLab() {
       <div className="mx-auto w-full max-w-md px-4 pb-3">
         {choice('mode', mode, ['z001', 'figures'], setMode)}
       </div>
-      <div className="bg-card relative h-[55vh] min-h-72">
+      <div
+        className="bg-card relative h-[55vh] min-h-72"
+        // A tap pauses or resumes; a drag turns the camera.
+        onPointerDown={(e) => {
+          press.current = { x: e.clientX, y: e.clientY, time: e.timeStamp }
+        }}
+        onPointerUp={(e) => {
+          const start = press.current
+          press.current = null
+          if (
+            start &&
+            Math.hypot(e.clientX - start.x, e.clientY - start.y) < TAP_MOVE &&
+            e.timeStamp - start.time < TAP_TIME
+          )
+            setPaused((p) => !p)
+        }}
+      >
         <Canvas shadows camera={{ position: VIEWS.angle, fov: 40 }}>
           <color attach="background" args={['#cfe6f5']} />
           <hemisphereLight args={['#ffffff', '#6f9f58', 1.2]} />
@@ -239,14 +274,14 @@ export function FiguresLab() {
           </mesh>
           {mode === 'figures' ? (
             <>
-              <LabTeam controls={controls} slowMotion={SLOW_MOTION[slowMotion]} />
+              <LabTeam controls={controls} slowMotion={speed} />
               <CameraRig view={view} />
             </>
           ) : (
             <>
               <ExerciseTeam
                 exercise={Z001}
-                slowMotion={SLOW_MOTION[slowMotion]}
+                slowMotion={speed}
                 focusRef={focusRef}
                 onCaption={setCaption}
               />
@@ -254,6 +289,15 @@ export function FiguresLab() {
             </>
           )}
         </Canvas>
+        {paused && (
+          // Small and at the top: the scene is what a paused viewer wants to see.
+          <div className="pointer-events-none absolute inset-x-0 top-2 flex justify-center px-4">
+            <div className="bg-background/85 flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium shadow">
+              <Play className="size-3.5 fill-current" />
+              {t('figures.paused')}
+            </div>
+          </div>
+        )}
         {mode !== 'figures' && caption && (
           <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-4">
             <div className="bg-background/85 rounded-lg px-3 py-1.5 text-center font-medium shadow">
@@ -277,7 +321,10 @@ export function FiguresLab() {
           </>
         )}
         {choice('view', view, ['behind', 'angle', 'side', 'top', 'front'], setView)}
-        {choice('speed', slowMotion, ['pause', 'quarter', 'half', 'full'], setSlowMotion)}
+        {choice('speed', slowMotion, ['quarter', 'half', 'full'], (v) => {
+          setSlowMotion(v)
+          setPaused(false)
+        })}
       </div>
     </div>
   )
