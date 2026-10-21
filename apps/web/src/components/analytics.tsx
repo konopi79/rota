@@ -10,6 +10,7 @@ import {
   sendHit,
   shouldCount,
 } from '@/lib/analytics'
+import { runsInstalled } from '@/lib/install'
 // Installs the error reports as soon as the layout's scripts load, before hydration.
 import '@/lib/error-report'
 
@@ -23,10 +24,7 @@ export function Analytics() {
     const isFirst = first.current
     first.current = false
     if (isFirst) {
-      const installed =
-        window.matchMedia('(display-mode: standalone)').matches ||
-        (navigator as Navigator & { standalone?: boolean }).standalone === true
-      sendHit({ path: installed ? LAUNCH_INSTALLED : LAUNCH_BROWSER, event: true })
+      sendHit({ path: runsInstalled() ? LAUNCH_INSTALLED : LAUNCH_BROWSER, event: true })
     }
     sendHit({
       path: analyticsPath(pathname, window.location.search),

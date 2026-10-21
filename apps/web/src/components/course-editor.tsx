@@ -35,6 +35,7 @@ import { useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { cardImageUrl } from '@/components/deck/card-image'
+import { FeedbackLink } from '@/components/feedback'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -394,6 +395,16 @@ function Editor({ cls, initial }: { cls: RoClass; initial: CustomCourse }) {
           </Button>
         )}
       </div>
+      <FeedbackLink
+        className="text-muted-foreground self-center text-sm underline underline-offset-4"
+        course={() =>
+          empty
+            ? undefined
+            : `${window.location.origin}/parkur?${courseQuery({ showDescription: false })}`
+        }
+      >
+        {t('feedback.link')}
+      </FeedbackLink>
     </main>
   )
 }

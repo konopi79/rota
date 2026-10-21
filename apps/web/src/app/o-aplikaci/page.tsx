@@ -1,12 +1,13 @@
 'use client'
 
 import { CZ_RULESET, FCI_RULESET } from '@rota/content'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, MessageSquareWarning } from 'lucide-react'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
+import { FeedbackLink } from '@/components/feedback'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { FEATURE_GROUPS, LATEST_FEATURE_ID } from '@/content/features'
 import { GUIDE } from '@/content/guide'
 
@@ -73,6 +74,16 @@ export default function AboutPage() {
         ))}
       </section>
       {section(t('about.unofficialTitle'), <p>{t('about.unofficial')}</p>)}
+      {section(
+        t('about.feedbackTitle'),
+        <div id="chyba" className="scroll-mt-6 space-y-3">
+          <p>{t('about.feedback')}</p>
+          <FeedbackLink className={buttonVariants({ variant: 'outline', size: 'lg' })}>
+            <MessageSquareWarning />
+            {t('feedback.link')}
+          </FeedbackLink>
+        </div>,
+      )}
       {section(
         t('about.sourcesTitle'),
         <ul className="list-disc space-y-1 pl-5">

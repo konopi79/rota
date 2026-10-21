@@ -30,6 +30,7 @@ import { useTranslation } from 'react-i18next'
 import { useOpenInEditor } from '@/components/course-editor'
 import { CourseGrid } from '@/components/course-grid'
 import { cardImageUrl } from '@/components/deck/card-image'
+import { FeedbackLink } from '@/components/feedback'
 import { FieldPlan } from '@/components/field-plan'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -213,6 +214,10 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
           dogRight={finishSide(deck) === 'right'}
         />
       </ol>
+
+      <FeedbackLink className="text-muted-foreground self-center text-sm underline underline-offset-4 print:hidden">
+        {t('feedback.deck')}
+      </FeedbackLink>
     </main>
   )
 }

@@ -23,6 +23,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { FeedbackLink } from '@/components/feedback'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -268,6 +269,9 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
         <GraduationCap />
         {t('setup.quiz')}
       </Button>
+      <FeedbackLink className="text-muted-foreground self-center text-sm underline underline-offset-4">
+        {t('feedback.link')}
+      </FeedbackLink>
     </main>
   )
 }

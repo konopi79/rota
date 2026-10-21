@@ -9,6 +9,7 @@ import { Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { cardImageUrl } from '@/components/deck/card-image'
+import { FeedbackLink } from '@/components/feedback'
 import { Badge } from '@/components/ui/badge'
 import { SubParts } from '@/components/sub-parts'
 import { Button } from '@/components/ui/button'
@@ -125,6 +126,9 @@ export function CardDetail({ card }: { card: Card }) {
       <p className="text-muted-foreground text-xs">
         {t('card.source', { source: RULESETS[card.ruleset].source, page: card.sourcePage })}
       </p>
+      <FeedbackLink kind="card" className="self-start text-sm underline underline-offset-4">
+        {t('feedback.card')}
+      </FeedbackLink>
 
       {/* The catalogue list comes from search params, readable only in the browser. */}
       <Suspense>

@@ -64,7 +64,8 @@ Nothing is stored on the device, hence no consent banner; the About page says so
 — the error, where it happened and the **full** page address, a deck's seed and position
 included, so the error can be repeated (an installed app "opened but did nothing" for a
 handler and could not be reproduced). The address holds no personal data; the About page
-says so.
+says so. **Changed 2026-10-21:** feedback goes to a Google Form, sent only when the user
+submits it — the page address, version and device prefilled in plain sight (R6).
 
 **D3 — Static output.** With no server features the app builds with `output: 'export'`
 and is served as static files (small nginx/Caddy image, or any static host).
@@ -485,6 +486,7 @@ gesture for audio).
 - [x] `konopi79/rota` made public (2026-09-27); the ruleset, secret scanning and private vulnerability reporting could only be switched on after that
 - [x] Visit counter (2026-09-28): GoatCounter `rotapp`, cookieless, own `/count` requests instead of count.js (client-side navigation, decks counted by class only, launches from the home screen vs. browser), CSP allows `rotapp.goatcounter.com`, privacy texts and D2 updated (`lib/analytics.ts`, tested)
 - [x] Error reports (2026-10-20): uncaught errors, rejected promises and a failed service worker install as GoatCounter events `chyba: <error> (<source>) @ <full page address>`, listeners installed before hydration, each error once and at most 5 per page load (`lib/error-report.ts`, tested); privacy texts and D2 updated
+- [x] Feedback form (2026-10-21): no backend and no mail, so a public Google Form of the author's (no sign-in; Google mails a notice of each answer) opened with the page address, version and device prefilled (`lib/feedback.ts`, tested) — links on the home page, `/o-aplikaci#chyba`, the class setup, the catalogue and every card detail (kind "chyba v kartě" preselected), the editor (its course as a course link), the end of a deck and a course; the last page other than home and About is kept in `sessionStorage` and sent along ("předtím: …"), so a deck reported from the home page after training is still there; replaces the GitHub issue as the way to report a card error; privacy text updated
 - [x] Own domain `rotapp.cz` (2026-09-28): Blueboard DNS (A + AAAA per rock8, DNSSEC), rock8 custom domains `rotapp.cz` + `www.rotapp.cz` with Let's Encrypt; `www` → 301 to the apex in nginx (an explicit `www` A/AAAA was needed — the rock8 challenge TXT under `www` stops the `*` wildcard from answering for it); guide, README, GitHub homepage point to `rotapp.cz`
 
 ### R7 — Competition-course generator

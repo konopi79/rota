@@ -5,6 +5,7 @@ import { ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
+import { FeedbackLink } from '@/components/feedback'
 import { InstallHint, MovedHint } from '@/components/pwa'
 import { Button } from '@/components/ui/button'
 import { classSlug } from '@/lib/classes'
@@ -59,10 +60,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="text-muted-foreground mt-auto text-center text-sm">
+      <footer className="text-muted-foreground mt-auto flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm">
         <Link href="/o-aplikaci" className="underline underline-offset-4">
           {t('home.about')}
         </Link>
+        <FeedbackLink className="underline underline-offset-4">{t('feedback.link')}</FeedbackLink>
       </footer>
     </main>
   )
