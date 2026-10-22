@@ -408,7 +408,7 @@ describe('every RO-Z exercise', () => {
   test.each(EXERCISES.map((e) => [e.code, e] as const))('%s plays to the end', (_, exercise) => {
     const frames = playAll(exercise)
     expect(frames.at(-1)!.finished).toBe(true)
-    expect(frames.length / 60).toBeLessThan(20)
+    expect(frames.length / 60).toBeLessThan(40)
   })
 
   test.each(EXERCISES.map((e) => [e.code, e] as const))(
@@ -422,6 +422,12 @@ describe('every RO-Z exercise', () => {
         const dog = onField(f.team, f.dog.x, f.dog.z)
         expect(Math.hypot(handler.x - card.x, handler.z - card.z)).toBeGreaterThan(0.4)
         expect(Math.hypot(dog.x - card.x, dog.z - card.z)).toBeGreaterThan(0.35)
+        // …nor knocks over a cone (the bodies' middles, a body's half width off it).
+        for (const cone of exercise.cones ?? []) {
+          const at = { x: cone.x, z: station + cone.z }
+          expect(Math.hypot(handler.x - at.x, handler.z - at.z)).toBeGreaterThan(0.3)
+          expect(Math.hypot(dog.x - at.x, dog.z - at.z)).toBeGreaterThan(0.25)
+        }
       }
     },
   )

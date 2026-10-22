@@ -1,3 +1,4 @@
+import { circleSpiral, slalom, spiral, type Course } from './courses'
 import type { Exercise } from './exercise'
 import type { FootTarget } from './locomotion'
 
@@ -243,6 +244,92 @@ export const Z016 = changePace('Z-016', 'fast', 'fastPace')
 export const Z017 = changePace('Z-017', 'normal', 'normalPace', 'slow')
 export const Z017_FROM_FAST = changePace('Z-017', 'normal', 'normalPace', 'fast')
 
+/** The card "před prvním kuželem, viditelná ze směru příchodu týmu" (p. 24–28). */
+const cardBeforeCones = (course: Course) => ({ x: course.cones[0]!.x, z: 0.5 })
+
+/**
+ * Z-018 Spirála doprava, Z-019 Spirála doleva (p. 24): "Tým míjí kartu i kužely po své pravé
+ * (levé) straně …, obejde třetí kužel (nejvzdálenější) a vrací se k prvnímu kuželu, který též
+ * obejde. Následně obejde druhý kužel a vrací se znovu k prvnímu, který opět obejde. Na konec
+ * obejde jen první kužel dokola. Směr postupu ze spirály určuje poloha další karty." To the
+ * right the dog walks outside the bends, to the left inside them, between handler and cones.
+ */
+const spiralExercise = (code: string, left: boolean): Exercise => {
+  const course = spiral(left)
+  return {
+    code,
+    cones: course.cones,
+    cardAt: cardBeforeCones(course),
+    steps: [
+      { walk: 2.5, caption: 'approachCones' },
+      { course, parts: [0, 4], caption: 'spiralThird' },
+      { course, parts: [4, 7], caption: 'spiralSecond' },
+      { course, parts: [7, 8], caption: 'spiralFirst' },
+      { course, parts: [8, 9], caption: 'leaveCones' },
+      { walk: 2, caption: 'leaveCones' },
+    ],
+  }
+}
+
+export const Z018 = spiralExercise('Z-018', false)
+export const Z019 = spiralExercise('Z-019', true)
+
+/**
+ * Z-020 Slalom jednoduchý, Z-021 Slalom tam a zpět (p. 25): four cones; "Tým vstupuje do
+ * slalomu vždy zprava (tj. první kužel po své levé straně)"; Z-021 "překoná jej ve směru tam
+ * i zpět" — round the last cone and back through.
+ */
+const slalomExercise = (code: string, back: boolean): Exercise => {
+  const course = slalom(back)
+  return {
+    code,
+    cones: course.cones,
+    cardAt: cardBeforeCones(course),
+    steps: back
+      ? [
+          { walk: 2.5, caption: 'approachCones' },
+          { course, parts: [0, 2], caption: 'slalomThere' },
+          { course, parts: [2, 3], caption: 'slalomTurn' },
+          { course, parts: [3, 4], caption: 'slalomBack' },
+          { course, parts: [4, 5], caption: 'leaveCones' },
+          { walk: 2, caption: 'leaveCones' },
+        ]
+      : [
+          { walk: 2.5, caption: 'approachCones' },
+          { course, parts: [0, 2], caption: 'slalomThere' },
+          { course, parts: [2, 3], caption: 'leaveCones' },
+          { walk: 2, caption: 'leaveCones' },
+        ],
+  }
+}
+
+export const Z020 = slalomExercise('Z-020', false)
+export const Z021 = slalomExercise('Z-021', true)
+
+/**
+ * Z-026 Kruhová spirála – pes vně doprava, Z-027 – pes uvnitř doleva (p. 27): "Tým obejde
+ * první kužel, pokračuje ke druhému, který též obejde, a jako poslední obejde třetí kužel."
+ */
+const circleSpiralExercise = (code: string, left: boolean): Exercise => {
+  const course = circleSpiral(left)
+  return {
+    code,
+    cones: course.cones,
+    cardAt: cardBeforeCones(course),
+    steps: [
+      { walk: 2.5, caption: 'approachCones' },
+      { course, parts: [0, 2], caption: 'circleFirst' },
+      { course, parts: [2, 4], caption: 'circleSecond' },
+      { course, parts: [4, 6], caption: 'circleThird' },
+      { course, parts: [6, 7], caption: 'leaveCones' },
+      { walk: 2, caption: 'leaveCones' },
+    ],
+  }
+}
+
+export const Z026 = circleSpiralExercise('Z-026', false)
+export const Z027 = circleSpiralExercise('Z-027', true)
+
 /**
  * Z-023 Stop – pes okolo psovoda – stop (p. 26): "Tým zastaví u karty … a zaujme základní
  * pozici. Pes oběhne psovoda zepředu a poté opět usedá u nohy psovoda. Psovod zůstává stát po
@@ -346,8 +433,14 @@ export const EXERCISES: Exercise[] = [
   Z016,
   Z017,
   Z017_FROM_FAST,
+  Z018,
+  Z019,
+  Z020,
+  Z021,
   Z023,
   Z024,
+  Z026,
+  Z027,
   Z028,
   Z029,
   Z030,

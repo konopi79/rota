@@ -10,6 +10,7 @@ import {
   bendAhead,
   type Path,
 } from './paths'
+import type { Course } from './courses'
 import type { FootTarget } from './locomotion'
 import { SETTLE_RATE, TeamAnimator, onField, type TeamControls, type TeamFrame } from './team'
 
@@ -30,6 +31,12 @@ export type ExerciseStep = { caption: string } & (
    * follows its feet, the dog keeps to its place at heel.
    */
   | { footwork: FootTarget[] }
+  /**
+   * The team walks parts `parts[0]` up to (not including) `parts[1]` of a course round
+   * equipment (`courses.ts`), the dog at heel — one course over several steps, each with its
+   * caption, on from where the last one ended.
+   */
+  | { course: Course; parts: [number, number]; pace?: HandlerPace }
   /**
    * The team turns by `turn` degrees, positive to the right, the handler walking an arc of
    * `radius` metres — 0 turns the handler on the spot, the dog going round at heel.
@@ -85,6 +92,10 @@ export type Exercise = {
    * left, +z towards the card): an exercise that needs room in front stops further back.
    */
   stopAt?: { x: number; z: number }
+  /** Where the card stands when not in one of the usual places (station's frame). */
+  cardAt?: { x: number; z: number }
+  /** Cones on the field, in the station's frame. */
+  cones?: { x: number; z: number }[]
 }
 
 /**
@@ -95,6 +106,7 @@ const CARD_PLACE = { side: { x: -0.75, z: 0.45 }, ahead: { x: 0, z: 1.2 } }
 
 /** Where the card stands from where the handler stops in `exercise` (the station). */
 export const cardPlace = (exercise: Exercise) => {
+  if (exercise.cardAt) return exercise.cardAt
   const card = CARD_PLACE[exercise.card ?? 'side']
   const stop = exercise.stopAt ?? { x: 0, z: 0 }
   return { x: card.x - stop.x, z: card.z - stop.z }
@@ -258,6 +270,9 @@ export class ExercisePlayer {
   private footworkIndex = 0
   private footworkDwell = 0
   private footworkOffset: Pose = { x: 0, z: 0, heading: 0 }
+  /** A course: where the team stood as it began, how far along it the team has come. */
+  private courseBase: Pose = { x: 0, z: 0, heading: 0 }
+  private courseWalked = 0
   /** Where the dog keeps to when it is not on a path of its own. */
   private dogPlace: TeamControls['place'] = 'left'
   /** Metres the dog has gone along its current path, and how fast it goes. */
@@ -397,6 +412,22 @@ export class ExercisePlayer {
         this.footworkDwell = 0
       }
       done = this.footworkIndex >= current.footwork.length
+    } else if (current && 'course' in current) {
+      const { path } = current.course
+      if (starting && current.parts[0] === 0) {
+        this.courseBase = { ...this.team }
+        this.courseWalked = 0
+      }
+      this.pace = current.pace ?? this.pace
+      this.posture = 'stand'
+      // Round the cones the handler slows down as in any tight bend.
+      const bend = bendAhead(path, this.courseWalked)
+      controls = {
+        dog: dogGait(this.pace),
+        place: this.dogPlace,
+        handler: this.pace,
+        maxSpeed: bend > 0 ? MAX_SPIN / bend : undefined,
+      }
     } else if (current && 'turn' in current) {
       if (starting) {
         this.turnLeft = (Math.abs(current.turn) * Math.PI) / 180
@@ -445,6 +476,12 @@ export class ExercisePlayer {
         this.turnLeft -= arc / current.radius
       }
       done = this.turnLeft <= 1e-6
+    } else if (current && 'course' in current) {
+      const { path, starts } = current.course
+      const end = starts[current.parts[1]] ?? path.length
+      this.courseWalked = Math.min(end, this.courseWalked + moved)
+      this.team = onField(this.courseBase, path.at(this.courseWalked))
+      done = this.courseWalked >= end - 1e-6
     } else {
       this.team = forward(this.team, moved)
     }
@@ -457,7 +494,7 @@ export class ExercisePlayer {
       this.offset = {
         x: this.offset.x * (1 - k),
         z: this.offset.z * (1 - k),
-        heading: this.offset.heading * (1 - k),
+        heading: angleTo(0, this.offset.heading) * (1 - k),
       }
     }
 

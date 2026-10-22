@@ -116,6 +116,24 @@ function ExerciseSpace({ x, z }: { x: number; z: number }) {
   )
 }
 
+/** Training cones, orange and blue by turns as on the video's field. */
+const CONE_COLOURS = ['#f07a1a', '#2457c5']
+
+function Cone({ x, z, colour }: { x: number; z: number; colour: string }) {
+  return (
+    <group position={[x, 0, z]}>
+      <mesh position={[0, 0.17, 0]} castShadow>
+        <coneGeometry args={[0.11, 0.32, 20]} />
+        <meshStandardMaterial color={colour} />
+      </mesh>
+      <mesh position={[0, 0.01, 0]} castShadow>
+        <boxGeometry args={[0.24, 0.02, 0.24]} />
+        <meshStandardMaterial color={colour} />
+      </mesh>
+    </group>
+  )
+}
+
 /** Where the camera looks: the team's place on the field. */
 type Focus = { x: number; z: number }
 
@@ -183,6 +201,9 @@ function ExerciseTeam({
         <CardStand code={supplementary} x={card.x - SUPPLEMENTARY_GAP} z={card.z} />
       )}
       {showSpace && <ExerciseSpace x={space.x - stop.x} z={space.z - stop.z} />}
+      {exercise.cones?.map((cone, i) => (
+        <Cone key={i} x={cone.x} z={cone.z} colour={CONE_COLOURS[i % 2]!} />
+      ))}
       <gridHelper args={[30, 30, '#5f8f4a', '#6f9f58']} position={[0, 0.002, 0]} />
     </>
   )
