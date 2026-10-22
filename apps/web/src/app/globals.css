@@ -132,3 +132,14 @@
     @apply font-sans;
   }
 }
+
+/* Printed course (`course-view.tsx`): narrow margins, colours as on screen (red cones). */
+@page {
+  margin: 12mm;
+}
+@media print {
+  html {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

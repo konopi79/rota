@@ -16,6 +16,7 @@ import {
   CircleAlert,
   Footprints,
   LayoutGrid,
+  Maximize2,
   PencilLine,
   Printer,
   Share2,
@@ -32,6 +33,7 @@ import { CourseGrid } from '@/components/course-grid'
 import { cardImageUrl } from '@/components/deck/card-image'
 import { FeedbackLink } from '@/components/feedback'
 import { FieldPlan } from '@/components/field-plan'
+import { PlanViewer } from '@/components/plan-viewer'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cardHref, classSlug } from '@/lib/classes'
@@ -52,6 +54,8 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   const [showGrid, setShowGrid] = useState(false)
+  /** The round whose plan is shown over the whole screen. */
+  const [zoomedRound, setZoomedRound] = useState<number>()
   const deckKey = JSON.stringify([params.options, params.order])
   // eslint-disable-next-line react-hooks/exhaustive-deps -- recompute only when the deck changes
   const deck = useMemo(() => deckOf(params), [deckKey])
@@ -139,6 +143,12 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
           <LayoutGrid />
           {t('course.grid')}
         </Button>
+        {layout && (
+          <Button variant="outline" onClick={() => setZoomedRound(0)}>
+            <Maximize2 />
+            {t('course.zoomPlan')}
+          </Button>
+        )}
         <Button variant="outline" render={<Link href={deckHref} />}>
           <Footprints />
           {t('course.walk')}
@@ -163,18 +173,38 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
         />
       )}
 
+      {layout && zoomedRound !== undefined && (
+        <PlanViewer
+          title={t('plan.title')}
+          layout={layout}
+          entries={deck.entries}
+          card={card}
+          round={zoomedRound}
+          onClose={() => setZoomedRound(undefined)}
+        />
+      )}
+
+      {/* Printed: the plan as big as the page, the list of cards from the next page on. */}
       {layout?.rounds.map((round, i) => (
-        <figure key={round.first} className="break-inside-avoid space-y-1">
-          <FieldPlan
-            layout={layout}
-            entries={deck.entries}
-            card={card}
-            round={i}
-            title={t('plan.title')}
-            className="mx-auto max-w-md print:max-w-sm"
-          />
+        <figure key={round.first} className="break-inside-avoid space-y-1 print:break-after-page">
+          <button
+            type="button"
+            className="mx-auto block w-full max-w-md cursor-zoom-in print:max-w-none"
+            aria-label={t('course.zoomPlan')}
+            onClick={() => setZoomedRound(i)}
+          >
+            <FieldPlan
+              layout={layout}
+              entries={deck.entries}
+              card={card}
+              round={i}
+              title={t('plan.title')}
+              className="print:max-h-[22.5cm]"
+            />
+          </button>
           <figcaption className="text-muted-foreground text-center text-xs">
             {t('plan.caption', { width: layout.width, height: layout.height })}
+            <span className="print:hidden"> {t('course.zoomHint')}</span>
           </figcaption>
         </figure>
       ))}
@@ -189,7 +219,7 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
         </ul>
       )}
 
-      <ol className="divide-y rounded-lg border">
+      <ol className="divide-y rounded-lg border print:columns-2 print:gap-6 print:rounded-none print:border-0">
         <Row
           label={t('course.start')}
           card={card('START')}
@@ -301,7 +331,7 @@ function Thumb({ card }: { card: Card }) {
       alt=""
       width={400}
       height={283}
-      className="h-auto w-20 shrink-0 rounded-sm border sm:w-24"
+      className="h-auto w-20 shrink-0 rounded-sm border sm:w-24 print:w-16"
     />
   )
 }

@@ -20,7 +20,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'fci-judges-course'
+export const LATEST_FEATURE_ID = 'plan-zoom-print'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -75,6 +75,11 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
         id: 'field-plan',
         title: 'Parkur, který se vejde na plochu (FCI)',
         desc: 'Karty FCI-ROB rozmístí aplikace na plochu 20 × 20 m, nebo 20 × 30 m, když ji vybereš v nastavení: start na kraji, 3–5 m mezi kartami, mezi kartami rovně (směr mění jen karty), místo pro kužely, přivolání i skoky. Plánek s vyznačenou aktuální kartou otevřeš ikonou mapy; má ho balíček do 20 karet.',
+      },
+      {
+        id: 'plan-zoom-print',
+        title: 'Plánek zvětšený i vytištěný',
+        desc: 'Klepnutím na plánek tréninkového parkuru ho otevřeš přes celou obrazovku a přiblížíš tlačítky nebo dvěma prsty. Vytištěný parkur má plánek přes celou první stranu a seznam cviků na další.',
       },
       {
         id: 'badges',
