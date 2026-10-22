@@ -269,6 +269,33 @@ describe('field layout — dealer', () => {
     expect(validateDeck(odd)).toEqual([])
   }, 30_000)
 
+  test('a course spreads over the field instead of leaving a corner empty', () => {
+    // The biggest empty spot: the point of the field farthest from every exercise. Without
+    // steering a course left one of ~10.6 m radius on 20 × 30 m (6.3 m on 20 × 20).
+    for (const [field, limit] of [
+      [{ width: 20, height: 20 }, 6.1],
+      [{ width: 20, height: 30 }, 9],
+    ] as const) {
+      let total = 0
+      for (let seed = 0; seed < 60; seed++) {
+        const deck = dealDeck({ ...base, count: 20, seed, competition: true, field })
+        const round = deck.layout?.rounds[0]
+        const points = [round?.start, round?.finish, ...deck.entries.map((e) => e.at)].filter(
+          (p) => p !== undefined,
+        )
+        let biggest = 0
+        for (let x = 1; x < field.width; x++) {
+          for (let y = 1; y < field.height; y++) {
+            const room = Math.min(...points.map((p) => Math.hypot(p.x - x, p.y - y)))
+            biggest = Math.max(biggest, room)
+          }
+        }
+        total += biggest
+      }
+      expect(total / 60).toBeLessThan(limit)
+    }
+  }, 30_000)
+
   test('the validator checks the deck is laid out on the field it asked for', () => {
     const deck = straight(['101', '102'])
     expect(validateDeck(deck)).toEqual([])

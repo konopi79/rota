@@ -1,6 +1,8 @@
 import type { Card } from '../schema'
 import {
+  angleDiff,
   approachOf,
+  bearing,
   CARD_SPACING,
   distance,
   distanceToSegment,
@@ -93,6 +95,40 @@ export class FieldPlanner {
         this.runwayFrom(walkTo(exit, 0, across), others),
       ),
     )
+  }
+
+  /**
+   * How well a next card turning the team by `turn` heads it into the emptiest part of the
+   * field (`emptiest`), from about where that card would stand: 1 straight at it, 0 away
+   * from it. The dealer prefers such cards, so a course spreads over the field instead of
+   * leaving a corner empty (author, 2026-10-22).
+   */
+  towardsEmpty(turn: number): number {
+    const shape = this.shapeOfPrevious(false)
+    const exit = shape?.exit ?? this.start
+    const across = approachOf(shape, undefined).shifts[0] ?? 0
+    const next = walkTo(exit, (GAP_MIN + GAP_MAX) / 2, across)
+    const empty = this.emptiest()
+    const off = angleDiff(normalize(next.heading + turn), bearing(next, empty))
+    return (1 + Math.cos((off * Math.PI) / 180)) / 2
+  }
+
+  private emptiestAt: { stations: number; point: Point } | undefined
+
+  /** The point of the field farthest from every exercise and card laid out so far (1 m grid). */
+  private emptiest(): Point {
+    if (this.emptiestAt?.stations === this.stations.length) return this.emptiestAt.point
+    const others = [...this.stations, ...this.signs]
+    let best = { point: { x: this.width / 2, y: this.height / 2 }, room: -1 }
+    for (let x = 1; x < this.width; x++) {
+      for (let y = 1; y < this.height; y++) {
+        const point = { x, y }
+        const room = Math.min(...others.map((q) => distance(point, q)))
+        if (room > best.room) best = { point, room }
+      }
+    }
+    this.emptiestAt = { stations: this.stations.length, point: best.point }
+    return best.point
   }
 
   private runwayFrom(from: Pose, others: Point[]): number {

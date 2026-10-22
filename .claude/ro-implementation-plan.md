@@ -372,9 +372,17 @@ change direction.
   course between an even deal and its calibrated weight (`USAGE_LEAN`).
 - A competition course may repeat a card (at most twice, never twice in a row,
   `REPEAT_WEIGHT`) — about 0.4 a course. Training decks stay even, every card once.
-- Still short of the judges on 20 × 20 m: ~1.2 leave cards, ~0.7 jumps, a recall card
-  after only every other leave card (it needs a long way straight on) — the field is the
-  limit. ~10 ms a course (was ~30 before the cards could stand over the edge).
+- **Spread over the field** (author, 2026-10-22: "snaží se generátor vyplnit oblast?"): it
+  did not — each card went 3–5 m on from the last, and a course wandered, leaving a corner
+  empty (the biggest empty spot ~10.6 m in radius on 20 × 30 m, 6.3 m on 20 × 20 m). Now
+  each card is weighted by how well its turn heads the team towards the emptiest point of
+  the field (`FieldPlanner.towardsEmpty`, `SPREAD`): 7.9 m and 5.5 m. Looking only
+  straight ahead for open way did less (9.5 m). A start near a corner or on a short edge
+  would take it to ~7.2 m, but the start stays anywhere on any edge until decided.
+- Where it stands (20 × 20 / 20 × 30 m; judges in brackets): leave cards 1.35 / 1.33
+  (1.34), jumps 0.8 / 0.9 (1.0), slalom or spiral 0.35 / 0.49 (0.48); a recall card after
+  only every other leave card (judges: three in four) — it needs a long way straight on.
+  ~10–20 ms a course.
 
 **Both:** no card twice in a row when dealt (variety; not a rule — a hand-made course may
 have it); equipment filter (§3).
