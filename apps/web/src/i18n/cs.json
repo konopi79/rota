@@ -162,6 +162,7 @@
     "back": "Nastavení",
     "search": "Hledat podle čísla nebo názvu",
     "newOnly": "Jen nové karty",
+    "animation": "animace",
     "all": "Vše",
     "typeA": "Statické (A)",
     "typeB": "Dynamické (B)",
@@ -177,6 +178,10 @@
   "card": {
     "back": "Zpět",
     "diagram": "Nákres provedení",
+    "animation": "Jak cvik vypadá",
+    "animationWith": "Ukázka s předsednutím {{code}}.",
+    "playAnimation": "Přehrát animaci",
+    "animationNote": "Zjednodušená ukázka podle zkušebního řádu – rozhoduje text řádu a rozhodčí. Klepnutím animaci zastavíš, dvěma prsty otočíš a přiblížíš pohled.",
     "subParts": "Dílčí části",
     "mainPart": "hlavní",
     "minorPart": "vedlejší",
@@ -323,8 +328,8 @@
     "finishRight": "Do cíle se psem vpravo. Hotovo."
   },
   "figures": {
-    "title": "Animace cviků – ukázka",
-    "intro": "Zkouška, jak by mohly vypadat animace cviků: kostičkový psovod a pes předvedou cvik u karty podle zkušebního řádu. Zatím jen pár karet RO-Z.",
+    "title": "Animace cviků",
+    "intro": "Kostičkový psovod a pes předvedou cvik u karty podle zkušebního řádu – všechny karty RO-Z na jednom místě. Každou animaci najdeš i v detailu její karty.",
     "hint": "Klepnutím (na počítači i mezerníkem) animaci zastavíš a znovu pustíš. Na telefonu pohled otočíš a přiblížíš dvěma prsty, jedním prstem se stránka posouvá dál. Myší pohled otočíš tažením, přiblížíš kolečkem a posuneš pravým tlačítkem.",
     "paused": "Pauza – klepni pro pokračování",
     "back": "ROTA",

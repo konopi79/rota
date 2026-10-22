@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
+import { ANIMATED_CARDS, animationFor } from '../figures/animated'
 import { DOG, DOG_POSTURES, type DogPosture } from '../figures/dog'
 import {
   ExercisePlayer,
@@ -583,5 +584,19 @@ describe('Z-015–Z-017 paces', () => {
   test('normal: from slow back to a normal walk', () => {
     const normal = held(Z017, 'leave')
     expect(normal.at(-1)!.speed).toBeGreaterThan(1.05)
+  })
+})
+
+describe('animations in the card details', () => {
+  test('every scripted card is listed as animated, and nothing else', () => {
+    expect([...ANIMATED_CARDS].sort()).toEqual([...new Set(EXERCISES.map((e) => e.code))].sort())
+  })
+
+  test('a supplementary card plays Z-014 ending with it; others have none', () => {
+    expect(animationFor('D0c')).toEqual({ code: 'Z-014', variant: 'D0c' })
+    expect(animationFor('Z-022')).toEqual({ code: 'Z-022' })
+    expect(animationFor('1-101')).toBeNull()
+    for (const d0 of ['D0a', 'D0b', 'D0c', 'D0d'])
+      expect(EXERCISES.some((e) => e.code === 'Z-014' && e.supplementary === d0)).toBe(true)
   })
 })

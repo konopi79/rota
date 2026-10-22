@@ -14,8 +14,8 @@ const ExerciseAnimation = dynamic(
 )
 
 /**
- * Exercise animations, a proof of concept (plan R12). Deliberately not linked from the app:
- * the author shares the address to ask the community whether it is worth building.
+ * Every exercise animation on one page (plan R12) — each also plays in its card's detail
+ * (`CardAnimation`). Not linked from the app.
  */
 export default function AnimationPage() {
   const { t } = useTranslation()

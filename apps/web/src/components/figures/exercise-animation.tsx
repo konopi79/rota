@@ -16,6 +16,7 @@ import { DOG } from '@/lib/figures/dog'
 import { ExercisePlayer, cardPlace, stationOf, type Exercise } from '@/lib/figures/exercise'
 import { EXERCISES } from '@/lib/figures/roz-exercises'
 import { HANDLER } from '@/lib/figures/handler'
+import { cn } from '@/lib/utils'
 
 type CameraView = 'behind' | 'angle' | 'side' | 'top' | 'front'
 
@@ -274,11 +275,25 @@ function CameraRig({ view, focusRef }: { view: CameraView; focusRef: RefObject<F
 
 const cardName = (code: string) => CZ_CARDS.find((c) => c.code === code)?.name ?? ''
 
-/** Exercise animations (POC): pick an exercise, watch the box-figure team perform it. */
-export function ExerciseAnimation() {
+/**
+ * One card's animation: the scene, its caption, and the controls — the variant (D0 card,
+ * pace before) where the card has more than one, camera, speed, shadows, exercise space.
+ * `keyboard`: space pauses too (on the page of its own; in a card detail space scrolls).
+ * `inline`: laid out inside a page column (a card detail) rather than full width.
+ */
+export function AnimationPlayer({
+  code,
+  initialVariant,
+  keyboard = false,
+  inline = false,
+}: {
+  code: string
+  initialVariant?: string
+  keyboard?: boolean
+  inline?: boolean
+}) {
   const { t } = useTranslation()
-  const [code, setCode] = useState(CODES[0]!)
-  const [variant, setVariant] = useState<string | undefined>(undefined)
+  const [variant, setVariant] = useState<string | undefined>(initialVariant)
   const [view, setView] = useState<CameraView>('behind')
   const [slowMotion, setSlowMotion] = useState<keyof typeof SLOW_MOTION>('full')
   const [paused, setPaused] = useState(false)
@@ -293,6 +308,7 @@ export function ExerciseAnimation() {
 
   // Space pauses and resumes too, unless a control has the focus (space presses it).
   useEffect(() => {
+    if (!keyboard) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== ' ' || (e.target as HTMLElement).closest('button, input')) return
       e.preventDefault()
@@ -300,59 +316,27 @@ export function ExerciseAnimation() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [keyboard])
 
-  const choice = <T extends string>(
-    group: string,
-    value: T,
-    options: readonly T[],
-    onChange: (v: T) => void,
-    label: (o: T) => string = (o) => t(`figures.${group}.${o}`),
-  ) => (
-    <div className="space-y-1">
-      <div className="text-muted-foreground text-sm font-medium">{t(`figures.${group}.label`)}</div>
-      <ToggleGroup
-        variant="outline"
-        className="flex-wrap *:h-10 *:px-3"
-        value={[value]}
-        onValueChange={(v) => v[0] && onChange(v[0] as T)}
-      >
-        {options.map((o) => (
-          <ToggleGroupItem key={o} value={o}>
-            {label(o)}
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
-    </div>
-  )
-
+  const controls = cn('grid w-full gap-3', inline ? 'py-3' : 'mx-auto max-w-md px-4 py-4')
   return (
-    <div className="flex flex-1 flex-col">
-      <div className="mx-auto w-full max-w-md px-4 pb-3">
-        {choice(
-          'exercise',
-          code,
-          CODES,
-          (c) => {
-            setCode(c)
-            setVariant(undefined)
-          },
-          (o) => `${o} ${cardName(o)}`,
-        )}
-        {variants.length > 1 && (
-          <div className="pt-3">
-            {choice(
-              variantGroup,
-              variantOf(exercise)!,
-              variants.map((e) => variantOf(e)!),
-              setVariant,
-              variantGroup === 'supplementary' ? (o) => `${o} ${cardName(o)}` : undefined,
-            )}
-          </div>
-        )}
-      </div>
+    <div className="flex flex-col">
+      {variants.length > 1 && (
+        <div className={cn('w-full', inline ? 'pb-3' : 'mx-auto max-w-md px-4 pb-3')}>
+          <Choice
+            group={variantGroup}
+            value={variantOf(exercise)!}
+            options={variants.map((e) => variantOf(e)!)}
+            onChange={setVariant}
+            label={variantGroup === 'supplementary' ? (o) => `${o} ${cardName(o)}` : undefined}
+          />
+        </div>
+      )}
       <div
-        className="bg-card relative h-[55vh] min-h-72"
+        className={cn(
+          'bg-card relative h-[55vh] min-h-72',
+          inline && 'overflow-hidden rounded-md border',
+        )}
         // A tap pauses or resumes; a drag turns the camera.
         onPointerDown={(e) => {
           press.current = { x: e.clientX, y: e.clientY, time: e.timeStamp }
@@ -408,24 +392,34 @@ export function ExerciseAnimation() {
           </div>
         )}
       </div>
-      <div className="mx-auto grid w-full max-w-md gap-3 px-4 py-4">
-        {choice('view', view, ['behind', 'angle', 'side', 'top', 'front'], setView)}
-        {choice('speed', slowMotion, ['quarter', 'half', 'full'], (v) => {
-          setSlowMotion(v)
-          setPaused(false)
-        })}
+      <div className={controls}>
+        <Choice
+          group="view"
+          value={view}
+          options={['behind', 'angle', 'side', 'top', 'front'] as const}
+          onChange={setView}
+        />
+        <Choice
+          group="speed"
+          value={slowMotion}
+          options={['quarter', 'half', 'full'] as const}
+          onChange={(v) => {
+            setSlowMotion(v)
+            setPaused(false)
+          }}
+        />
         <div className="flex items-center justify-between gap-4">
-          <Label htmlFor="shadows" className="text-base">
+          <Label htmlFor={`shadows-${code}`} className="text-base">
             {t('figures.shadows')}
           </Label>
-          <Switch id="shadows" checked={shadows} onCheckedChange={setShadows} />
+          <Switch id={`shadows-${code}`} checked={shadows} onCheckedChange={setShadows} />
         </div>
         <div className="space-y-1">
           <div className="flex items-center justify-between gap-4">
-            <Label htmlFor="space" className="text-base">
+            <Label htmlFor={`space-${code}`} className="text-base">
               {t('figures.space.label')}
             </Label>
-            <Switch id="space" checked={showSpace} onCheckedChange={setShowSpace} />
+            <Switch id={`space-${code}`} checked={showSpace} onCheckedChange={setShowSpace} />
           </div>
           {showSpace && (
             <p className="text-muted-foreground text-sm">
@@ -434,6 +428,59 @@ export function ExerciseAnimation() {
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+/** A labelled row of toggle buttons, one of `options` chosen. */
+function Choice<T extends string>({
+  group,
+  value,
+  options,
+  onChange,
+  label,
+}: {
+  group: string
+  value: T
+  options: readonly T[]
+  onChange: (v: T) => void
+  label?: (o: T) => string
+}) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-1">
+      <div className="text-muted-foreground text-sm font-medium">{t(`figures.${group}.label`)}</div>
+      <ToggleGroup
+        variant="outline"
+        className="flex-wrap *:h-10 *:px-3"
+        value={[value]}
+        onValueChange={(v) => v[0] && onChange(v[0] as T)}
+      >
+        {options.map((o) => (
+          <ToggleGroupItem key={o} value={o}>
+            {label ? label(o) : t(`figures.${group}.${o}`)}
+          </ToggleGroupItem>
+        ))}
+      </ToggleGroup>
+    </div>
+  )
+}
+
+/** All the animations on one page: pick a card, watch the box-figure team perform it. */
+export function ExerciseAnimation() {
+  const [code, setCode] = useState(CODES[0]!)
+  return (
+    <div className="flex flex-1 flex-col">
+      <div className="mx-auto w-full max-w-md px-4 pb-3">
+        <Choice
+          group="exercise"
+          value={code}
+          options={CODES}
+          onChange={setCode}
+          label={(o) => `${o} ${cardName(o)}`}
+        />
+      </div>
+      <AnimationPlayer key={code} code={code} keyboard />
     </div>
   )
 }
