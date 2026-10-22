@@ -35,7 +35,7 @@ committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 | R9  | Voice: cards read aloud                       | ✅ 2026-09-27 |
 | R10 | FCI decks laid out on the field               | ✅ 2026-10-19 |
 | R11 | Hand-made course                              | ✅ 2026-10-19 |
-| R12 | Exercise animations (proof of concept)        | 🧪 POC        |
+| R12 | Exercise animations                           | ✅ 2026-10-22 |
 
 > **Order:** R3 is built before R2 so the national classes are usable end to end first;
 > FCI plugs into the same dealer afterwards.
@@ -545,6 +545,12 @@ gesture for audio).
 - [x] Switch showing where the exercise starts — the 120 cm square of §5.3.1 (a handler's suggestion, 2026-10-21); eyes and hair for the handler; camera kept above the ground
 - [x] Z-014 Předsednutí with D0a–d (2026-10-21): the dog goes along paths of its own round the standing handler (`paths.ts`); to the front and straight to heel it leads with its front and swings its rear round (the author: "dotočit to zadkem"), round the handler on an ellipse; it gets up before it turns, trots when spinning, its body waits for its paws. The handler stops in the middle of the square instead of stepping back (the regulation allows up to four steps back; the author's suggestion). The D0 card stands next to the main card, chosen under the exercise
 - [x] The paces Z-015–Z-017 (2026-10-21): slow a slow walk with the dog walking, fast a jog (the video) — the handler runs: feet down a third of the time, both in the air between steps, heel kick with the foot square to the shin, knees and elbows bent; Z-017 after slow or fast (a choice under the exercise). A change of pace blends speed, arms, lean and stride over about a second; arms and trunk never jump (tested), nor the ankle beyond human range (tested)
+- [x] Z-023, Z-024, Z-028–Z-031 (2026-10-21): the dog round the handler from the front; one step forward and the other foot closing up; 225° on the spot; Z-030/Z-031 in three steps set by hand as the author does them (inner foot ahead turned 45°, outer foot round it into the new direction, inner foot closing up) — `footwork` steps, the body following its feet
+- [x] Cones (2026-10-22): spirals Z-018/Z-019 (the card's execution diagram; the last turn round the first cone 270°, out between the first and second cone — the video, the author), slaloms Z-020/Z-021, circle spirals Z-026/Z-027 — `courses.ts`: the whole team along a course round the cones, the dog outside the bends turning right and inside them (the handler further off) turning left; headings along a path turn smoothly; a test keeps everyone clear of the cones
+- [x] Bowls (2026-10-22): figure eight Z-022 — a rhombus of covered bowls by the regulation (3 m × 1.5 m), the short diagonal along the way in with the card on its line (the author), in right of it, three times through the middle, out on the far side; small dark bowls so the figure reads on grass
+- [x] A step back (2026-10-22): Z-025, Z-032 with D0a–d — the right foot back, the left closing up, the dog following and sitting / lying in front again; a foot stepping back lands toes first. The dog flows on from heel into the front while the handler stops (the author), here and in Z-014
+- [x] Z-010 (2026-10-22): the handler turns about to the left in a small arc while the dog runs once round them in the turning team's frame — in front, past the right side, behind — so over the ground it turns right behind the handler's back (the card: "psovod vlevo, pes vpravo"). With it every RO-Z card, Z-001–Z-032, is animated. Captions no longer say "1,2 m": where an exercise starts is the exercise-space switch's job
+- [x] In the card detail (2026-10-22): "Jak cvik vypadá" under the card's text for every RO-Z card (and D0a–d, shown finishing Z-014) — a tap loads the player (three.js only then), the same controls as `/animace` with the variant choice; a note that the regulation and the judge decide; an "animace" badge in the catalogue; feature item `animations`. `/animace` stays as the overview of all of them, unlinked (`lib/figures/animated.ts` lists the animated cards, a test keeps it in step with the scripts)
 
 Each phase ends green on `bun run format && bun run typecheck && bun run lint` plus its
 own tests, and is committed separately.

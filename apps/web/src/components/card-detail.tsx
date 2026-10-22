@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 
 import { cardImageUrl } from '@/components/deck/card-image'
 import { FeedbackLink } from '@/components/feedback'
+import { CardAnimation } from '@/components/figures/card-animation'
 import { Badge } from '@/components/ui/badge'
 import { SubParts } from '@/components/sub-parts'
 import { Button } from '@/components/ui/button'
@@ -80,6 +81,8 @@ export function CardDetail({ card }: { card: Card }) {
           />
         </section>
       )}
+
+      {card.ruleset === 'CZ' && <CardAnimation code={card.code} />}
 
       {card.subParts && (
         <section className="space-y-2">

@@ -15,6 +15,27 @@ export type Path = {
   at: (s: number) => PathPoint
 }
 
+/**
+ * Which way a walker along `points` faces at each of them — turning on continuously, never
+ * jumping by a whole turn where the angle wraps round — so between two points it can turn
+ * smoothly from one to the next.
+ */
+export const smoothHeadings = (points: readonly { x: number; z: number }[]): number[] => {
+  const headings: number[] = []
+  for (let i = 0; i < points.length; i++) {
+    const a = points[Math.max(0, i - 1)]!
+    const b = points[Math.min(points.length - 1, i + 1)]!
+    const raw = Math.atan2(b.x - a.x, b.z - a.z)
+    const before = headings[i - 1]
+    headings.push(
+      before === undefined
+        ? raw
+        : before + Math.atan2(Math.sin(raw - before), Math.cos(raw - before)),
+    )
+  }
+  return headings
+}
+
 /** A path from a curve over t ∈ [0, 1], walked at even speed (sampled by arc length). */
 export const pathFromCurve = (
   curve: (t: number) => { x: number; z: number },
@@ -28,11 +49,7 @@ export const pathFromCurve = (
         Math.hypot(points[i]!.x - points[i - 1]!.x, points[i]!.z - points[i - 1]!.z),
     )
   const length = lengths[samples]!
-  const heading = (i: number) => {
-    const a = points[Math.max(0, i - 1)]!
-    const b = points[Math.min(samples, i + 1)]!
-    return Math.atan2(b.x - a.x, b.z - a.z)
-  }
+  const headings = smoothHeadings(points)
   return {
     length,
     at(s) {
@@ -42,7 +59,8 @@ export const pathFromCurve = (
       const k = (target - lengths[i - 1]!) / (lengths[i]! - lengths[i - 1]! || 1)
       const a = points[i - 1]!
       const b = points[i]!
-      return { x: a.x + (b.x - a.x) * k, z: a.z + (b.z - a.z) * k, heading: heading(i) }
+      const heading = headings[i - 1]! + (headings[i]! - headings[i - 1]!) * k
+      return { x: a.x + (b.x - a.x) * k, z: a.z + (b.z - a.z) * k, heading }
     },
   }
 }
@@ -59,11 +77,12 @@ export const AROUND_DOG: Path = pathFromCurve((t) => {
   return { x: 0.55 - 0.55 * Math.cos(angle), z: 0.9 * Math.sin(angle) }
 })
 
-/** How sharply the path bends over the next `ahead` metres from `s`, at most: radians per metre. */
-export const bendAhead = (path: Path, s: number, ahead = 0.4): number => {
+/** How sharply the path bends from `behind` before `s` to `ahead` past it, at most: radians per metre. */
+export const bendAhead = (path: Path, s: number, ahead = 0.4, behind = 0.25): number => {
   const STEP = 0.05
   let most = 0
-  for (let d = 0; d < ahead && s + d < path.length; d += STEP) {
+  // A little behind too: out of a bend a walker picks up speed only once round it.
+  for (let d = -Math.min(behind, s); d < ahead && s + d < path.length; d += STEP) {
     const a = path.at(s + d).heading
     const b = path.at(s + d + STEP).heading
     most = Math.max(most, Math.abs(Math.atan2(Math.sin(b - a), Math.cos(b - a))) / STEP)
@@ -144,6 +163,18 @@ export const DOG_TO_FRONT: Path = drift(
 export const DOG_AROUND_HANDLER: Path = pathFromCurve(
   chain(bezier([0, 0.6], [0, 0.45], [-0.45, 0.4], [-0.45, 0]), (u) => {
     const angle = Math.PI / 2 + u * (Math.PI / 2 + 1.2)
+    return { x: -0.45 * Math.sin(angle), z: 0.6 * Math.cos(angle) }
+  }),
+)
+
+/**
+ * Z-023 "Pes oběhne psovoda zepředu" (p. 26): from heel the dog goes ahead and across in front
+ * of the handler, then round the handler's right side and behind them back into heel — the
+ * same ellipse round the handler as for D0a.
+ */
+export const DOG_AROUND_FROM_HEEL: Path = pathFromCurve(
+  chain(bezier([0.42, -0.2], [0.42, 0.35], [0.3, 0.6], [0, 0.6]), (u) => {
+    const angle = u * (Math.PI + 1.2)
     return { x: -0.45 * Math.sin(angle), z: 0.6 * Math.cos(angle) }
   }),
 )

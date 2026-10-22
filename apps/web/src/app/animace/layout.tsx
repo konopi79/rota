@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
 
-// Not linked from the app, and kept out of search engines: the address goes only to the
-// people asked whether exercise animations are wanted.
+// All the animations on one page; each also plays in its card's detail. Not linked from the
+// app and kept out of search engines — the card details are the way in.
 export const metadata: Metadata = {
-  title: 'Animace cviků – ukázka',
+  title: 'Animace cviků',
   robots: { index: false, follow: false },
 }
 

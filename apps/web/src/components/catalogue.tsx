@@ -1,7 +1,7 @@
 'use client'
 
 import { getClass, type ClassId } from '@rota/content'
-import { ChevronLeft, Search } from 'lucide-react'
+import { ChevronLeft, Play, Search } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 
 import { cardImageUrl } from '@/components/deck/card-image'
 import { FeedbackLink } from '@/components/feedback'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Toggle } from '@/components/ui/toggle'
@@ -23,6 +24,7 @@ import {
   type CatalogueFilters,
 } from '@/lib/catalogue'
 import { cardHref, classSlug } from '@/lib/classes'
+import { animationFor } from '@/lib/figures/animated'
 
 /** The catalogue with the filters of its URL; needs a Suspense boundary (static export). */
 export function CatalogueFromUrl({ classId }: { classId: ClassId }) {
@@ -149,6 +151,12 @@ export function Catalogue({
                 <p className="text-sm leading-tight">
                   <span className="font-semibold">{card.code}</span> {card.name}
                 </p>
+                {card.ruleset === 'CZ' && animationFor(card.code) && (
+                  <Badge variant="secondary" className="gap-1">
+                    <Play className="size-3 fill-current" />
+                    {t('catalogue.animation')}
+                  </Badge>
+                )}
               </Link>
             </li>
           ))}

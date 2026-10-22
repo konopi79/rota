@@ -1,4 +1,6 @@
-import type { Exercise } from './exercise'
+import { circleSpiral, figureEight, slalom, spiral, type Course } from './courses'
+import type { Exercise, ExerciseStep } from './exercise'
+import type { FootTarget } from './locomotion'
 
 /**
  * RO-Z exercises as scripts. Each cites the regulation (Zkušební řád RO v ČR 2026,
@@ -129,6 +131,24 @@ const turnWhileWalking = (
 export const Z006 = turnWhileWalking('Z-006', 90, 'turnRight90')
 /** Z-007 Obrat vlevo za chůze — p. 21. */
 export const Z007 = turnWhileWalking('Z-007', -90, 'turnLeft90')
+/**
+ * Z-010 Čelem vzad – pes za psovodem (p. 21): "Psovod provede před kartou obrat do té strany,
+ * na které se nachází pes, zatímco pes provádí obrat na tu stranu, kde se nachází psovod. Pes
+ * obchází psovoda zezadu a vrací se na výchozí stranu u nohy psovoda. Tým poté bez
+ * zastavení pokračuje dál." The card: "psovod vlevo, pes vpravo". While the handler turns
+ * about to the left in a small arc, the dog runs once round the handler — in front, past
+ * the right side, behind — so over the ground it turns right behind the handler's back.
+ */
+export const Z010: Exercise = {
+  code: 'Z-010',
+  card: 'ahead',
+  steps: [
+    { walk: 3.5, caption: 'approachTurn' },
+    { turn: -180, radius: ARC[180], dogRound: 'aroundFromHeel', caption: 'aboutTurnDogBehind' },
+    { walk: 3, caption: 'leaveTurn' },
+  ],
+}
+
 /** Z-008 Obrat zpět vpravo: "… obrat vpravo o 180° … Obrat v malém oblouku je dovolen." — p. 21. */
 export const Z008 = turnWhileWalking('Z-008', 180, 'turnRight180')
 /** Z-009 Obrat zpět vlevo — p. 21. */
@@ -174,22 +194,27 @@ export const Z013 = turnOnTheSpot('Z-013', 360, 'turnRight360', 'side')
  * from the video: the dog in front about a second after the stop, sitting a second, round
  * the handler in about a second and a half.
  */
-const frontAndFinish = (supplementary: 'D0a' | 'D0b' | 'D0c' | 'D0d'): Exercise => {
+const frontAndFinish = (
+  supplementary: 'D0a' | 'D0b' | 'D0c' | 'D0d',
+  code = 'Z-014',
+  inFront: ExerciseStep[] = [],
+): Exercise => {
   const around = supplementary === 'D0a' || supplementary === 'D0c'
   const sits = supplementary === 'D0a' || supplementary === 'D0b'
   return {
-    code: 'Z-014',
+    code,
     supplementary,
     // The dog needs room in front: the handler stops in the middle of the square, further
     // back than usual, so the dog sitting in front is still in it (the author's suggestion,
-    // instead of stepping back).
-    stopAt: { x: 0.15, z: -0.45 },
+    // instead of stepping back). With a step back to come, a little less far back.
+    stopAt: { x: 0.15, z: inFront.length ? -0.3 : -0.45 },
     steps: [
       { walk: 3.5, caption: 'approach' },
-      { stop: true, caption: 'frontCommand' },
+      // The handler stops and the dog goes on round into the front without stopping.
       { dogPath: 'toFront', caption: 'toFront' },
       { dog: 'sit', caption: 'frontSit' },
       { wait: 1, caption: 'frontHold' },
+      ...inFront,
       {
         dogPath: around ? 'aroundHandler' : 'toHeel',
         caption: around ? 'finishAround' : 'finishDirect',
@@ -209,6 +234,49 @@ export const Z014_D0A = frontAndFinish('D0a')
 export const Z014_D0B = frontAndFinish('D0b')
 export const Z014_D0C = frontAndFinish('D0c')
 export const Z014_D0D = frontAndFinish('D0d')
+
+/**
+ * One step back, the dog in front following (Z-025, Z-032): "Poté co pes zaujme pozici před
+ * psovodem, udělá psovod jeden krok vzad, pes jej následuje" (p. 27, 29) — the right foot
+ * back, the left one closing up beside it.
+ */
+const STEP_BACK: FootTarget[] = [
+  { foot: 1, x: -0.1, z: -0.48, yaw: 0 },
+  { foot: 0, x: 0.1, z: -0.48, yaw: 0 },
+]
+
+/**
+ * Z-025 Předsednutí jeden krok zpět (p. 27): "… udělá psovod jeden krok vzad, pes jej
+ * následuje a znovu usedá před psovodem." Then the D0 card, as for Z-014.
+ */
+const frontStepBack = (supplementary: 'D0a' | 'D0b' | 'D0c' | 'D0d') =>
+  frontAndFinish(supplementary, 'Z-025', [
+    { footwork: STEP_BACK, caption: 'stepBack' },
+    { dog: 'sit', caption: 'frontSitAgain' },
+    { wait: 1, caption: 'frontHold' },
+  ])
+
+export const Z025_D0A = frontStepBack('D0a')
+export const Z025_D0B = frontStepBack('D0b')
+export const Z025_D0C = frontStepBack('D0c')
+export const Z025_D0D = frontStepBack('D0d')
+
+/**
+ * Z-032 Předsednutí – 1 krok vzad – lehni (p. 29): "… udělá psovod jeden krok vzad, pes jej
+ * následuje a poté ulehá před psovodem. Během předsednutí, ulehnutí a během provádění cviku
+ * z doplňkové karty nesmí psovod pohybovat nohama."
+ */
+const frontStepBackDown = (supplementary: 'D0a' | 'D0b' | 'D0c' | 'D0d') =>
+  frontAndFinish(supplementary, 'Z-032', [
+    { footwork: STEP_BACK, caption: 'stepBack' },
+    { dog: 'down', caption: 'frontDown' },
+    { wait: 1, caption: 'frontHold' },
+  ])
+
+export const Z032_D0A = frontStepBackDown('D0a')
+export const Z032_D0B = frontStepBackDown('D0b')
+export const Z032_D0C = frontStepBackDown('D0c')
+export const Z032_D0D = frontStepBackDown('D0d')
 
 /**
  * The paces, Z-015–Z-017 (p. 23): "V místě pro provedení cviku tým zpomalí / zrychlí své
@@ -242,6 +310,195 @@ export const Z016 = changePace('Z-016', 'fast', 'fastPace')
 export const Z017 = changePace('Z-017', 'normal', 'normalPace', 'slow')
 export const Z017_FROM_FAST = changePace('Z-017', 'normal', 'normalPace', 'fast')
 
+/** The card "před prvním kuželem, viditelná ze směru příchodu týmu" (p. 24–28). */
+const cardBeforeCones = (course: Course) => ({ x: course.cones[0]!.x, z: 0.5 })
+
+/**
+ * Z-018 Spirála doprava, Z-019 Spirála doleva (p. 24): "Tým míjí kartu i kužely po své pravé
+ * (levé) straně …, obejde třetí kužel (nejvzdálenější) a vrací se k prvnímu kuželu, který též
+ * obejde. Následně obejde druhý kužel a vrací se znovu k prvnímu, který opět obejde. Na konec
+ * obejde jen první kužel dokola. Směr postupu ze spirály určuje poloha další karty." To the
+ * right the dog walks outside the bends, to the left inside them, between handler and cones.
+ */
+const spiralExercise = (code: string, left: boolean): Exercise => {
+  const course = spiral(left)
+  return {
+    code,
+    cones: course.cones,
+    cardAt: cardBeforeCones(course),
+    steps: [
+      { walk: 2.5, caption: 'approachCones' },
+      { course, parts: [0, 4], caption: 'spiralThird' },
+      { course, parts: [4, 7], caption: 'spiralSecond' },
+      { course, parts: [7, 8], caption: 'spiralFirst' },
+      { course, parts: [8, 9], caption: 'leaveCones' },
+      { walk: 2, caption: 'leaveCones' },
+    ],
+  }
+}
+
+export const Z018 = spiralExercise('Z-018', false)
+export const Z019 = spiralExercise('Z-019', true)
+
+/**
+ * Z-020 Slalom jednoduchý, Z-021 Slalom tam a zpět (p. 25): four cones; "Tým vstupuje do
+ * slalomu vždy zprava (tj. první kužel po své levé straně)"; Z-021 "překoná jej ve směru tam
+ * i zpět" — round the last cone and back through.
+ */
+const slalomExercise = (code: string, back: boolean): Exercise => {
+  const course = slalom(back)
+  return {
+    code,
+    cones: course.cones,
+    cardAt: cardBeforeCones(course),
+    steps: back
+      ? [
+          { walk: 2.5, caption: 'approachCones' },
+          { course, parts: [0, 2], caption: 'slalomThere' },
+          { course, parts: [2, 3], caption: 'slalomTurn' },
+          { course, parts: [3, 4], caption: 'slalomBack' },
+          { course, parts: [4, 5], caption: 'leaveCones' },
+          { walk: 2, caption: 'leaveCones' },
+        ]
+      : [
+          { walk: 2.5, caption: 'approachCones' },
+          { course, parts: [0, 2], caption: 'slalomThere' },
+          { course, parts: [2, 3], caption: 'leaveCones' },
+          { walk: 2, caption: 'leaveCones' },
+        ],
+  }
+}
+
+export const Z020 = slalomExercise('Z-020', false)
+export const Z021 = slalomExercise('Z-021', true)
+
+/**
+ * Z-022 Figura 8 bez rušivého vlivu (p. 25): "Vstup do figury určuje karta, kterou tým vždy
+ * míjí po své levé straně (karta vždy vlevo od psa)." The figure itself in `figureEight`.
+ */
+const eight = figureEight()
+export const Z022: Exercise = {
+  code: 'Z-022',
+  bowls: eight.bowls,
+  cardAt: eight.card,
+  steps: [
+    { walk: 1.5, caption: 'approachBowls' },
+    { course: eight, parts: [0, 1], caption: 'approachBowls' },
+    { course: eight, parts: [1, 3], caption: 'eightIn' },
+    { course: eight, parts: [3, 4], caption: 'eightLeftBowl' },
+    { course: eight, parts: [4, 5], caption: 'eightSecondTime' },
+    { course: eight, parts: [5, 6], caption: 'eightRightBowl' },
+    { course: eight, parts: [6, 7], caption: 'eightThirdTime' },
+    { course: eight, parts: [7, 9], caption: 'eightOut' },
+    { walk: 2, caption: 'eightOut' },
+  ],
+}
+
+/**
+ * Z-026 Kruhová spirála – pes vně doprava, Z-027 – pes uvnitř doleva (p. 27): "Tým obejde
+ * první kužel, pokračuje ke druhému, který též obejde, a jako poslední obejde třetí kužel."
+ */
+const circleSpiralExercise = (code: string, left: boolean): Exercise => {
+  const course = circleSpiral(left)
+  return {
+    code,
+    cones: course.cones,
+    cardAt: cardBeforeCones(course),
+    steps: [
+      { walk: 2.5, caption: 'approachCones' },
+      { course, parts: [0, 2], caption: 'circleFirst' },
+      { course, parts: [2, 4], caption: 'circleSecond' },
+      { course, parts: [4, 6], caption: 'circleThird' },
+      { course, parts: [6, 7], caption: 'leaveCones' },
+      { walk: 2, caption: 'leaveCones' },
+    ],
+  }
+}
+
+export const Z026 = circleSpiralExercise('Z-026', false)
+export const Z027 = circleSpiralExercise('Z-027', true)
+
+/**
+ * Z-023 Stop – pes okolo psovoda – stop (p. 26): "Tým zastaví u karty … a zaujme základní
+ * pozici. Pes oběhne psovoda zepředu a poté opět usedá u nohy psovoda. Psovod zůstává stát po
+ * celou dobu cviku (tj. nehýbe nohama)." In the video the dog sits, then runs round in about
+ * two seconds and sits again.
+ */
+export const Z023: Exercise = {
+  code: 'Z-023',
+  steps: [
+    { walk: 3.5, caption: 'approach' },
+    { stop: true, caption: 'stop' },
+    { dog: 'sit', caption: 'sit' },
+    { wait: 0.8, caption: 'basePosition' },
+    { dogPath: 'aroundFromHeel', caption: 'dogAroundHandler' },
+    { dog: 'sit', caption: 'finishSit' },
+    { wait: 1, caption: 'basePosition' },
+    { walk: 3, caption: 'leave' },
+  ],
+}
+
+/**
+ * Z-024 Stop – jeden krok vpřed – stop (p. 26): "Na povel psovoda tým postoupí o jeden krok
+ * vpřed a zaujímá základní pozici." One step and the other foot closing up; the dog gets up,
+ * comes along and sits again.
+ */
+export const Z024: Exercise = {
+  code: 'Z-024',
+  steps: [
+    { walk: 3.5, caption: 'approach' },
+    { stop: true, caption: 'stop' },
+    { dog: 'sit', caption: 'sit' },
+    { wait: 1, caption: 'basePosition' },
+    { walk: 0.3, pace: 'slow', caption: 'oneStep' },
+    { stop: true, caption: 'oneStep' },
+    { dog: 'sit', caption: 'finishSit' },
+    { wait: 1, caption: 'basePosition' },
+    { walk: 3, pace: 'normal', caption: 'leave' },
+  ],
+}
+
+/** Z-028 225° vpravo (p. 28): "psovod provádí obrat na místě … Pes … zůstává stále u nohy." */
+export const Z028 = turnOnTheSpot('Z-028', 225, 'turnRight225', 'ahead')
+/** Z-029 225° vlevo — p. 28. */
+export const Z029 = turnOnTheSpot('Z-029', -225, 'turnLeft225', 'ahead')
+
+/**
+ * Z-030/Z-031 Stop – vpravo / vlevo – stop (p. 29): "Tým se zastaví před kartou a zaujme
+ * základní pozici. Poté psovod společně se psem během obratu vpravo provede 3 kroky, a
+ * následně tým opět zaujme základní pozici." A change of direction, so the card stands ahead.
+ * The three steps as the author does them, turning left: the left foot a short step ahead,
+ * turned 45°; the right foot round it into the new direction; the left foot closing up
+ * beside it. Turning right, the same mirrored.
+ */
+const turnSteps = (sign: 1 | -1): FootTarget[] => {
+  const [inner, outer] = sign === 1 ? [0, 1] : [1, 0]
+  return [
+    { foot: inner, x: sign * 0.1, z: 0.05, yaw: (sign * Math.PI) / 4 },
+    { foot: outer, x: sign * 0.15, z: 0.38, yaw: (sign * Math.PI) / 2 },
+    { foot: inner, x: sign * 0.15, z: 0.18, yaw: (sign * Math.PI) / 2 },
+  ]
+}
+
+const stopTurnStop = (code: string, sign: 1 | -1, caption: string): Exercise => ({
+  code,
+  card: 'ahead',
+  steps: [
+    { walk: 3.5, caption: 'approachTurn' },
+    { stop: true, caption: 'stopAhead' },
+    { dog: 'sit', caption: 'sit' },
+    { wait: 1, caption: 'basePosition' },
+    { footwork: turnSteps(sign), caption },
+    { dog: 'sit', caption: 'finishSit' },
+    { wait: 1, caption: 'basePosition' },
+    { walk: 3, caption: 'leaveTurn' },
+  ],
+})
+
+// Left turns the heading up (towards +x, the handler's left).
+export const Z030 = stopTurnStop('Z-030', -1, 'stopTurnRight')
+export const Z031 = stopTurnStop('Z-031', 1, 'stopTurnLeft')
+
 /** The exercises the page can play, in card order (Z-014 once per supplementary card). */
 export const EXERCISES: Exercise[] = [
   Z001,
@@ -253,6 +510,7 @@ export const EXERCISES: Exercise[] = [
   Z007,
   Z008,
   Z009,
+  Z010,
   Z011,
   Z012,
   Z013,
@@ -264,4 +522,25 @@ export const EXERCISES: Exercise[] = [
   Z016,
   Z017,
   Z017_FROM_FAST,
+  Z018,
+  Z019,
+  Z020,
+  Z021,
+  Z022,
+  Z023,
+  Z024,
+  Z025_D0A,
+  Z025_D0B,
+  Z025_D0C,
+  Z025_D0D,
+  Z026,
+  Z027,
+  Z028,
+  Z029,
+  Z030,
+  Z031,
+  Z032_D0A,
+  Z032_D0B,
+  Z032_D0C,
+  Z032_D0D,
 ]

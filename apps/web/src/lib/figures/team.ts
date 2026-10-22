@@ -19,7 +19,7 @@ import {
   handlerStep,
   type HandlerPace,
 } from './handler'
-import { BipedStepper, PawStepper, type Body, type FootState } from './locomotion'
+import { BipedStepper, PawStepper, type Body, type FootState, type FootTarget } from './locomotion'
 import { angleTo } from './math'
 import { blendPoses, lowestPoint, type Pose } from './rig'
 
@@ -36,6 +36,8 @@ export type TeamControls = {
   rest?: Body
   /** A tight bend ahead: the handler slows down to this, m/s. */
   maxSpeed?: number
+  /** A step the handler takes as set by hand (field coordinates). */
+  footstep?: FootTarget
   /** The dog on a path of its own: its place right now (instead of `place`). */
   dogAt?: { x: number; z: number; heading: number }
 }
@@ -194,7 +196,7 @@ export class TeamAnimator {
     // Too fast to walk — slowing down from a run to a walk — the handler runs on until the
     // speed allows walking steps.
     const gait = this.speed > FASTEST_WALK ? 'fast' : handlerPace
-    const feet = this.handlerFeet.update(dt, handler, handlerStep(gait), rest)
+    const feet = this.handlerFeet.update(dt, handler, handlerStep(gait), rest, controls.footstep)
     // How the pace looks changes over about a second, with the speed.
     this.style = blendPaceStyle(
       this.style,

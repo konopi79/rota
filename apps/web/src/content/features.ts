@@ -20,7 +20,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'feedback'
+export const LATEST_FEATURE_ID = 'animations'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -45,6 +45,11 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
         id: 'main-parts',
         title: 'Hlavní a vedlejší části cviku',
         desc: 'U národních karet vidíš, která část cviku je hlavní a která vedlejší – v detailu karty i v popisu pod kartou v balíčku. Chybí-li hlavní část, vyplatí se cvik zopakovat; u vedlejší opakováním nic nezískáš.',
+      },
+      {
+        id: 'animations',
+        title: 'Animace cviků',
+        desc: 'U každé karty RO-Z (i u doplňkových karet D0) si v detailu karty pustíš 3D animaci, jak psovod a pes cvik podle zkušebního řádu provedou – s popisky, zpomalením, otáčením pohledu a vyznačeným místem pro provedení cviku. V katalogu takové karty poznáš podle štítku „animace“.',
       },
     ],
   },
