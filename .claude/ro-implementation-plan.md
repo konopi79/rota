@@ -35,7 +35,7 @@ committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 | R9  | Voice: cards read aloud                       | ✅ 2026-09-27 |
 | R10 | FCI decks laid out on the field               | ✅ 2026-10-19 |
 | R11 | Hand-made course                              | ✅ 2026-10-19 |
-| R12 | Exercise animations (proof of concept)        | 🧪 POC        |
+| R12 | Exercise animations                           | ✅ 2026-10-22 |
 
 > **Order:** R3 is built before R2 so the national classes are usable end to end first;
 > FCI plugs into the same dealer afterwards.
@@ -550,6 +550,7 @@ gesture for audio).
 - [x] Bowls (2026-10-22): figure eight Z-022 — a rhombus of covered bowls by the regulation (3 m × 1.5 m), the short diagonal along the way in with the card on its line (the author), in right of it, three times through the middle, out on the far side; small dark bowls so the figure reads on grass
 - [x] A step back (2026-10-22): Z-025, Z-032 with D0a–d — the right foot back, the left closing up, the dog following and sitting / lying in front again; a foot stepping back lands toes first. The dog flows on from heel into the front while the handler stops (the author), here and in Z-014
 - [x] Z-010 (2026-10-22): the handler turns about to the left in a small arc while the dog runs once round them in the turning team's frame — in front, past the right side, behind — so over the ground it turns right behind the handler's back (the card: "psovod vlevo, pes vpravo"). With it every RO-Z card, Z-001–Z-032, is animated. Captions no longer say "1,2 m": where an exercise starts is the exercise-space switch's job
+- [x] In the card detail (2026-10-22): "Jak cvik vypadá" under the card's text for every RO-Z card (and D0a–d, shown finishing Z-014) — a tap loads the player (three.js only then), the same controls as `/animace` with the variant choice; a note that the regulation and the judge decide; an "animace" badge in the catalogue; feature item `animations`. `/animace` stays as the overview of all of them, unlinked (`lib/figures/animated.ts` lists the animated cards, a test keeps it in step with the scripts)
 
 Each phase ends green on `bun run format && bun run typecheck && bun run lint` plus its
 own tests, and is committed separately.
