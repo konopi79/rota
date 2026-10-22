@@ -18,8 +18,12 @@ export const GAP_MAX = 5
 export const RECALL_DISTANCE = 5
 /** §3.5: the recall cone "1 m od linie chůze (na opačné straně, než je veden pes)". */
 const RECALL_CONE_SIDE = 1
-/** Kept clear along the edge of the field. */
-export const EDGE = 1
+/**
+ * How far the course keeps inside the field: where the team walks and works, steps back,
+ * its equipment — the dog walks beside the handler's line. The cards' stands do not count:
+ * a card may stand over the edge, the course may not (author, 2026-10-22).
+ */
+export const EDGE = 0.5
 /**
  * Minimum distance between two cards (where they stand, see `signOf`). §3.5: the team must not "nepřiměřeně přiblíží ke
  * stojanům s kartami jiných cviků a jiných překážek".

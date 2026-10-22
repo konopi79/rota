@@ -308,7 +308,14 @@ regulations:
 off the field — five "straight on" cards in a row (user feedback, 2026-10-19). FCI decks
 are therefore laid out on the field while they are dealt:
 
-- Field 20 × 20 m (§3.3, "minimálně"); the start anywhere on an edge, facing in.
+- Field 20 × 20 m (§3.3, "minimálně"), or 20 × 30 m chosen in the setup (`course.fields`,
+  `pole=20x30` in the URL; upright for a phone screen) — judges often have more room, and
+  the FCI Rally Obedience HUB's course planner starts at 30 × 20 m (author, 2026-10-22).
+  The start anywhere on an edge, facing in. The course — where the team walks and works,
+  steps back, its equipment — keeps 0.5 m inside the edge; **a card may stand over it**
+  (author, 2026-10-22: "popisky mohou přečnívat přes okraj prostoru, samotná dráha parkuru
+  ale nesmí"). Until then everything kept 1 m clear, the cards' stands included, which
+  made 20 × 20 m much tighter than it is (and dealing ~2× slower).
 - Cards "přibližně 3-5 m" apart (§3.5), measured from where the previous exercise ends;
   the recall cone 5 m ahead of the card and the next card 5 m past it (§3.5, §4.8);
   recall cards at their stated distance straight ahead of the leave card (3–5 m, 421: 8 m).
@@ -336,13 +343,55 @@ are therefore laid out on the field while they are dealt:
 - After the recall cards 321–323, 421, 422 ("Psovod se otáčí čelem vzad … tým pokračuje
   vpřed") the team carries on in the reversed direction — **confirmed** on four judges'
   course plans (2024–2025, incl. the 2025 World Championship), which also follow nearly
-  every leave card with a recall card; the dealer now does so about half the time.
+  every leave card with a recall card; the dealer now does so three times in four
+  (`FOLLOW_UP_SHARE`, as on the catalogue's courses below).
 - The field plan is drawn like those plans: 1 m grid labelled every 5 m, card images
   turned to face the team, numbers in circles, cones as red dots. Two of the four plans
   use a 30 × 20 m field.
 - National classes are not laid out: one station can hold several exercises there.
 
-**Both:** no card twice in a row; equipment filter (§3).
+**FCI courses like judges set them (2026-10-22).** The FCI Rally Obedience HUB's course
+catalogue (https://rallyobedience.online/courses/, a public Google Sheet) lists ~200 real
+FCI courses with their cards in order — 149 competition ones. Replayed through
+`customDeckIssues`, 184 of 199 pass; most of the rest are transcription slips, but seven
+set **the same card twice in a row** (308 308, 312 312, 406 406 on the Czech championship
+2024): neither regulation forbids it (the national guidelines only limit how often, §1.2.1),
+so a hand-made course no longer warns — national ones neither (author: "nemusíme být
+přísnější").
+Against them, ROTA's competition courses had a third of the leave cards (0.4 vs 1.34 a
+course), half the jumps, rarely a slalom, never a repeat (judges: 0.38 a course), and far
+too many turns (108, 415) — the 20 × 20 m field without free corners favours cards that
+change direction.
+
+- `scripts/content/fci-usage.ts` counts the cards (`course.judgesUsage`, only the counts are
+  kept) and calibrates the dealer's weights per field (`course.dealWeights`): deal 300
+  courses, compare each card's share with the judges', adjust, eight rounds — 0.20 → 0.08
+  off on 20 × 20 m, 0.19 → 0.05 on 20 × 30 m (half the summed difference of the shares).
+  A test fails when the planner drifts; then re-run the script.
+- **Not a copy** (author, 2026-10-22: "trocha náhody"): each card's weight is drawn per
+  course between an even deal and its calibrated weight (`USAGE_LEAN`).
+- A competition course may repeat a card (at most twice, never twice in a row,
+  `REPEAT_WEIGHT`) — about 0.4 a course. Training decks stay even, every card once.
+- **Spread over the field** (author, 2026-10-22: "snaží se generátor vyplnit oblast?"): it
+  did not — each card went 3–5 m on from the last, and a course wandered, leaving a corner
+  empty (the biggest empty spot ~10.6 m in radius on 20 × 30 m, 6.3 m on 20 × 20 m). Now
+  each card is weighted by how well its turn heads the team towards the emptiest point of
+  the field (`FieldPlanner.towardsEmpty`, `SPREAD`): 7.9 m and 5.5 m. Courses only — in a
+  training deck every card should come about as often, and a short deck would rarely
+  start with a turn about.
+- **No regressions** (author, 2026-10-22: the dealer was confirmed to work well): compared
+  with `main` on the same seeds, national decks and courses are identical; FCI training
+  decks are as even or more (fewer cards rarely dealt), all complete, laid out and valid,
+  and ~5× faster. Looking only
+  straight ahead for open way did less (9.5 m). A start near a corner or on a short edge
+  would take it to ~7.2 m, but the start stays anywhere on any edge until decided.
+- Where it stands (20 × 20 / 20 × 30 m; judges in brackets): leave cards 1.35 / 1.33
+  (1.34), jumps 0.8 / 0.9 (1.0), slalom or spiral 0.35 / 0.49 (0.48); a recall card after
+  only every other leave card (judges: three in four) — it needs a long way straight on.
+  ~10–20 ms a course.
+
+**Both:** no card twice in a row when dealt (variety; not a rule — a hand-made course may
+have it); equipment filter (§3).
 
 **Implementation.**
 
@@ -522,6 +571,7 @@ gesture for audio).
 - [x] Recall-card direction confirmed on judges' course plans (author, 2026-10-19); recall card after a leave card about half the time; plan drawn in the judges' style (card images, 1 m grid), bends on a 90°/45° lattice, card spacing measured where the cards stand
 - [x] Steps back kept clear of other cards, the next card measured from the card (handler feedback, 2026-10-20); ~~corner between two cards 1–3 m on~~ (replaced next day)
 - [x] Direction changed only by the cards (author, 2026-10-21): straight walks, a hairpin back beside the way in after a turn about (`HAIRPIN_WIDTHS`), recall cards turn either way; dealer backtracking + runway weighting; layout only up to a course; validator + tests
+- [x] Courses like judges set them (2026-10-22, §5): card usage from the FCI Rally Obedience HUB's catalogue, weights calibrated per field with a random lean, recall card after three leave cards in four, a card now and then twice; no "twice in a row" warning for a hand-made course; field 20 × 20 m or 20 × 30 m in the setup (`pole=20x30`); source credited on `/o-aplikaci`; feature item `fci-judges-course`
 
 ### R11 — Hand-made course
 

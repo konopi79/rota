@@ -1,7 +1,7 @@
 export { customDeck, type CustomCard } from './custom'
 export { dealDeck } from './deal'
 export { randomSeed } from './prng'
-export { finishSide } from './rules'
+export { fieldKey, fieldOf, finishSide } from './rules'
 export type {
   Deck,
   DeckEntry,

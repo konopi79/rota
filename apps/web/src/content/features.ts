@@ -20,7 +20,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'animations'
+export const LATEST_FEATURE_ID = 'fci-judges-course'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -74,7 +74,7 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
       {
         id: 'field-plan',
         title: 'Parkur, který se vejde na plochu (FCI)',
-        desc: 'Karty FCI-ROB rozmístí aplikace na plochu 20 × 20 m: start na kraji, 3–5 m mezi kartami, mezi kartami rovně (směr mění jen karty), místo pro kužely, přivolání i skoky. Plánek s vyznačenou aktuální kartou otevřeš ikonou mapy; má ho balíček do 20 karet.',
+        desc: 'Karty FCI-ROB rozmístí aplikace na plochu 20 × 20 m, nebo 20 × 30 m, když ji vybereš v nastavení: start na kraji, 3–5 m mezi kartami, mezi kartami rovně (směr mění jen karty), místo pro kužely, přivolání i skoky. Plánek s vyznačenou aktuální kartou otevřeš ikonou mapy; má ho balíček do 20 karet.',
       },
       {
         id: 'badges',
@@ -105,6 +105,11 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
         id: 'course',
         title: 'Tréninkový parkur',
         desc: 'Parkur o velikosti jako na závodech – u FCI s nejméně sedmi čtyřbodovými a pěti tříbodovými kartami a s plánkem rozmístění na ploše. Číslovaný seznam k vytištění, sdílení nebo projití jako balíček.',
+      },
+      {
+        id: 'fci-judges-course',
+        title: 'FCI parkur jako od rozhodčích',
+        desc: 'Tréninkový parkur FCI-ROB skládá karty tak často, jak je dávají rozhodčí na skutečných parkurech (přes 140 parkurů z katalogu FCI Rally Obedience HUB), ale každý parkur je jiný: víc odložení s přivoláním, slalomy, skoky a občas karta dvakrát.',
       },
       {
         id: 'course-grid',

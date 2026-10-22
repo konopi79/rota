@@ -100,6 +100,21 @@ describe('FCI sequencing rules', () => {
       leash: 'off-leash',
       paceCompatibleOnly: true,
       maxRepeats: 2,
+      fields: [
+        { width: 20, height: 20 },
+        { width: 20, height: 30 },
+      ],
     })
+  })
+
+  test("judges' usage: every exercise counted, a deal weight per card and field", () => {
+    const [cls] = FCI_CLASSES
+    const usage = cls?.course.judgesUsage
+    expect(Object.keys(usage?.cards ?? {}).sort()).toEqual([...(cls?.cardCodes ?? [])].sort())
+    expect(usage?.courses).toBeGreaterThan(100)
+    for (const field of cls?.course.fields ?? []) {
+      const weights = cls?.course.dealWeights?.[`${field.width}x${field.height}`]
+      expect(Object.keys(weights ?? {}).sort()).toEqual([...(cls?.cardCodes ?? [])].sort())
+    }
   })
 })

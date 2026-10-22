@@ -1,5 +1,5 @@
 import { getClass, requireCard } from '../registry'
-import type { Card, RoClass } from '../schema'
+import type { Card, Field, RoClass } from '../schema'
 import type { Deck, DealOptions, Pace, Side } from './types'
 
 /**
@@ -9,6 +9,17 @@ import type { Deck, DealOptions, Pace, Side } from './types'
  */
 
 export const cardOf = (cls: RoClass, code: string): Card => requireCard(cls.ruleset, code)
+
+/** The field a deck of `cls` is laid out on: the one asked for if the class has it, else its first. */
+export function fieldOf(cls: RoClass, options: Pick<DealOptions, 'field'>): Field | undefined {
+  const { fields } = cls.course
+  const asked = options.field
+  const same = (f: Field) => f.width === asked?.width && f.height === asked.height
+  return fields?.find(same) ?? fields?.[0]
+}
+
+/** `20x30` — a field as the key of `course.dealWeights`. */
+export const fieldKey = (field: Field) => `${field.width}x${field.height}`
 
 export const hasEquipment = (card: Card, options: Pick<DealOptions, 'equipment'>) =>
   (card.sequencing.equipment ?? []).every((e) => options.equipment.includes(e))

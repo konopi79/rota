@@ -1,10 +1,10 @@
 import { getClass } from '../registry'
-import type { Card, RoClass } from '../schema'
+import type { Card, Field, RoClass } from '../schema'
 import { mulberry32, pick, pickWeighted } from './prng'
 import { normalize, turnsOf } from './geometry'
 import { FieldPlanner, type PlannerState } from './layout'
 import { NationalCourse } from './course'
-import { cardOf, endsStatic, hasEquipment, paceAfter, sideAfter } from './rules'
+import { cardOf, endsStatic, fieldKey, fieldOf, hasEquipment, paceAfter, sideAfter } from './rules'
 import type { Deck, DeckEntry, DealOptions, Layout, Pace, Side } from './types'
 
 const ATTEMPTS = 100
@@ -36,6 +36,31 @@ const QUOTA_WEIGHT = 4
  */
 const SHORT_RUNWAY = 8
 const TURN_WEIGHT = 6
+/**
+ * Competition courses laid out on a field: how strongly a card is preferred when it heads
+ * the team into the emptiest part of the field (`FieldPlanner.towardsEmpty`) — a course
+ * spreads over the field instead of leaving a corner empty, and keeps long ways straight
+ * on for the leave and recall cards. Not training decks: there every card should come
+ * about as often, and a short deck would rarely start with a turn about.
+ */
+const SPREAD = 4
+/**
+ * How often a leave card gets one of its optional recall cards (FCI): on the judges' courses
+ * of `course.judgesUsage`, 191 of 255 leave cards did.
+ */
+const FOLLOW_UP_SHARE = 0.75
+/**
+ * A competition course may repeat a card (`course.maxRepeats`, FCI), drawn with this much
+ * less weight once it is on the course — judges repeat about one card in three courses.
+ */
+const REPEAT_WEIGHT = 0.03
+/**
+ * How far each card's weight leans from an even deal towards the judges' usage
+ * (`course.dealWeights`): drawn anew per card and course from this interval, so a course
+ * follows the judges' taste without copying their numbers — and a card they never set
+ * still turns up now and then. The weights are calibrated with the lean drawn this way.
+ */
+const USAGE_LEAN = { min: 0.5, max: 1 }
 
 /**
  * Deal a performable deck (plan §5, D8). Builds the sequence card by card, drawing only
@@ -44,7 +69,7 @@ const TURN_WEIGHT = 6
  * `count` (the pool is too small for the options), the longest attempt is returned —
  * the caller compares `entries.length` with the requested count.
  *
- * Classes with a `course.field` (FCI) are laid out on that field as they are dealt, up to
+ * Classes with `course.fields` (FCI) are laid out on one (`fieldOf`) as they are dealt, up to
  * one course (`course.maxCards`): a card that does not fit where the team stands is set
  * aside for that step, a dead end takes cards back (`BACKTRACKS`), and the deck carries
  * the layout (start, each card's `at`, finish). A longer deck — or a training deck that
@@ -65,19 +90,47 @@ export function dealDeck(options: DealOptions): Deck {
   const mainPool = scope.filter((c) => usable(c) && !cardOf(cls, c).sequencing.onlyAfterLeave)
 
   const random = mulberry32(options.seed)
-  const field = options.count <= cls.course.maxCards ? cls.course.field : undefined
+  const field = options.count <= cls.course.maxCards ? fieldOf(cls, options) : undefined
+  const usage = options.competition && field ? usageWeights(cls, field, random) : undefined
   let best: Dealt = { entries: [] }
   for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-    const { complete, ...dealt } = attemptDeal(cls, options, mainPool, inClass, random, field)
+    const { complete, ...dealt } = attemptDeal(
+      cls,
+      options,
+      mainPool,
+      inClass,
+      random,
+      usage,
+      field,
+    )
     if (dealt.entries.length === options.count && complete !== false) return { options, ...dealt }
     if (dealt.entries.length > best.entries.length) best = dealt
   }
   // A training deck that fits on no field goes without a plan.
   if (field && !options.competition) {
-    const { complete: _, ...dealt } = attemptDeal(cls, options, mainPool, inClass, random)
+    const { complete: _, ...dealt } = attemptDeal(cls, options, mainPool, inClass, random, usage)
     if (dealt.entries.length > best.entries.length) best = dealt
   }
   return { options, ...best }
+}
+
+/**
+ * A competition course's weight per card (FCI): between an even deal (1) and the card's
+ * calibrated weight on this field, leaning `USAGE_LEAN` of the way, drawn per card.
+ */
+function usageWeights(
+  cls: RoClass,
+  field: Field,
+  random: () => number,
+): Map<string, number> | undefined {
+  const weights = cls.course.dealWeights?.[fieldKey(field)]
+  if (!weights) return undefined
+  return new Map(
+    cls.cardCodes.map((code) => {
+      const lean = USAGE_LEAN.min + random() * (USAGE_LEAN.max - USAGE_LEAN.min)
+      return [code, (weights[code] ?? 1) ** lean]
+    }),
+  )
 }
 
 type Dealt = { entries: DeckEntry[]; layout?: Layout }
@@ -90,7 +143,8 @@ function attemptDeal(
   mainPool: string[],
   inClass: Set<string>,
   random: () => number,
-  field?: { width: number; height: number },
+  usage: Map<string, number> | undefined,
+  field?: Field,
 ): Attempt {
   const entries: DeckEntry[] = []
   const planner = field && new FieldPlanner(field.width, field.height, random)
@@ -105,6 +159,9 @@ function attemptDeal(
     byPoints: new Map(),
   }
   const quota = options.competition ? (cls.course.minByPoints ?? {}) : {}
+  // A competition course is dealt like judges set them (FCI): their cards more often
+  // (`usage`), a card now and then twice (`maxRepeats` is checked in `allowed`).
+  const repeats = !!options.competition && !!cls.course.maxRepeats
   // A national course follows the judges' guidelines: repeats, required exercises,
   // RO-Z's static/dynamic balance, side changes.
   const course = NationalCourse.of(cls, options, inClass, random)
@@ -126,7 +183,9 @@ function attemptDeal(
     const remaining = options.count - entries.length
     const required = state.prev?.sequencing.nextOneOf
     const optional = state.prev?.sequencing.mayBeFollowedBy ?? []
-    const mains = mainPool.filter((c) => (course ? course.left(c) > 0 : !state.used.has(c)))
+    const mains = mainPool.filter((c) =>
+      course ? course.left(c) > 0 : repeats || !state.used.has(c),
+    )
     // After a leave card the follow-up is required (national) or optional (FCI recall).
     const candidates = (
       required
@@ -151,19 +210,42 @@ function attemptDeal(
       course && !required && course.mustHelp(entries.length)
         ? quotaFit.filter((c) => course.helps(c))
         : quotaFit
-    // After a leave card whose recall card is optional (FCI), deal one about half the time —
-    // judges' course plans nearly always have one there.
     const followUps = new Set(optional)
     const followUpCount = eligible.filter((c) => followUps.has(c.code)).length
-    const followUpWeight = followUpCount ? (eligible.length - followUpCount) / followUpCount : 1
     const cornered = !!planner && planner.runway() < SHORT_RUNWAY
-    const weighted = short > 0 || followUpCount > 0 || !!course || cornered
+    const weighted =
+      short > 0 || followUpCount > 0 || !!course || cornered || !!usage || !!options.competition
     const weightOf = (c: Card) =>
+      (usage?.get(c.code) ?? 1) *
+      (repeats && state.used.has(c.code) ? REPEAT_WEIGHT : 1) *
       (short > 0 && missing(c.points) > 0 ? QUOTA_WEIGHT : 1) *
       (course?.helps(c) ? QUOTA_WEIGHT : 1) *
-      (followUps.has(c.code) ? followUpWeight : 1) *
       (cornered && turnsOf(c).some((t) => normalize(t) !== 0) ? TURN_WEIGHT : 1)
-    const weights = new Map(weighted ? eligible.map((c) => [c, weightOf(c)]) : [])
+    // Towards the emptiest part of the field (courses): each card by the best way it can
+    // turn, against the best card.
+    const spreading = planner && options.competition ? planner : undefined
+    const towards = new Map<number, number>()
+    const towardsOf = (c: Card) =>
+      Math.max(
+        ...turnsOf(c).map((turn) => {
+          const known = towards.get(turn) ?? spreading?.towardsEmpty(turn) ?? 1
+          towards.set(turn, known)
+          return known
+        }),
+      )
+    const best = spreading ? Math.max(0, ...eligible.map(towardsOf)) : 1
+    const spread = (c: Card) => (spreading ? ((towardsOf(c) + 0.1) / (best + 0.1)) ** SPREAD : 1)
+    const weights = new Map(weighted ? eligible.map((c) => [c, weightOf(c) * spread(c)]) : [])
+    // After a leave card whose recall card is optional (FCI), deal one `FOLLOW_UP_SHARE` of
+    // the time: the recall cards together weigh that share of everything eligible.
+    if (followUpCount > 0 && followUpCount < eligible.length) {
+      const sum = (of: (c: Card) => boolean) =>
+        eligible.filter(of).reduce((total, c) => total + (weights.get(c) ?? 1), 0)
+      const isFollowUp = (c: Card) => followUps.has(c.code)
+      const scale =
+        (FOLLOW_UP_SHARE / (1 - FOLLOW_UP_SHARE)) * (sum((c) => !isFollowUp(c)) / sum(isFollowUp))
+      for (const c of eligible) if (isFollowUp(c)) weights.set(c, (weights.get(c) ?? 1) * scale)
+    }
     const draw = (): { card: Card; at?: DeckEntry['at'] } | undefined => {
       let pool = eligible
       while (pool.length) {

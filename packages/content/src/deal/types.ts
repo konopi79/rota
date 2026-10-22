@@ -1,5 +1,5 @@
 import type { ClassId } from '../classes'
-import type { Equipment } from '../schema'
+import type { Equipment, Field } from '../schema'
 
 export type Side = 'left' | 'right'
 export type Pace = 'normal' | 'slow' | 'fast'
@@ -19,6 +19,11 @@ export type DealOptions = {
    * (`course.minByPoints`) must be met. Size and equipment are the caller's to set.
    */
   competition?: boolean
+  /**
+   * The field to lay the deck out on — one of the class's `course.fields`; the first one
+   * when missing (or not one of them).
+   */
+  field?: Field
 }
 
 export type DeckEntry = {

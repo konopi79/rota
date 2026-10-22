@@ -64,6 +64,23 @@ describe('deck URL', () => {
     expect(decodeDeckParams(new URLSearchParams(encoded))).toEqual(course)
     expect(encodeDeckParams(params)).not.toContain('parkur')
   })
+
+  test('carries an FCI field other than the default; 20 × 20 m stays out of the URL', () => {
+    const fci = { ...params, options: { ...params.options, classId: 'FCI-ROB' as const } }
+    const large = { ...fci, options: { ...fci.options, field: { width: 20, height: 30 } } }
+    const encoded = encodeDeckParams(large)
+    expect(encoded).toEndWith('&pole=20x30')
+    expect(decodeDeckParams(new URLSearchParams(encoded))).toEqual(large)
+    expect(deckOf(large).layout).toMatchObject({ width: 20, height: 30 })
+
+    const standard = { ...fci, options: { ...fci.options, field: { width: 20, height: 20 } } }
+    expect(encodeDeckParams(standard)).not.toContain('pole')
+    expect(decodeDeckParams(new URLSearchParams(`${encodeDeckParams(fci)}&pole=20x20`))).toEqual(
+      fci,
+    )
+    // A field the class does not have: not a deck this app made.
+    expect(decodeDeckParams(new URLSearchParams(`${encodeDeckParams(fci)}&pole=50x50`))).toBeNull()
+  })
 })
 
 describe('hand-made course URL', () => {

@@ -15,7 +15,7 @@ import {
   walkOf,
   type Shape,
 } from './geometry'
-import { endsStatic, followUpsOf, hasEquipment, paceAfter, sideAfter } from './rules'
+import { endsStatic, fieldOf, followUpsOf, hasEquipment, paceAfter, sideAfter } from './rules'
 import type { Deck, DeckEntry, Layout, Pace, Point, Pose, Round, Side } from './types'
 
 /** What can be wrong at one card of a deck. */
@@ -83,7 +83,7 @@ export function validateDeck(deck: Deck): string[] {
   const cls = getClass(deck.options.classId)
   if (!cls) return [`unknown class ${deck.options.classId}`]
   const errors = deckIssues(cls, deck).map((issue) => describeIssue(cls, issue))
-  if (cls.course.field) errors.push(...validateLayout(cls, deck))
+  if (cls.course.fields) errors.push(...validateLayout(cls, deck))
   else if (deck.layout || deck.entries.some((e) => e.at)) errors.push(`${cls.id} is not laid out`)
   return errors
 }
@@ -92,7 +92,11 @@ export function validateDeck(deck: Deck): string[] {
  * The check of a course put together by hand (plan §12): the sequencing rules of the
  * regulations, shown to the user as warnings. "Dealt twice" is left out — no regulation
  * forbids a card twice on a national course (§5.4 only sets the size and the card range),
- * the dealer just draws without replacement; FCI has its own limit (`max-repeats`). The
+ * the dealer just draws without replacement; FCI has its own limit (`max-repeats`). Nor is
+ * the same card twice in a row: neither regulation forbids it (the national guidelines
+ * only limit how often, §1.2.1), FCI judges set it (308 308, 312 312, 406 406 on the Czech
+ * championship 2024 — the FCI Rally Obedience HUB's course catalogue, 2026-10-22), and two
+ * pace cards in a row are `same-pace` anyway (author: "nemusíme být přísnější"). The
  * field layout is not checked: a hand-made FCI course is not laid out.
  *
  * `guidelines` (national classes) adds the judges' guidelines: card repeats, required
@@ -105,7 +109,10 @@ export function customDeckIssues(deck: Deck, { guidelines = false } = {}): DeckI
   const checked = guidelines ? { ...deck, options: { ...deck.options, competition: true } } : deck
   return deckIssues(cls, checked).filter(
     (issue) =>
-      issue.rule !== 'dealt-twice' && issue.rule !== 'course-size' && issue.rule !== 'points-mix',
+      issue.rule !== 'dealt-twice' &&
+      issue.rule !== 'course-size' &&
+      issue.rule !== 'points-mix' &&
+      issue.rule !== 'twice-in-row',
   )
 }
 
@@ -115,8 +122,10 @@ function deckIssues(cls: RoClass, deck: Deck): DeckIssue[] {
   const inClass = new Set(cls.cardCodes)
   const newOnly = options.scope === 'new' && cls.newCardCodes.length > 0
   const seenMain = new Set<string>()
-  // A national course may repeat some cards (`course.repeats`) — counted after the loop.
-  const repeats = options.competition ? cls.course.repeats : undefined
+  // A competition course may repeat cards: national ones as `course.repeats` allows
+  // (counted after the loop), FCI ones up to `course.maxRepeats` (counted in the loop).
+  const repeats =
+    options.competition && (cls.course.repeats !== undefined || cls.course.maxRepeats !== undefined)
   let pace: Pace = 'normal'
   let side: Side = options.startSide
   let prevStatic = false
@@ -415,6 +424,12 @@ function validateLayout(cls: RoClass, deck: Deck): string[] {
   if (!layout) return entries.some((e) => e.at) ? ['cards placed without a field layout'] : []
   const max = cls.course.maxCards
   if (entries.length > max) return [`${entries.length} cards laid out on one field, at most ${max}`]
+  const field = fieldOf(cls, deck.options)
+  if (layout.width !== field?.width || layout.height !== field.height) {
+    return [
+      `laid out on ${layout.width} × ${layout.height} m, not on ${field?.width} × ${field?.height} m`,
+    ]
+  }
   const [round, ...more] = layout.rounds
   if (!round || more.length || round.first !== 0) return ['not one field from card 1']
   return validateRound(cls, layout, entries, round)
@@ -498,7 +513,8 @@ function validateRound(
   )
 
   // Clearances: cards (where they stand) from cards; equipment from the other exercises —
-  // where they are done, their cards and their equipment.
+  // where they are done, their cards and their equipment. A card may stand over the edge
+  // of the field (`EDGE`), the course may not.
   const signs: { label: string; p: Point }[] = [
     { label: 'start', p: signOf('A', start) },
     ...entries.flatMap((e, i) =>
@@ -507,7 +523,6 @@ function validateRound(
     { label: 'finish', p: signOf('A', finish) },
   ]
   signs.forEach((a, i) => {
-    if (!inside(a.p)) errors.push(`${a.label}: card outside the field`)
     for (const b of signs.slice(i + 1)) {
       if (distance(a.p, b.p) < CARD_SPACING - EPS) {
         errors.push(`${a.label} and ${b.label}: too close`)

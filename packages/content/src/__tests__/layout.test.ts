@@ -40,7 +40,7 @@ function course(
       width: 20,
       height: 20,
       rounds: [
-        { first: 0, start: { x: 10, y: 19, heading: 0 }, finish: { x: fx, y: fy, heading: fh } },
+        { first: 0, start: { x: 10, y: 19.5, heading: 0 }, finish: { x: fx, y: fy, heading: fh } },
       ],
     },
   }
@@ -75,7 +75,7 @@ describe('field layout — validator', () => {
   })
 
   test('3–5 m straight on between exercises', () => {
-    expect(validateDeck(course([['101', [10, 17]]], [10, 13]))).toContain(
+    expect(validateDeck(course([['101', [10, 17.5]]], [10, 13.5]))).toContain(
       '#1 101: 2.0 m from the previous exercise',
     )
     expect(validateDeck(course([['101', [12, 15]]], [12, 11]))).toContain(
@@ -158,12 +158,25 @@ describe('field layout — validator', () => {
   })
 
   test('everything inside the field, cards clear of each other', () => {
-    expect(validateDeck(course([['101', [10, 15]]], [10, 0.5]))).toContain(
+    expect(validateDeck(course([['101', [10, 15]]], [10, 0.2]))).toContain(
       'finish after #1: outside the field',
     )
     // The spiral's cones run 6 m past the card.
     const spiral = course([['119', [10, 6]]], [10, 2])
     expect(validateDeck(spiral)).toContain('#1 119: cone outside the field')
+  })
+
+  test('a card may stand over the edge, the course may not (author, 2026-10-22)', () => {
+    // 101 done 0.3 m from the right edge: the team walks off the field.
+    const deck = course([['101', [19.7, 15]]], [19.7, 11])
+    const round = deck.layout?.rounds[0]
+    if (round) round.start = { x: 19.7, y: 19.5, heading: 0 }
+    expect(validateDeck(deck)).toContain('#1 101: outside the field')
+    expect(validateDeck(deck)).toContain('#1: start not on the edge facing in')
+    // Done 0.5 m from it: its card stands 1.1 m to the right, 0.6 m outside — fine.
+    const inside = course([['101', [19.5, 15]]], [19.5, 11])
+    if (inside.layout?.rounds[0]) inside.layout.rounds[0].start = { x: 19.5, y: 19.5, heading: 0 }
+    expect(validateDeck(inside)).toEqual([])
   })
 
   test('recall cone 5 m ahead and the next card 5 m past it; a recall card instead', () => {
@@ -240,6 +253,55 @@ describe('field layout — dealer', () => {
     expect(decks).toBe(450)
     // ~20 ms a deck: a dead end on the field takes cards back (`BACKTRACKS`).
   }, 60_000)
+
+  test('FCI decks on the 20 × 30 m field fit it; an unknown field falls back to 20 × 20', () => {
+    const field = { width: 20, height: 30 }
+    for (let seed = 0; seed < 50; seed++) {
+      for (const competition of [false, true]) {
+        const deck = dealDeck({ ...base, count: 20, seed, competition, field })
+        expect(deck.layout).toMatchObject(field)
+        const errors = validateDeck(deck)
+        if (errors.length) throw new Error(`seed ${seed}: ${errors}`)
+      }
+    }
+    const odd = dealDeck({ ...base, count: 10, field: { width: 25, height: 25 } })
+    expect(odd.layout).toMatchObject({ width: 20, height: 20 })
+    expect(validateDeck(odd)).toEqual([])
+  }, 30_000)
+
+  test('a course spreads over the field instead of leaving a corner empty', () => {
+    // The biggest empty spot: the point of the field farthest from every exercise. Without
+    // steering a course left one of ~10.6 m radius on 20 × 30 m (6.3 m on 20 × 20).
+    for (const [field, limit] of [
+      [{ width: 20, height: 20 }, 6.1],
+      [{ width: 20, height: 30 }, 9],
+    ] as const) {
+      let total = 0
+      for (let seed = 0; seed < 60; seed++) {
+        const deck = dealDeck({ ...base, count: 20, seed, competition: true, field })
+        const round = deck.layout?.rounds[0]
+        const points = [round?.start, round?.finish, ...deck.entries.map((e) => e.at)].filter(
+          (p) => p !== undefined,
+        )
+        let biggest = 0
+        for (let x = 1; x < field.width; x++) {
+          for (let y = 1; y < field.height; y++) {
+            const room = Math.min(...points.map((p) => Math.hypot(p.x - x, p.y - y)))
+            biggest = Math.max(biggest, room)
+          }
+        }
+        total += biggest
+      }
+      expect(total / 60).toBeLessThan(limit)
+    }
+  }, 30_000)
+
+  test('the validator checks the deck is laid out on the field it asked for', () => {
+    const deck = straight(['101', '102'])
+    expect(validateDeck(deck)).toEqual([])
+    const asked = { ...deck, options: { ...deck.options, field: { width: 20, height: 30 } } }
+    expect(validateDeck(asked)).toEqual(['laid out on 20 × 20 m, not on 20 × 30 m'])
+  })
 
   test('a deck longer than a course goes without a plan', () => {
     for (let seed = 0; seed < 10; seed++) {
