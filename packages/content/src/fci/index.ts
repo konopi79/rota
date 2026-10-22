@@ -3,6 +3,7 @@ import { FCI_ONE_POINT_CARDS } from './points-1'
 import { FCI_TWO_POINT_CARDS } from './points-2'
 import { FCI_THREE_POINT_CARDS } from './points-3'
 import { FCI_FOUR_POINT_CARDS } from './points-4'
+import { FCI_DEAL_WEIGHTS, FCI_JUDGES_USAGE } from './usage'
 
 const START_FINISH: Card[] = [
   {
@@ -64,8 +65,16 @@ export const FCI_CLASSES: RoClass[] = [
       maxRepeats: 2,
       // §3.5: "Parkur musí obsahovat alespoň 7 čtyřbodových a alespoň 5 tříbodových karet."
       minByPoints: { '4': 7, '3': 5 },
-      // §3.3: "Velikost soutěžního prostoru ... by měla být minimálně 20 m x 20 m".
-      field: { width: 20, height: 20 },
+      // Not a rule: how often judges set each card, so a dealt course reads like theirs.
+      judgesUsage: FCI_JUDGES_USAGE,
+      dealWeights: FCI_DEAL_WEIGHTS,
+      // §3.3: "Velikost soutěžního prostoru ... by měla být minimálně 20 m x 20 m". Judges
+      // often have more: two of four course plans we had were 30 × 20 m, and so is the
+      // default of the FCI Rally Obedience HUB's course planner. Upright, for a phone.
+      fields: [
+        { width: 20, height: 20 },
+        { width: 20, height: 30 },
+      ],
     },
     cardCodes: EXERCISES.map((c) => c.code),
     newCardCodes: [],

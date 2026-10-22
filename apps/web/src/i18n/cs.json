@@ -45,7 +45,10 @@
     "course": "Sestavit tréninkový parkur",
     "quiz": "Kvíz – poznáš karty?",
     "speak": "Číst karty nahlas",
-    "custom": "Vlastní parkur"
+    "custom": "Vlastní parkur",
+    "field": "Plocha",
+    "fieldHint": "Na plochu této velikosti se karty rozmístí v plánku parkuru. Řád žádá aspoň 20 × 20 m; na větší se častěji vejdou odložení, slalomy a skoky – jako na parkurech rozhodčích.",
+    "fieldSize": "{{width}} × {{height}} m"
   },
   "custom": {
     "title": "Vlastní parkur – {{cls}}",
@@ -250,6 +253,7 @@
     "cz": "Zkušební řád Rally Obedience v ČR, účinný od {{date}} – karty RO-Z, RO1, RO2, RO3 a RO-V, jejich popisy a pravidla řazení.",
     "czGuidelines": "Směrnice pro posuzování Rally Obedience 2025 (Klub Obedience CZ) – jak stavět národní parkur (povinné cviky, opakování karet, strana psa) a kolik stojí chybějící hlavní a vedlejší část cviku.",
     "fci": "FCI Rally Obedience – zkušební řád a směrnice pro mezinárodní soutěže, český překlad účinný od {{date}} – karty FCI-ROB.",
+    "fciCourses": "Katalog parkurů FCI Rally Obedience HUB – jak často dávají rozhodčí na skutečných parkurech jednotlivé karty; podle toho skládá ROTA tréninkový parkur FCI-ROB:",
     "cards": "Grafika karet i texty cviků pocházejí z uvedených řádů a patří jejich autorům.",
     "privacyTitle": "Soukromí",
     "privacy": "Žádné přihlašování, žádné cookies. Nastavení a výsledky kvízu si aplikace pamatuje jen v tvém prohlížeči. Kolik lidí ROTA používá, počítá anonymní počítadlo GoatCounter: dozví se navštívenou stránku (u balíčku jen třídu), ze které stránky návštěva přišla, šířku displeje a jestli aplikace běží z plochy. Když v aplikaci nastane chyba, pošle mu i její popis a celou adresu stránky (u balíčku i pořadí karet), aby šla chyba zopakovat a opravit. IP adresu a prohlížeč vidí jako každý web, ale neukládá je a do telefonu se nic neukládá. Když nahlásíš chybu nebo nápad, odejde přes Formuláře Google jen to, co ve formuláři vidíš a odešleš.",

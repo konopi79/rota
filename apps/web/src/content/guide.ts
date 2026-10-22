@@ -41,7 +41,7 @@ export const GUIDE: GuideSection[] = [
     steps: [
       'Otevři aplikaci jednou na Wi-Fi a chvíli ji nech otevřenou – stáhne si obrázky všech karet (asi 18 MB). Pak funguje i na cvičišti bez signálu.',
       'Vyber třídu, nastav balíček a začni. Další kartu ukáže přejetí prstem, klepnutí na kartu nebo tlačítko „Další“; klepnutí na levou třetinu karty vrátí předchozí.',
-      'U FCI-ROB rozmístí aplikace karty na plochu 20 × 20 m tak, aby se parkur dal opravdu projít: start je na kraji, karty 3–5 m od sebe, nic nevede ven z plochy. Mezi kartami se jde rovně, směr mění jen karty; po obratu čelem vzad se vracíš vedle své cesty. Plánek s vyznačenou aktuální kartou otevře ikona mapy nahoře v balíčku. Plánek má balíček do 20 karet (jeden parkur), delší balíček je bez něj.',
+      'U FCI-ROB rozmístí aplikace karty na plochu 20 × 20 m (v nastavení i 20 × 30 m) tak, aby se parkur dal opravdu projít: start je na kraji, karty 3–5 m od sebe, nic nevede ven z plochy. Mezi kartami se jde rovně, směr mění jen karty; po obratu čelem vzad se vracíš vedle své cesty. Plánek s vyznačenou aktuální kartou otevře ikona mapy nahoře v balíčku. Plánek má balíček do 20 karet (jeden parkur), delší balíček je bez něj.',
       'Displej během balíčku nezhasíná. Když přesto zhasne, nejspíš ho vypíná úspora baterie.',
       'Nové verze se stahují samy: stáhnou se na pozadí a použijí se, až telefon odložíš. Datum verze, kterou máš, je úplně dole na stránce O aplikaci.',
     ],

@@ -3,12 +3,14 @@ import {
   customDeck,
   dealDeck,
   EQUIPMENT,
+  fieldKey,
   getCard,
   getClass,
   type CustomCard,
   type DealOptions,
   type Deck,
   type Equipment,
+  type Field,
 } from '@rota/content'
 import { z } from 'zod/v4'
 
@@ -57,6 +59,8 @@ const paramsSchema = z.object({
   karta: z.coerce.number().int().min(0).default(0),
   parkur: z.enum(['0', '1']).default('0'),
   hlas: z.enum(['0', '1']).default('0'),
+  /** A field other than the class's first, `20x30` (FCI). Missing: the first one. */
+  pole: z.string().optional(),
 })
 
 const customSchema = paramsSchema
@@ -102,6 +106,9 @@ export function encodeDeckParams({
       })
   // Only competition courses carry the flag, so training-deck URLs stay as they were.
   if (options.competition && !order) params.set('parkur', '1')
+  // Likewise the field: only one other than the class's first (decks before it had none).
+  const field = !order && options.field && otherField(options.classId, fieldKey(options.field))
+  if (field) params.set('pole', fieldKey(field))
   if (order && unchecked) params.set('kontrola', '0')
   else if (order && guidelines) params.set('smernice', '1')
   if (speak) params.set('hlas', '1')
@@ -118,6 +125,9 @@ export function decodeDeckParams(search: URLSearchParams): DeckParams | null {
   const slugs = p.pomucky ? p.pomucky.split(',') : []
   const equipment = EQUIPMENT.filter((e) => slugs.includes(EQUIPMENT_SLUG[e]))
   if (equipment.length !== slugs.length) return null
+  const fields = getClass(p.trida)?.course.fields ?? []
+  if (p.pole && !fields.some((f) => fieldKey(f) === p.pole)) return null
+  const field = p.pole ? otherField(p.trida, p.pole) : undefined
   return {
     options: {
       classId: p.trida,
@@ -127,11 +137,18 @@ export function decodeDeckParams(search: URLSearchParams): DeckParams | null {
       startSide: p.strana === 'P' ? 'right' : 'left',
       seed: p.seed,
       ...(p.parkur === '1' && { competition: true }),
+      ...(field && { field }),
     },
     showDescription: p.popis === '1',
     ...(p.hlas === '1' && { speak: true }),
     position: p.karta,
   }
+}
+
+/** The class's field `20x30` — unless it is the first one, the default a URL leaves out. */
+function otherField(classId: DealOptions['classId'], key: string): Field | undefined {
+  const [, ...others] = getClass(classId)?.course.fields ?? []
+  return others.find((f) => fieldKey(f) === key)
 }
 
 /**

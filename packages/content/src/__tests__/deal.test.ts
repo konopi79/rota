@@ -245,8 +245,9 @@ describe('competition courses (R7)', () => {
   }
 
   test('FCI courses always meet the point mix (≥ 7 four-point, ≥ 5 three-point)', () => {
-    // 400 courses: each one is laid out on the field too (~25 ms).
-    for (let seed = 0; seed < 200; seed++) {
+    // 240 courses: each one is laid out on the field too (~60 ms — the judges' weights
+    // favour long exercises, which often do not fit).
+    for (let seed = 0; seed < 120; seed++) {
       for (const count of [18, 20]) {
         const deck = competition('FCI-ROB', seed, count)
         expect(deck.entries).toHaveLength(count)
@@ -255,6 +256,78 @@ describe('competition courses (R7)', () => {
       }
     }
   }, 60_000)
+
+  test('FCI courses repeat a card now and then, like judges — never twice in a row', () => {
+    let repeats = 0
+    for (let seed = 0; seed < 60; seed++) {
+      const codes = competition('FCI-ROB', seed).entries.map((e) => e.code)
+      repeats += codes.length - new Set(codes).size
+      codes.forEach((code, i) => expect(code).not.toBe(codes[i - 1]))
+    }
+    // Judges: 0.38 a course (FCI Rally Obedience HUB's course catalogue).
+    expect(repeats / 60).toBeGreaterThan(0.15)
+    expect(repeats / 60).toBeLessThan(0.8)
+    // A training deck deals each main card once.
+    for (let seed = 0; seed < 20; seed++) {
+      const deck = dealDeck({ ...base, classId: 'FCI-ROB', count: 20, seed })
+      const mains = deck.entries.map((e) => e.code).filter((c) => !/^3(2[123])|^42[12]/.test(c))
+      expect(new Set(mains).size).toBe(mains.length)
+    }
+  }, 30_000)
+
+  test('FCI courses use cards about as often as judges do, on both fields', () => {
+    const cls = CLASSES.find((c) => c.id === 'FCI-ROB')
+    const usage = cls?.course.judgesUsage
+    if (!usage || !cls?.course.fields) throw new Error('FCI-ROB has no judges usage')
+    const total = Object.values(usage.cards).reduce((a, b) => a + b, 0)
+    for (const field of cls.course.fields) {
+      const counts = new Map<string, number>()
+      let cards = 0
+      let leaves = 0
+      for (let seed = 0; seed < 100; seed++) {
+        const deck = dealDeck({
+          classId: 'FCI-ROB',
+          scope: 'all',
+          count: 20,
+          equipment: [...EQUIPMENT],
+          startSide: seed % 2 ? 'left' : 'right',
+          seed: 7000 + seed,
+          competition: true,
+          field,
+        })
+        expect(deck.layout).toMatchObject(field)
+        for (const { code } of deck.entries) counts.set(code, (counts.get(code) ?? 0) + 1)
+        cards += deck.entries.length
+        leaves += deck.entries.filter((e) => ['319', '408', '409'].includes(e.code)).length
+      }
+      // Half the summed difference of the shares: 0 = the same, 1 = nothing in common. An
+      // even deal is ~0.25 off; calibrated, 300 courses are 0.10 (20 × 20) and 0.06 off.
+      const distance =
+        cls.cardCodes.reduce(
+          (sum, code) =>
+            sum + Math.abs((counts.get(code) ?? 0) / cards - (usage.cards[code] ?? 0) / total),
+          0,
+        ) / 2
+      // Too far: re-run scripts/content/fci-usage.ts (the planner has changed).
+      expect(distance).toBeLessThan(0.16)
+      // Judges set 1.34 leave cards a course; an even deal on 20 × 20 m gave 0.4.
+      expect(leaves / 100).toBeGreaterThan(0.9)
+    }
+  }, 60_000)
+
+  test('a training deck is dealt evenly, without the judges’ weights', () => {
+    const cls = CLASSES.find((c) => c.id === 'FCI-ROB')
+    if (!cls) throw new Error('no FCI-ROB')
+    const options = { ...base, classId: 'FCI-ROB', count: 20, seed: 5 } as const
+    const deck = dealDeck(options)
+    const weights = cls.course.dealWeights
+    cls.course.dealWeights = undefined
+    try {
+      expect(dealDeck(options)).toEqual(deck)
+    } finally {
+      cls.course.dealWeights = weights
+    }
+  })
 
   test('every class yields a valid competition course', () => {
     for (const cls of CLASSES) {

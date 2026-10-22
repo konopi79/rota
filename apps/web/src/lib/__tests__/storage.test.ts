@@ -49,6 +49,14 @@ describe('setup storage', () => {
     expect(loadSetup(ro1)).toEqual({ ...defaultSetup(ro1), count: 9, speak: false })
   })
 
+  test('remembers the field chosen for FCI; older setups load without one', () => {
+    const fci = getClass('FCI-ROB') as RoClass
+    const setup = { ...defaultSetup(fci), field: { width: 20, height: 30 } }
+    saveSetup('FCI-ROB', setup)
+    expect(loadSetup(fci)).toEqual(setup)
+    expect(loadSetup(ro1).field).toBeUndefined()
+  })
+
   test('remembers the last setup per class', () => {
     const setup = { ...defaultSetup(ro1), count: 7, equipment: ['cones' as const] }
     saveSetup('RO1', setup)

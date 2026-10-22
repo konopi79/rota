@@ -241,6 +241,28 @@ describe('field layout — dealer', () => {
     // ~20 ms a deck: a dead end on the field takes cards back (`BACKTRACKS`).
   }, 60_000)
 
+  test('FCI decks on the 20 × 30 m field fit it; an unknown field falls back to 20 × 20', () => {
+    const field = { width: 20, height: 30 }
+    for (let seed = 0; seed < 50; seed++) {
+      for (const competition of [false, true]) {
+        const deck = dealDeck({ ...base, count: 20, seed, competition, field })
+        expect(deck.layout).toMatchObject(field)
+        const errors = validateDeck(deck)
+        if (errors.length) throw new Error(`seed ${seed}: ${errors}`)
+      }
+    }
+    const odd = dealDeck({ ...base, count: 10, field: { width: 25, height: 25 } })
+    expect(odd.layout).toMatchObject({ width: 20, height: 20 })
+    expect(validateDeck(odd)).toEqual([])
+  }, 30_000)
+
+  test('the validator checks the deck is laid out on the field it asked for', () => {
+    const deck = straight(['101', '102'])
+    expect(validateDeck(deck)).toEqual([])
+    const asked = { ...deck, options: { ...deck.options, field: { width: 20, height: 30 } } }
+    expect(validateDeck(asked)).toEqual(['laid out on 20 × 20 m, not on 20 × 30 m'])
+  })
+
   test('a deck longer than a course goes without a plan', () => {
     for (let seed = 0; seed < 10; seed++) {
       const deck = dealDeck({ ...base, count: 21 + seed * 6, seed })

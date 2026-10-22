@@ -147,6 +147,12 @@ export const cardSchema = z
   .strict()
 export type Card = z.infer<typeof cardSchema>
 
+/** A field to lay a course out on, in metres: `width` across the plan, `height` down it. */
+export const fieldSchema = z
+  .object({ width: z.number().positive(), height: z.number().positive() })
+  .strict()
+export type Field = z.infer<typeof fieldSchema>
+
 export const roClassSchema = z
   .object({
     id: classIdSchema,
@@ -169,6 +175,24 @@ export const roClassSchema = z
          * (FCI §3.5: at least 7 four-point and 5 three-point cards). Keys are points.
          */
         minByPoints: z.record(z.string(), z.number().int().positive()).optional(),
+        /**
+         * Competition courses: how often judges set each card — times it appears on
+         * `courses` real courses. The dealer draws with these weights (FCI, plan §5).
+         */
+        judgesUsage: z
+          .object({
+            courses: z.number().int().positive(),
+            cards: z.record(z.string(), z.number().int().nonnegative()),
+          })
+          .strict()
+          .optional(),
+        /**
+         * Competition courses laid out on a field: the dealer's weight per card for each
+         * field (key `fieldKey`, e.g. `20x30`), calibrated so that dealt courses use each card
+         * about as often as `judgesUsage` says — a field makes long exercises rare, the
+         * weights make up for it. Generated (scripts/content/fci-usage.ts).
+         */
+        dealWeights: z.record(z.string(), z.record(z.string(), z.number().positive())).optional(),
         /**
          * National competition courses: how often a card may appear (Směrnice pro posuzování
          * 2025, §1.2.1) — every card not listed once, D0 cards and follow-ups included.
@@ -214,13 +238,11 @@ export const roClassSchema = z
           .strict()
           .optional(),
         /**
-         * The field a dealt deck is laid out on, in metres. Classes without it are dealt
-         * without a layout (national: several exercises can share one station).
+         * The fields a dealt deck can be laid out on, in metres — the first by default, the
+         * others on request (`DealOptions.field`). Classes without any are dealt without a
+         * layout (national: several exercises can share one station).
          */
-        field: z
-          .object({ width: z.number().positive(), height: z.number().positive() })
-          .strict()
-          .optional(),
+        fields: z.array(fieldSchema).min(1).optional(),
       })
       .strict(),
     /** Every exercise card of the class, lower classes included where cumulative. */

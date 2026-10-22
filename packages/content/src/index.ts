@@ -8,6 +8,7 @@ export {
   type CardGeometry,
   type CardSequencing,
   type Equipment,
+  type Field,
   type RoClass,
   type RulesetId,
 } from './schema'
@@ -18,6 +19,8 @@ export {
   customDeck,
   customDeckIssues,
   dealDeck,
+  fieldKey,
+  fieldOf,
   finishSide,
   isCardIssue,
   randomSeed,

@@ -90,6 +90,15 @@ export default function AboutPage() {
           <li>{t('about.cz', { date: czDate(CZ_RULESET.validFrom) })}</li>
           <li>{t('about.czGuidelines')}</li>
           <li>{t('about.fci', { date: czDate(FCI_RULESET.validFrom) })}</li>
+          <li>
+            {t('about.fciCourses')}{' '}
+            <a
+              href="https://rallyobedience.online/courses/"
+              className="underline underline-offset-4"
+            >
+              rallyobedience.online
+            </a>
+          </li>
           <li className="text-muted-foreground">{t('about.cards')}</li>
         </ul>,
       )}

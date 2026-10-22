@@ -88,6 +88,19 @@ describe('customDeckIssues', () => {
     expect(rules(customDeck('FCI-ROB', 'left', fci))).toEqual(['4 max-repeats'])
   })
 
+  test('the same card twice in a row too — no regulation forbids it, FCI judges set it', () => {
+    const fci = ['101', '312', '312', '102'].map((code) => ({ code }))
+    expect(rules(customDeck('FCI-ROB', 'left', fci))).toEqual([])
+    expect(rules(customDeck('RO1', 'left', [{ code: 'Z-001' }, { code: 'Z-001' }]))).toEqual([])
+    // Two pace cards in a row are still pointless.
+    const pace = [{ code: 'Z-015' }, { code: 'Z-015' }]
+    expect(rules(customDeck('RO1', 'left', pace))).toEqual(['1 same-pace'])
+    // A dealt deck still never has it (variety).
+    expect(
+      validateDeck(customDeck('RO1', 'left', [{ code: 'Z-001' }, { code: 'Z-001' }])),
+    ).toContain('#2 Z-001: same card twice in a row')
+  })
+
   test('D0 cards: missing, not allowed in the class, or on a card that takes none', () => {
     expect(
       rules(

@@ -2,6 +2,7 @@
 
 import {
   EQUIPMENT,
+  fieldKey,
   getCard,
   getClass,
   randomSeed,
@@ -38,6 +39,10 @@ const EQUIPMENT_LABEL: Record<Equipment, string> = {
   bowls: 'setup.bowls',
   jump: 'setup.jump',
 }
+
+/** The dog's side at the start: as chosen, or tossed for "random". */
+const sideFor = (side: Setup['startSide']) =>
+  side === 'random' ? (Math.random() < 0.5 ? 'left' : 'right') : side
 
 /** Capability checks never change — nothing to subscribe to. */
 const noSubscribe = () => () => {}
@@ -77,11 +82,13 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
     return (card.sequencing.equipment ?? []).every((e) => setup.equipment.includes(e))
   }).length
   const count = Math.min(setup.count, pool)
+  // FCI: the field the deck is laid out on — the class's first unless another one is chosen.
+  const fields = cls.course.fields ?? []
+  const field = fields.find((f) => setup.field && fieldKey(f) === fieldKey(setup.field))
 
   const start = () => {
     saveSetup(classId, setup)
-    const startSide =
-      setup.startSide === 'random' ? (Math.random() < 0.5 ? 'left' : 'right') : setup.startSide
+    const startSide = sideFor(setup.startSide)
     const query = encodeDeckParams({
       options: {
         classId,
@@ -90,6 +97,7 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
         equipment: setup.equipment,
         startSide,
         seed: randomSeed(),
+        ...(field && { field }),
       },
       showDescription: setup.showDescription,
       speak: setup.speak,
@@ -102,8 +110,7 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
   const buildCourse = () => {
     saveSetup(classId, setup)
     const { minCards, maxCards } = cls.course
-    const startSide =
-      setup.startSide === 'random' ? (Math.random() < 0.5 ? 'left' : 'right') : setup.startSide
+    const startSide = sideFor(setup.startSide)
     const query = encodeDeckParams({
       options: {
         classId,
@@ -113,6 +120,7 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
         startSide,
         seed: randomSeed(),
         competition: true,
+        ...(field && { field }),
       },
       showDescription: setup.showDescription,
       speak: setup.speak,
@@ -218,6 +226,27 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
           <ToggleGroupItem value="random">{t('setup.random')}</ToggleGroupItem>
         </ToggleGroup>
       </Field>
+
+      {fields.length > 1 && (
+        <Field label={t('setup.field')} hint={t('setup.fieldHint')}>
+          <ToggleGroup
+            variant="outline"
+            size="lg"
+            className="*:h-11 *:px-4 *:text-base"
+            value={fields.slice(0, 1).map((first) => fieldKey(field ?? first))}
+            onValueChange={(v) => {
+              const chosen = fields.find((f) => fieldKey(f) === v[0])
+              if (chosen) update({ field: chosen === fields[0] ? undefined : chosen })
+            }}
+          >
+            {fields.map((f) => (
+              <ToggleGroupItem key={fieldKey(f)} value={fieldKey(f)}>
+                {t('setup.fieldSize', { width: f.width, height: f.height })}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        </Field>
+      )}
 
       <div className="flex items-center justify-between gap-4">
         <Label htmlFor="show-description" className="text-base">
