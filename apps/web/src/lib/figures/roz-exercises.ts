@@ -1,4 +1,4 @@
-import { circleSpiral, slalom, spiral, type Course } from './courses'
+import { circleSpiral, figureEight, slalom, spiral, type Course } from './courses'
 import type { Exercise } from './exercise'
 import type { FootTarget } from './locomotion'
 
@@ -307,6 +307,28 @@ export const Z020 = slalomExercise('Z-020', false)
 export const Z021 = slalomExercise('Z-021', true)
 
 /**
+ * Z-022 Figura 8 bez rušivého vlivu (p. 25): "Vstup do figury určuje karta, kterou tým vždy
+ * míjí po své levé straně (karta vždy vlevo od psa)." The figure itself in `figureEight`.
+ */
+const eight = figureEight()
+export const Z022: Exercise = {
+  code: 'Z-022',
+  bowls: eight.bowls,
+  cardAt: eight.card,
+  steps: [
+    { walk: 1.5, caption: 'approachBowls' },
+    { course: eight, parts: [0, 1], caption: 'approachBowls' },
+    { course: eight, parts: [1, 3], caption: 'eightIn' },
+    { course: eight, parts: [3, 4], caption: 'eightLeftBowl' },
+    { course: eight, parts: [4, 5], caption: 'eightSecondTime' },
+    { course: eight, parts: [5, 6], caption: 'eightRightBowl' },
+    { course: eight, parts: [6, 7], caption: 'eightThirdTime' },
+    { course: eight, parts: [7, 9], caption: 'eightOut' },
+    { walk: 2, caption: 'eightOut' },
+  ],
+}
+
+/**
  * Z-026 Kruhová spirála – pes vně doprava, Z-027 – pes uvnitř doleva (p. 27): "Tým obejde
  * první kužel, pokračuje ke druhému, který též obejde, a jako poslední obejde třetí kužel."
  */
@@ -437,6 +459,7 @@ export const EXERCISES: Exercise[] = [
   Z019,
   Z020,
   Z021,
+  Z022,
   Z023,
   Z024,
   Z026,

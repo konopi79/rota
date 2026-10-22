@@ -134,6 +134,22 @@ function Cone({ x, z, colour }: { x: number; z: number; colour: string }) {
   )
 }
 
+/** A bowl covered with a lid, as in Z-022 ("prázdné misky přikryté poklopem"). */
+function Bowl({ x, z }: { x: number; z: number }) {
+  return (
+    <group position={[x, 0, z]}>
+      <mesh position={[0, 0.05, 0]} castShadow>
+        <cylinderGeometry args={[0.1, 0.085, 0.1, 24]} />
+        <meshStandardMaterial color="#5f6b78" />
+      </mesh>
+      <mesh position={[0, 0.105, 0]} castShadow>
+        <cylinderGeometry args={[0.11, 0.11, 0.015, 24]} />
+        <meshStandardMaterial color="#3e4650" />
+      </mesh>
+    </group>
+  )
+}
+
 /** Where the camera looks: the team's place on the field. */
 type Focus = { x: number; z: number }
 
@@ -203,6 +219,9 @@ function ExerciseTeam({
       {showSpace && <ExerciseSpace x={space.x - stop.x} z={space.z - stop.z} />}
       {exercise.cones?.map((cone, i) => (
         <Cone key={i} x={cone.x} z={cone.z} colour={CONE_COLOURS[i % 2]!} />
+      ))}
+      {exercise.bowls?.map((bowl, i) => (
+        <Bowl key={i} x={bowl.x} z={bowl.z} />
       ))}
       <gridHelper args={[30, 30, '#5f8f4a', '#6f9f58']} position={[0, 0.002, 0]} />
     </>

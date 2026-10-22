@@ -94,8 +94,9 @@ export type Exercise = {
   stopAt?: { x: number; z: number }
   /** Where the card stands when not in one of the usual places (station's frame). */
   cardAt?: { x: number; z: number }
-  /** Cones on the field, in the station's frame. */
+  /** Cones and bowls on the field, in the station's frame. */
   cones?: { x: number; z: number }[]
+  bowls?: { x: number; z: number }[]
 }
 
 /**
