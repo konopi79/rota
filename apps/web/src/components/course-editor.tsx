@@ -47,6 +47,7 @@ import { classSlug, customCourseHref } from '@/lib/classes'
 import { countedMessages, issueMessage } from '@/lib/course-issues'
 import { encodeDeckParams, MAX_CUSTOM_CARDS, type DeckParams } from '@/lib/deck-url'
 import { shareLink } from '@/lib/share'
+import { navigate } from '@/lib/stale-page'
 import {
   adoptCustomCourse,
   emptyCustomCourse,
@@ -93,7 +94,7 @@ export function useOpenInEditor(cls: RoClass) {
       guidelines: guidelines ?? false,
     }
     if (adoptCustomCourse(cls, course, () => window.confirm(t('custom.replaceConfirm')))) {
-      router.push(customCourseHref(cls.id))
+      navigate(router.push, customCourseHref(cls.id))
     }
   }
 }
@@ -172,7 +173,7 @@ function Editor({ cls, initial }: { cls: RoClass; initial: CustomCourse }) {
   // (local storage is not there in the prerendered HTML).
   const open = (path: '/balicek' | '/parkur') => {
     const { showDescription, speak } = loadSetup(cls)
-    router.push(`${path}?${courseQuery({ showDescription, speak })}`)
+    navigate(router.push, `${path}?${courseQuery({ showDescription, speak })}`)
   }
   // A shared course opens as its course page: the list, walk it, or take it into the editor.
   // The sharer's own description and voice options stay at home.

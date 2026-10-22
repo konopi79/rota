@@ -525,6 +525,7 @@ gesture for audio).
 - [x] Service worker precaching shell, content and all card images (1 611 files, 17.6 MB) — tested offline on the production image by stopping the server: fresh page loads, a deck from its URL and card images all work. Tried on an iPhone by the author after the deploy (2026-09-27): works.
 - [x] Install hint on the home screen until dismissed: iOS share-sheet steps (Safari, Chrome and the rest — all WebKit), Chrome/Android install button (`beforeinstallprompt`)
 - [x] Installed app updates itself: iOS resumed the home-screen app from memory and kept an old version (found by the author, 2026-09-27) — now a check on every return to the screen, reload once hidden (`lib/sw-update.ts`, tested); build time at the bottom of `/o-aplikaci`
+- [x] No blank page after an update (2026-10-22): a new version took over an open installed app, and the next navigation inside it ("Sestavit tréninkový parkur" on the author's iPhone) loaded the new build into the old scripts — a blank screen until the app was restarted; reproduced locally by swapping builds under an open page. Now the page is marked stale on takeover and every navigation loads a whole page: links (click capture), code (`navigate`), back/forward (popstate before the router's) — `lib/stale-page.ts`, tested; verified the same way
 
 ### R6 — Deploy + open-source release
 

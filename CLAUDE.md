@@ -99,7 +99,10 @@ No Next/Turbopack plugin.
 - **Installed apps are not reloaded** — iOS resumes a home-screen app from memory, so
   without help it stays on an old version for days. `lib/sw-update.ts` checks for a new
   version whenever the app comes back to the screen and reloads once it is hidden (phone
-  in the pocket); decks keep their position in the URL. The build time is shown at the
+  in the pocket); decks keep their position in the URL. Until that reload the page on screen
+  is stale (old scripts, new build in the service worker): `lib/stale-page.ts` turns every
+  navigation into a whole-page load — links, back/forward, and code navigations, which must
+  go through `navigate(router.push, href)`, never `router.push` alone. The build time is shown at the
   bottom of `/o-aplikaci` (`NEXT_PUBLIC_BUILD_TIME`, set in `next.config.ts`).
 - Test offline for real: build the Docker image, run it, open it, wait until
   `caches` holds everything, **stop the container**, navigate (see the R5 checklist).

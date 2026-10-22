@@ -32,6 +32,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { classSlug, customCourseHref } from '@/lib/classes'
 import { encodeDeckParams } from '@/lib/deck-url'
 import { speechSupported as isSpeechSupported } from '@/lib/speech'
+import { navigate } from '@/lib/stale-page'
 import { defaultSetup, loadSetup, saveSetup, subscribeStorage, type Setup } from '@/lib/storage'
 
 const EQUIPMENT_LABEL: Record<Equipment, string> = {
@@ -103,7 +104,7 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
       speak: setup.speak,
       position: 0,
     })
-    router.push(`/balicek?${query}`)
+    navigate(router.push, `/balicek?${query}`)
   }
 
   // A competition course (R7): all equipment, the class's full course size window.
@@ -126,7 +127,7 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
       speak: setup.speak,
       position: 0,
     })
-    router.push(`/parkur?${query}`)
+    navigate(router.push, `/parkur?${query}`)
   }
 
   return (

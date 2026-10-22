@@ -12,6 +12,7 @@ function setup({ controlled }: { controlled: boolean }) {
   })
   let checks = 0
   let reloads = 0
+  let stale = 0
   let online = true
   const registration = Promise.resolve({
     update: async () => {
@@ -19,7 +20,13 @@ function setup({ controlled }: { controlled: boolean }) {
       if (!online) throw new Error('offline')
     },
   })
-  const stop = watchForUpdates({ container, registration, doc, reload: () => reloads++ })
+  const stop = watchForUpdates({
+    container,
+    registration,
+    doc,
+    reload: () => reloads++,
+    onStale: () => stale++,
+  })
   const flush = () => new Promise((r) => setTimeout(r, 0))
   return {
     stop,
@@ -39,6 +46,9 @@ function setup({ controlled }: { controlled: boolean }) {
     },
     get reloads() {
       return reloads
+    },
+    get stale() {
+      return stale
     },
   }
 }
@@ -60,6 +70,18 @@ describe('service worker updates', () => {
     expect(app.reloads).toBe(0)
     app.hide()
     expect(app.reloads).toBe(1)
+  })
+
+  test('a new version on screen marks the page stale until it reloads', () => {
+    const app = setup({ controlled: true })
+    app.newVersion()
+    expect(app.stale).toBe(1)
+    app.hide()
+    expect(app.reloads).toBe(1)
+    const pocket = setup({ controlled: true })
+    pocket.hide()
+    pocket.newVersion()
+    expect(pocket.stale).toBe(0)
   })
 
   test('a new version that finishes while the phone is in the pocket reloads right away', () => {
