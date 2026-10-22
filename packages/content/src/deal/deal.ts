@@ -37,10 +37,11 @@ const QUOTA_WEIGHT = 4
 const SHORT_RUNWAY = 8
 const TURN_WEIGHT = 6
 /**
- * Laid-out classes: how strongly a card is preferred when it heads the team into the
- * emptiest part of the field (`FieldPlanner.towardsEmpty`) — a course spreads over the
- * field instead of leaving a corner empty, and keeps long ways straight on for the leave
- * and recall cards.
+ * Competition courses laid out on a field: how strongly a card is preferred when it heads
+ * the team into the emptiest part of the field (`FieldPlanner.towardsEmpty`) — a course
+ * spreads over the field instead of leaving a corner empty, and keeps long ways straight
+ * on for the leave and recall cards. Not training decks: there every card should come
+ * about as often, and a short deck would rarely start with a turn about.
  */
 const SPREAD = 4
 /**
@@ -212,26 +213,28 @@ function attemptDeal(
     const followUps = new Set(optional)
     const followUpCount = eligible.filter((c) => followUps.has(c.code)).length
     const cornered = !!planner && planner.runway() < SHORT_RUNWAY
-    const weighted = short > 0 || followUpCount > 0 || !!course || cornered || !!usage || !!planner
+    const weighted =
+      short > 0 || followUpCount > 0 || !!course || cornered || !!usage || !!options.competition
     const weightOf = (c: Card) =>
       (usage?.get(c.code) ?? 1) *
       (repeats && state.used.has(c.code) ? REPEAT_WEIGHT : 1) *
       (short > 0 && missing(c.points) > 0 ? QUOTA_WEIGHT : 1) *
       (course?.helps(c) ? QUOTA_WEIGHT : 1) *
       (cornered && turnsOf(c).some((t) => normalize(t) !== 0) ? TURN_WEIGHT : 1)
-    // Towards the emptiest part of the field: each card by the best way it can turn, against
-    // the best card.
+    // Towards the emptiest part of the field (courses): each card by the best way it can
+    // turn, against the best card.
+    const spreading = planner && options.competition ? planner : undefined
     const towards = new Map<number, number>()
     const towardsOf = (c: Card) =>
       Math.max(
         ...turnsOf(c).map((turn) => {
-          const known = towards.get(turn) ?? planner?.towardsEmpty(turn) ?? 1
+          const known = towards.get(turn) ?? spreading?.towardsEmpty(turn) ?? 1
           towards.set(turn, known)
           return known
         }),
       )
-    const best = planner ? Math.max(0, ...eligible.map(towardsOf)) : 1
-    const spread = (c: Card) => (planner ? ((towardsOf(c) + 0.1) / (best + 0.1)) ** SPREAD : 1)
+    const best = spreading ? Math.max(0, ...eligible.map(towardsOf)) : 1
+    const spread = (c: Card) => (spreading ? ((towardsOf(c) + 0.1) / (best + 0.1)) ** SPREAD : 1)
     const weights = new Map(weighted ? eligible.map((c) => [c, weightOf(c) * spread(c)]) : [])
     // After a leave card whose recall card is optional (FCI), deal one `FOLLOW_UP_SHARE` of
     // the time: the recall cards together weigh that share of everything eligible.

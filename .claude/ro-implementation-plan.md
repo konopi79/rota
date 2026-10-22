@@ -376,7 +376,13 @@ change direction.
   did not — each card went 3–5 m on from the last, and a course wandered, leaving a corner
   empty (the biggest empty spot ~10.6 m in radius on 20 × 30 m, 6.3 m on 20 × 20 m). Now
   each card is weighted by how well its turn heads the team towards the emptiest point of
-  the field (`FieldPlanner.towardsEmpty`, `SPREAD`): 7.9 m and 5.5 m. Looking only
+  the field (`FieldPlanner.towardsEmpty`, `SPREAD`): 7.9 m and 5.5 m. Courses only — in a
+  training deck every card should come about as often, and a short deck would rarely
+  start with a turn about.
+- **No regressions** (author, 2026-10-22: the dealer was confirmed to work well): compared
+  with `main` on the same seeds, national decks and courses are identical; FCI training
+  decks are as even or more (fewer cards rarely dealt), all complete, laid out and valid,
+  and ~5× faster. Looking only
   straight ahead for open way did less (9.5 m). A start near a corner or on a short edge
   would take it to ~7.2 m, but the start stays anywhere on any edge until decided.
 - Where it stands (20 × 20 / 20 × 30 m; judges in brackets): leave cards 1.35 / 1.33
