@@ -131,6 +131,24 @@ const turnWhileWalking = (
 export const Z006 = turnWhileWalking('Z-006', 90, 'turnRight90')
 /** Z-007 Obrat vlevo za chůze — p. 21. */
 export const Z007 = turnWhileWalking('Z-007', -90, 'turnLeft90')
+/**
+ * Z-010 Čelem vzad – pes za psovodem (p. 21): "Psovod provede před kartou obrat do té strany,
+ * na které se nachází pes, zatímco pes provádí obrat na tu stranu, kde se nachází psovod. Pes
+ * obchází psovoda zezadu a vrací se na výchozí stranu u nohy psovoda. Tým poté bez
+ * zastavení pokračuje dál." The card: "psovod vlevo, pes vpravo". While the handler turns
+ * about to the left in a small arc, the dog runs once round the handler — in front, past
+ * the right side, behind — so over the ground it turns right behind the handler's back.
+ */
+export const Z010: Exercise = {
+  code: 'Z-010',
+  card: 'ahead',
+  steps: [
+    { walk: 3.5, caption: 'approachTurn' },
+    { turn: -180, radius: ARC[180], dogRound: 'aroundFromHeel', caption: 'aboutTurnDogBehind' },
+    { walk: 3, caption: 'leaveTurn' },
+  ],
+}
+
 /** Z-008 Obrat zpět vpravo: "… obrat vpravo o 180° … Obrat v malém oblouku je dovolen." — p. 21. */
 export const Z008 = turnWhileWalking('Z-008', 180, 'turnRight180')
 /** Z-009 Obrat zpět vlevo — p. 21. */
@@ -492,6 +510,7 @@ export const EXERCISES: Exercise[] = [
   Z007,
   Z008,
   Z009,
+  Z010,
   Z011,
   Z012,
   Z013,

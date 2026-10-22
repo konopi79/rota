@@ -41,7 +41,15 @@ export type ExerciseStep = { caption: string } & (
    * The team turns by `turn` degrees, positive to the right, the handler walking an arc of
    * `radius` metres — 0 turns the handler on the spot, the dog going round at heel.
    */
-  | { turn: number; radius: number }
+  | {
+      turn: number
+      radius: number
+      /**
+       * Meanwhile the dog goes this path round the handler (in the turning team's frame),
+       * from heel back to heel, keeping step with the turn.
+       */
+      dogRound?: DogPath
+    }
 )
 
 const PATHS: Record<'dog', Path> = { dog: AROUND_DOG }
@@ -462,6 +470,11 @@ export class ExercisePlayer {
             stay: onTheSpot,
             maxSpeed: MAX_SPIN * (current.radius || PIVOT_RADIUS),
           }
+      if (current.dogRound && !this.braking) {
+        const { path } = DOG_PATHS[current.dogRound]
+        const total = (Math.abs(current.turn) * Math.PI) / 180
+        controls.dogAt = path.at(path.length * (1 - this.turnLeft / total))
+      }
     } else {
       done = this.stepTime >= END_PAUSE
     }

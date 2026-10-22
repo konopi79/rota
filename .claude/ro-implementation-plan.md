@@ -549,7 +549,7 @@ gesture for audio).
 - [x] Cones (2026-10-22): spirals Z-018/Z-019 (the card's execution diagram; the last turn round the first cone 270°, out between the first and second cone — the video, the author), slaloms Z-020/Z-021, circle spirals Z-026/Z-027 — `courses.ts`: the whole team along a course round the cones, the dog outside the bends turning right and inside them (the handler further off) turning left; headings along a path turn smoothly; a test keeps everyone clear of the cones
 - [x] Bowls (2026-10-22): figure eight Z-022 — a rhombus of covered bowls by the regulation (3 m × 1.5 m), the short diagonal along the way in with the card on its line (the author), in right of it, three times through the middle, out on the far side; small dark bowls so the figure reads on grass
 - [x] A step back (2026-10-22): Z-025, Z-032 with D0a–d — the right foot back, the left closing up, the dog following and sitting / lying in front again; a foot stepping back lands toes first. The dog flows on from heel into the front while the handler stops (the author), here and in Z-014
-- [ ] Z-010 (the dog behind the handler)
+- [x] Z-010 (2026-10-22): the handler turns about to the left in a small arc while the dog runs once round them in the turning team's frame — in front, past the right side, behind — so over the ground it turns right behind the handler's back (the card: "psovod vlevo, pes vpravo"). With it every RO-Z card, Z-001–Z-032, is animated. Captions no longer say "1,2 m": where an exercise starts is the exercise-space switch's job
 
 Each phase ends green on `bun run format && bun run typecheck && bun run lint` plus its
 own tests, and is committed separately.
