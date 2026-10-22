@@ -16,6 +16,7 @@ import { SubParts } from '@/components/sub-parts'
 import { Button } from '@/components/ui/button'
 import { catalogueFromQuery, classesWith, sequencingNotes } from '@/lib/catalogue'
 import { cardHref, classSlug } from '@/lib/classes'
+import { navigate } from '@/lib/stale-page'
 
 const RULESETS = { CZ: CZ_RULESET, FCI: FCI_RULESET }
 
@@ -27,7 +28,8 @@ export function CardDetail({ card }: { card: Card }) {
   const classes = classesWith(card)
 
   // Reached from a class catalogue (or a shared link): go back where the user came from.
-  const back = () => (window.history.length > 1 ? router.back() : router.push('/'))
+  // Back goes through popstate, which a stale page turns into a reload (`lib/stale-page`).
+  const back = () => (window.history.length > 1 ? router.back() : navigate(router.push, '/'))
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 px-4 py-6">

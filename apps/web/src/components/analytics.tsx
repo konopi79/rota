@@ -11,8 +11,9 @@ import {
   shouldCount,
 } from '@/lib/analytics'
 import { runsInstalled } from '@/lib/install'
-// Installs the error reports as soon as the layout's scripts load, before hydration.
+// Install their listeners as soon as the layout's scripts load, before hydration.
 import '@/lib/error-report'
+import '@/lib/stale-page'
 
 /** Counts page views and app launches (`lib/analytics.ts`); renders nothing. */
 export function Analytics() {

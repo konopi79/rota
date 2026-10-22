@@ -19,10 +19,15 @@ export type UpdateDeps = {
   registration: Promise<{ update: () => Promise<unknown> }>
   doc: Listenable & { visibilityState: DocumentVisibilityState }
   reload: () => void
+  /**
+   * A new version took over while the page is on screen: until the reload, navigations
+   * must load whole pages (`lib/stale-page.ts`).
+   */
+  onStale?: () => void
 }
 
 /** Starts watching; returns the cleanup. */
-export function watchForUpdates({ container, registration, doc, reload }: UpdateDeps) {
+export function watchForUpdates({ container, registration, doc, reload, onStale }: UpdateDeps) {
   // The first install claims an uncontrolled page — that is not an update.
   let controlled = container.controller !== null && container.controller !== undefined
   let updated = false
@@ -32,6 +37,7 @@ export function watchForUpdates({ container, registration, doc, reload }: Update
       updated = true
       // Finished installing while the phone was already in the pocket.
       if (doc.visibilityState === 'hidden') reload()
+      else onStale?.()
     }
     controlled = true
   }

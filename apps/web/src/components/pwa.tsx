@@ -13,6 +13,7 @@ import {
   subscribeInstall,
 } from '@/lib/install'
 import { reportIssue, watchServiceWorkerInstall } from '@/lib/error-report'
+import { markStale } from '@/lib/stale-page'
 import { watchForUpdates } from '@/lib/sw-update'
 import { dismissInstallHint, isInstallHintDismissed, subscribeStorage } from '@/lib/storage'
 
@@ -31,6 +32,7 @@ export function ServiceWorkerRegistration() {
       registration,
       doc: document,
       reload: () => window.location.reload(),
+      onStale: markStale,
     })
   }, [])
   return null
