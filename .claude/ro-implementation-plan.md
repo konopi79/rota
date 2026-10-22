@@ -573,6 +573,7 @@ gesture for audio).
 - [x] Steps back kept clear of other cards, the next card measured from the card (handler feedback, 2026-10-20); ~~corner between two cards 1–3 m on~~ (replaced next day)
 - [x] Direction changed only by the cards (author, 2026-10-21): straight walks, a hairpin back beside the way in after a turn about (`HAIRPIN_WIDTHS`), recall cards turn either way; dealer backtracking + runway weighting; layout only up to a course; validator + tests
 - [x] Courses like judges set them (2026-10-22, §5): card usage from the FCI Rally Obedience HUB's catalogue, weights calibrated per field with a random lean, recall card after three leave cards in four, a card now and then twice; no "twice in a row" warning for a hand-made course; field 20 × 20 m or 20 × 30 m in the setup (`pole=20x30`); source credited on `/o-aplikaci`; feature item `fci-judges-course`
+- [x] Plan zoom and print (author, 2026-10-22): tap the course plan (or "Zvětšit plánek") for a full-screen view — + / − and two-finger zoom, one finger moves it, screen kept awake (`components/plan-viewer.tsx`); printed course: the plan as big as the page on page 1, the cards in two columns from page 2, colours kept (`print-color-adjust`), 12 mm margins
 
 ### R11 — Hand-made course
 

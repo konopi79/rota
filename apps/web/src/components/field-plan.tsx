@@ -19,6 +19,10 @@ const { bearing, offset, shapeOf, signOf, walkOf } = geometry
 const PAD = 2.4
 /** Where the axis labels sit outside the field — clear of a card over the edge. */
 const LABEL_GAP = 1.7
+
+/** Width over height of a drawn plan, margins included — to size it before it is drawn. */
+export const planAspect = ({ width, height }: { width: number; height: number }) =>
+  (width + 2 * PAD) / (height + 2 * PAD)
 /** Cards are drawn larger than life (a real one is ~30 cm) so they stay readable. */
 const CARD_W = 1.7
 const CARD_H = (CARD_W * 283) / 400

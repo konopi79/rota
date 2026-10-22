@@ -292,11 +292,16 @@
     "walk": "Projít jako balíček",
     "grid": "Na jednu obrazovku",
     "closeGrid": "Zavřít",
+    "zoomPlan": "Zvětšit plánek",
+    "zoomHint": "Klepnutím na plánek ho zvětšíš.",
     "shareTitle": "ROTA – tréninkový parkur {{cls}}"
   },
   "plan": {
     "title": "Plánek parkuru",
-    "caption": "Plocha {{width}} × {{height}} m, karty 3–5 m od sebe. Vzdálenosti a úhly jsou přibližné."
+    "caption": "Plocha {{width}} × {{height}} m, karty 3–5 m od sebe. Vzdálenosti a úhly jsou přibližné.",
+    "zoomIn": "Přiblížit",
+    "zoomOut": "Oddálit",
+    "close": "Zavřít"
   },
   "quiz": {
     "title": "Kvíz – {{cls}}",
