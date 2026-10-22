@@ -12,8 +12,13 @@ import { cn } from '@/lib/utils'
 
 const { bearing, offset, shapeOf, signOf, walkOf } = geometry
 
-/** Drawing margin around the field (room for the axis labels), in metres. */
-const PAD = 1.4
+/**
+ * Drawing margin around the field, in metres: room for the cards that stand over the edge
+ * (a card may, the course may not — `geometry.EDGE`) and, outside them, the axis labels.
+ */
+const PAD = 2.4
+/** Where the axis labels sit outside the field — clear of a card over the edge. */
+const LABEL_GAP = 1.7
 /** Cards are drawn larger than life (a real one is ~30 cm) so they stay readable. */
 const CARD_W = 1.7
 const CARD_H = (CARD_W * 283) / 400
@@ -177,7 +182,7 @@ function Grid({ width, height }: { width: number; height: number }) {
   const label = { fontSize: 0.6, className: 'fill-muted-foreground' }
   for (let x = 0; x <= width; x += 5) {
     lines.push(
-      <text key={`lx${x}`} x={x} y={height + 0.9} textAnchor="middle" {...label}>
+      <text key={`lx${x}`} x={x} y={height + LABEL_GAP + 0.4} textAnchor="middle" {...label}>
         {x}
       </text>,
     )
@@ -186,7 +191,7 @@ function Grid({ width, height }: { width: number; height: number }) {
     lines.push(
       <text
         key={`ly${y}`}
-        x={-0.5}
+        x={-LABEL_GAP}
         y={height - y}
         textAnchor="end"
         dominantBaseline="central"

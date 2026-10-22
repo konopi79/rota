@@ -191,12 +191,14 @@ export class FieldPlanner {
   private inside = (p: Point) =>
     p.x >= EDGE && p.x <= this.width - EDGE && p.y >= EDGE && p.y <= this.height - EDGE
 
-  /** An exercise could be done at `at`, with its card standing clear of the others. */
+  /**
+   * An exercise could be done at `at`, with its card standing clear of the others — the
+   * card may stand over the edge of the field (`EDGE`).
+   */
   private free(at: Pose, placement: Card['placement'], signs: Point[], props: PlacedProp[]) {
     const sign = signOf(placement, at)
     return (
       this.inside(at) &&
-      this.inside(sign) &&
       signs.every((s) => distance(s, sign) >= CARD_SPACING) &&
       props.every((q) => distance(q, at) >= PROP_SPACING && distance(q, sign) >= PROP_SPACING) &&
       [at, sign].every(this.clearOfBacks)

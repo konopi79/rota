@@ -245,9 +245,8 @@ describe('competition courses (R7)', () => {
   }
 
   test('FCI courses always meet the point mix (≥ 7 four-point, ≥ 5 three-point)', () => {
-    // 240 courses: each one is laid out on the field too (~60 ms — the judges' weights
-    // favour long exercises, which often do not fit).
-    for (let seed = 0; seed < 120; seed++) {
+    // 400 courses: each one is laid out on the field too (~10 ms).
+    for (let seed = 0; seed < 200; seed++) {
       for (const count of [18, 20]) {
         const deck = competition('FCI-ROB', seed, count)
         expect(deck.entries).toHaveLength(count)
@@ -301,7 +300,7 @@ describe('competition courses (R7)', () => {
         leaves += deck.entries.filter((e) => ['319', '408', '409'].includes(e.code)).length
       }
       // Half the summed difference of the shares: 0 = the same, 1 = nothing in common. An
-      // even deal is ~0.25 off; calibrated, 300 courses are 0.10 (20 × 20) and 0.06 off.
+      // even deal is ~0.25 off; calibrated, 300 courses are 0.08 (20 × 20) and 0.05 off.
       const distance =
         cls.cardCodes.reduce(
           (sum, code) =>

@@ -513,7 +513,8 @@ function validateRound(
   )
 
   // Clearances: cards (where they stand) from cards; equipment from the other exercises —
-  // where they are done, their cards and their equipment.
+  // where they are done, their cards and their equipment. A card may stand over the edge
+  // of the field (`EDGE`), the course may not.
   const signs: { label: string; p: Point }[] = [
     { label: 'start', p: signOf('A', start) },
     ...entries.flatMap((e, i) =>
@@ -522,7 +523,6 @@ function validateRound(
     { label: 'finish', p: signOf('A', finish) },
   ]
   signs.forEach((a, i) => {
-    if (!inside(a.p)) errors.push(`${a.label}: card outside the field`)
     for (const b of signs.slice(i + 1)) {
       if (distance(a.p, b.p) < CARD_SPACING - EPS) {
         errors.push(`${a.label} and ${b.label}: too close`)

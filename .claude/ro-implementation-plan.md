@@ -311,7 +311,11 @@ are therefore laid out on the field while they are dealt:
 - Field 20 × 20 m (§3.3, "minimálně"), or 20 × 30 m chosen in the setup (`course.fields`,
   `pole=20x30` in the URL; upright for a phone screen) — judges often have more room, and
   the FCI Rally Obedience HUB's course planner starts at 30 × 20 m (author, 2026-10-22).
-  The start anywhere on an edge, facing in.
+  The start anywhere on an edge, facing in. The course — where the team walks and works,
+  steps back, its equipment — keeps 0.5 m inside the edge; **a card may stand over it**
+  (author, 2026-10-22: "popisky mohou přečnívat přes okraj prostoru, samotná dráha parkuru
+  ale nesmí"). Until then everything kept 1 m clear, the cards' stands included, which
+  made 20 × 20 m much tighter than it is (and dealing ~2× slower).
 - Cards "přibližně 3-5 m" apart (§3.5), measured from where the previous exercise ends;
   the recall cone 5 m ahead of the card and the next card 5 m past it (§3.5, §4.8);
   recall cards at their stated distance straight ahead of the leave card (3–5 m, 421: 8 m).
@@ -361,15 +365,16 @@ change direction.
 
 - `scripts/content/fci-usage.ts` counts the cards (`course.judgesUsage`, only the counts are
   kept) and calibrates the dealer's weights per field (`course.dealWeights`): deal 300
-  courses, compare each card's share with the judges', adjust, eight rounds — 0.24 → 0.10
-  off on 20 × 20 m, 0.20 → 0.06 on 20 × 30 m (half the summed difference of the shares).
+  courses, compare each card's share with the judges', adjust, eight rounds — 0.20 → 0.08
+  off on 20 × 20 m, 0.19 → 0.05 on 20 × 30 m (half the summed difference of the shares).
   A test fails when the planner drifts; then re-run the script.
 - **Not a copy** (author, 2026-10-22: "trocha náhody"): each card's weight is drawn per
   course between an even deal and its calibrated weight (`USAGE_LEAN`).
 - A competition course may repeat a card (at most twice, never twice in a row,
   `REPEAT_WEIGHT`) — about 0.4 a course. Training decks stay even, every card once.
-- Still short of the judges on 20 × 20 m: ~1.2 leave cards, ~0.8 jumps — the field is the
-  limit; ~50 ms a course (was ~30).
+- Still short of the judges on 20 × 20 m: ~1.2 leave cards, ~0.7 jumps, a recall card
+  after only every other leave card (it needs a long way straight on) — the field is the
+  limit. ~10 ms a course (was ~30 before the cards could stand over the edge).
 
 **Both:** no card twice in a row when dealt (variety; not a rule — a hand-made course may
 have it); equipment filter (§3).

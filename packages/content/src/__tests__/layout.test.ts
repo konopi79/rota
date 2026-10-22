@@ -40,7 +40,7 @@ function course(
       width: 20,
       height: 20,
       rounds: [
-        { first: 0, start: { x: 10, y: 19, heading: 0 }, finish: { x: fx, y: fy, heading: fh } },
+        { first: 0, start: { x: 10, y: 19.5, heading: 0 }, finish: { x: fx, y: fy, heading: fh } },
       ],
     },
   }
@@ -75,7 +75,7 @@ describe('field layout — validator', () => {
   })
 
   test('3–5 m straight on between exercises', () => {
-    expect(validateDeck(course([['101', [10, 17]]], [10, 13]))).toContain(
+    expect(validateDeck(course([['101', [10, 17.5]]], [10, 13.5]))).toContain(
       '#1 101: 2.0 m from the previous exercise',
     )
     expect(validateDeck(course([['101', [12, 15]]], [12, 11]))).toContain(
@@ -158,12 +158,25 @@ describe('field layout — validator', () => {
   })
 
   test('everything inside the field, cards clear of each other', () => {
-    expect(validateDeck(course([['101', [10, 15]]], [10, 0.5]))).toContain(
+    expect(validateDeck(course([['101', [10, 15]]], [10, 0.2]))).toContain(
       'finish after #1: outside the field',
     )
     // The spiral's cones run 6 m past the card.
     const spiral = course([['119', [10, 6]]], [10, 2])
     expect(validateDeck(spiral)).toContain('#1 119: cone outside the field')
+  })
+
+  test('a card may stand over the edge, the course may not (author, 2026-10-22)', () => {
+    // 101 done 0.3 m from the right edge: the team walks off the field.
+    const deck = course([['101', [19.7, 15]]], [19.7, 11])
+    const round = deck.layout?.rounds[0]
+    if (round) round.start = { x: 19.7, y: 19.5, heading: 0 }
+    expect(validateDeck(deck)).toContain('#1 101: outside the field')
+    expect(validateDeck(deck)).toContain('#1: start not on the edge facing in')
+    // Done 0.5 m from it: its card stands 1.1 m to the right, 0.6 m outside — fine.
+    const inside = course([['101', [19.5, 15]]], [19.5, 11])
+    if (inside.layout?.rounds[0]) inside.layout.rounds[0].start = { x: 19.5, y: 19.5, heading: 0 }
+    expect(validateDeck(inside)).toEqual([])
   })
 
   test('recall cone 5 m ahead and the next card 5 m past it; a recall card instead', () => {
