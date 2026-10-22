@@ -548,7 +548,8 @@ gesture for audio).
 - [x] Z-023, Z-024, Z-028–Z-031 (2026-10-21): the dog round the handler from the front; one step forward and the other foot closing up; 225° on the spot; Z-030/Z-031 in three steps set by hand as the author does them (inner foot ahead turned 45°, outer foot round it into the new direction, inner foot closing up) — `footwork` steps, the body following its feet
 - [x] Cones (2026-10-22): spirals Z-018/Z-019 (the card's execution diagram; the last turn round the first cone 270°, out between the first and second cone — the video, the author), slaloms Z-020/Z-021, circle spirals Z-026/Z-027 — `courses.ts`: the whole team along a course round the cones, the dog outside the bends turning right and inside them (the handler further off) turning left; headings along a path turn smoothly; a test keeps everyone clear of the cones
 - [x] Bowls (2026-10-22): figure eight Z-022 — a rhombus of covered bowls by the regulation (3 m × 1.5 m), the short diagonal along the way in with the card on its line (the author), in right of it, three times through the middle, out on the far side; small dark bowls so the figure reads on grass
-- [ ] A step back: Z-025, Z-032; and Z-010 (the dog behind the handler)
+- [x] A step back (2026-10-22): Z-025, Z-032 with D0a–d — the right foot back, the left closing up, the dog following and sitting / lying in front again; a foot stepping back lands toes first. The dog flows on from heel into the front while the handler stops (the author), here and in Z-014
+- [ ] Z-010 (the dog behind the handler)
 
 Each phase ends green on `bun run format && bun run typecheck && bun run lint` plus its
 own tests, and is committed separately.

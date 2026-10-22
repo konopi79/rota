@@ -68,6 +68,8 @@ const PAW_SWING_ARM = 0.23
 const HEEL_TO_BODY = -HEEL[1]
 /** Steps set by hand: each foot is down this long before the next one lifts, seconds. */
 const FOOTWORK_DWELL = 0.12
+/** How quickly the dog takes over the pace the slowing team no longer carries it at, 1/s. */
+const DOG_TAKES_OVER = 20
 /** The dog's path waits for its body once that is this far behind, metres. */
 const DOG_FALLS_BEHIND = 0.08
 /** The dog has arrived when its body is this near the end of its path, metres. */
@@ -306,7 +308,10 @@ export class ExercisePlayer {
       controls = { dog: dogGait(this.pace), place: this.dogPlace, handler: this.pace }
       this.posture = 'stand'
       const next = steps[this.index + 1]
-      const brakes = next && ('stop' in next || ('turn' in next && next.radius === 0))
+      // Stopping for what comes next: a stop, a turn on the spot, the dog going off on its
+      // own while the handler stands.
+      const brakes =
+        next && ('stop' in next || 'dogPath' in next || ('turn' in next && next.radius === 0))
       const braking = brakes ? speed / SETTLE_RATE : 0
       const toGo = current.walk - (travelled - this.stepStart)
       done = toGo <= braking
@@ -345,20 +350,28 @@ export class ExercisePlayer {
       // The dog gets up first (from a sit in front), then trots off, slows into tight bends
       // and comes to a stand at the end.
       const onLegs = this.last?.feet.dogOnLegs ?? true
-      // Its body follows only as fast as its paws can carry it: if it falls behind, the
-      // path waits for it.
-      const waiting = !onLegs || this.dogBody.lag > DOG_FALLS_BEHIND
-      const wanted = waiting
+      // Its body follows only as fast as its paws can carry it: as it falls behind, the path
+      // eases off and waits for it.
+      const keepingUp = Math.min(
+        1,
+        Math.max(0, (DOG_FALLS_BEHIND - this.dogBody.lag) / (DOG_FALLS_BEHIND / 2)),
+      )
+      // Going on from walking at heel while the handler stops, the dog keeps its pace over the
+      // ground: along its path only as fast as the team no longer carries it.
+      const wanted = !onLegs
         ? 0
-        : Math.min(
-            DOG_PATH_SPEED,
+        : keepingUp *
+          Math.min(
+            Math.max(0, DOG_PATH_SPEED - speed),
             DOG_MAX_SPIN / Math.max(bendAhead(path, this.dogWalked), 1e-6),
             Math.sqrt(2 * DOG_BRAKING * left),
           )
+      // While the team still slows down, the dog takes over its pace at once.
+      const rate = speed > 0.05 ? DOG_TAKES_OVER : SETTLE_RATE
       this.dogPathSpeed =
         wanted < this.dogPathSpeed
           ? wanted
-          : this.dogPathSpeed + (wanted - this.dogPathSpeed) * (1 - Math.exp(-SETTLE_RATE * dt))
+          : this.dogPathSpeed + (wanted - this.dogPathSpeed) * (1 - Math.exp(-rate * dt))
       this.dogWalked = Math.min(path.length, this.dogWalked + this.dogPathSpeed * dt)
       this.posture = 'stand'
       controls = {

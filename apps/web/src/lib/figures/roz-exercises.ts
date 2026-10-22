@@ -1,5 +1,5 @@
 import { circleSpiral, figureEight, slalom, spiral, type Course } from './courses'
-import type { Exercise } from './exercise'
+import type { Exercise, ExerciseStep } from './exercise'
 import type { FootTarget } from './locomotion'
 
 /**
@@ -176,22 +176,27 @@ export const Z013 = turnOnTheSpot('Z-013', 360, 'turnRight360', 'side')
  * from the video: the dog in front about a second after the stop, sitting a second, round
  * the handler in about a second and a half.
  */
-const frontAndFinish = (supplementary: 'D0a' | 'D0b' | 'D0c' | 'D0d'): Exercise => {
+const frontAndFinish = (
+  supplementary: 'D0a' | 'D0b' | 'D0c' | 'D0d',
+  code = 'Z-014',
+  inFront: ExerciseStep[] = [],
+): Exercise => {
   const around = supplementary === 'D0a' || supplementary === 'D0c'
   const sits = supplementary === 'D0a' || supplementary === 'D0b'
   return {
-    code: 'Z-014',
+    code,
     supplementary,
     // The dog needs room in front: the handler stops in the middle of the square, further
     // back than usual, so the dog sitting in front is still in it (the author's suggestion,
-    // instead of stepping back).
-    stopAt: { x: 0.15, z: -0.45 },
+    // instead of stepping back). With a step back to come, a little less far back.
+    stopAt: { x: 0.15, z: inFront.length ? -0.3 : -0.45 },
     steps: [
       { walk: 3.5, caption: 'approach' },
-      { stop: true, caption: 'frontCommand' },
+      // The handler stops and the dog goes on round into the front without stopping.
       { dogPath: 'toFront', caption: 'toFront' },
       { dog: 'sit', caption: 'frontSit' },
       { wait: 1, caption: 'frontHold' },
+      ...inFront,
       {
         dogPath: around ? 'aroundHandler' : 'toHeel',
         caption: around ? 'finishAround' : 'finishDirect',
@@ -211,6 +216,49 @@ export const Z014_D0A = frontAndFinish('D0a')
 export const Z014_D0B = frontAndFinish('D0b')
 export const Z014_D0C = frontAndFinish('D0c')
 export const Z014_D0D = frontAndFinish('D0d')
+
+/**
+ * One step back, the dog in front following (Z-025, Z-032): "Poté co pes zaujme pozici před
+ * psovodem, udělá psovod jeden krok vzad, pes jej následuje" (p. 27, 29) — the right foot
+ * back, the left one closing up beside it.
+ */
+const STEP_BACK: FootTarget[] = [
+  { foot: 1, x: -0.1, z: -0.48, yaw: 0 },
+  { foot: 0, x: 0.1, z: -0.48, yaw: 0 },
+]
+
+/**
+ * Z-025 Předsednutí jeden krok zpět (p. 27): "… udělá psovod jeden krok vzad, pes jej
+ * následuje a znovu usedá před psovodem." Then the D0 card, as for Z-014.
+ */
+const frontStepBack = (supplementary: 'D0a' | 'D0b' | 'D0c' | 'D0d') =>
+  frontAndFinish(supplementary, 'Z-025', [
+    { footwork: STEP_BACK, caption: 'stepBack' },
+    { dog: 'sit', caption: 'frontSitAgain' },
+    { wait: 1, caption: 'frontHold' },
+  ])
+
+export const Z025_D0A = frontStepBack('D0a')
+export const Z025_D0B = frontStepBack('D0b')
+export const Z025_D0C = frontStepBack('D0c')
+export const Z025_D0D = frontStepBack('D0d')
+
+/**
+ * Z-032 Předsednutí – 1 krok vzad – lehni (p. 29): "… udělá psovod jeden krok vzad, pes jej
+ * následuje a poté ulehá před psovodem. Během předsednutí, ulehnutí a během provádění cviku
+ * z doplňkové karty nesmí psovod pohybovat nohama."
+ */
+const frontStepBackDown = (supplementary: 'D0a' | 'D0b' | 'D0c' | 'D0d') =>
+  frontAndFinish(supplementary, 'Z-032', [
+    { footwork: STEP_BACK, caption: 'stepBack' },
+    { dog: 'down', caption: 'frontDown' },
+    { wait: 1, caption: 'frontHold' },
+  ])
+
+export const Z032_D0A = frontStepBackDown('D0a')
+export const Z032_D0B = frontStepBackDown('D0b')
+export const Z032_D0C = frontStepBackDown('D0c')
+export const Z032_D0D = frontStepBackDown('D0d')
 
 /**
  * The paces, Z-015–Z-017 (p. 23): "V místě pro provedení cviku tým zpomalí / zrychlí své
@@ -462,10 +510,18 @@ export const EXERCISES: Exercise[] = [
   Z022,
   Z023,
   Z024,
+  Z025_D0A,
+  Z025_D0B,
+  Z025_D0C,
+  Z025_D0D,
   Z026,
   Z027,
   Z028,
   Z029,
   Z030,
   Z031,
+  Z032_D0A,
+  Z032_D0B,
+  Z032_D0C,
+  Z032_D0D,
 ]

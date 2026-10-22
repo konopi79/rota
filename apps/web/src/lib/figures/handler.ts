@@ -289,7 +289,11 @@ export const handlerPose = (
     } else {
       const u = foot.swing
       if (u < 0.35) pitch = p.pushOff * push * (1 - ease(u / 0.35))
-      else if (u > 0.7) pitch = p.strike * k * ease((u - 0.7) / 0.3)
+      else if (u > 0.7) {
+        // Landing ahead the heel comes down first, toes up; stepping back, the toes do.
+        const backwards = Math.min(1, Math.max(0, (behind - 0.05) / 0.15))
+        pitch = p.strike * k * ease((u - 0.7) / 0.3) * (1 - 2 * backwards)
+      }
     }
     if (previous) {
       const before = previous.pitch[i] ?? 0
