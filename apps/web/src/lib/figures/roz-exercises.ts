@@ -2,6 +2,8 @@ import { circleSpiral, figureEight, slalom, spiral, type Course } from './course
 import type { Exercise, ExerciseStep } from './exercise'
 import type { FootTarget } from './locomotion'
 
+type Point = { x: number; z: number }
+
 /**
  * RO-Z exercises as scripts. Each cites the regulation (Zkušební řád RO v ČR 2026,
  * appendix 1); timing and paths the text leaves open follow the Psí škola ABS overview
@@ -159,7 +161,7 @@ export const Z009 = turnWhileWalking('Z-009', -180, 'turnLeft180')
  * povoleny. Pes během provádění cviku zůstává stále u nohy." — p. 22. The team slows down
  * into the turn; turning to the dog's side, the dog backs up and swings round at heel.
  */
-const turnOnTheSpot = (
+export const turnOnTheSpot = (
   code: string,
   turn: number,
   caption: string,
@@ -194,10 +196,18 @@ export const Z013 = turnOnTheSpot('Z-013', 360, 'turnRight360', 'side')
  * from the video: the dog in front about a second after the stop, sitting a second, round
  * the handler in about a second and a half.
  */
-const frontAndFinish = (
-  supplementary: 'D0a' | 'D0b' | 'D0c' | 'D0d',
+export type Supplementary = 'D0a' | 'D0b' | 'D0c' | 'D0d'
+export const SUPPLEMENTARIES: Supplementary[] = ['D0a', 'D0b', 'D0c', 'D0d']
+
+/**
+ * `inFront`: what happens with the dog in front before the D0 card; `posture`: how the dog
+ * waits in front first (sitting, or standing — 2-221).
+ */
+export const frontAndFinish = (
+  supplementary: Supplementary,
   code = 'Z-014',
   inFront: ExerciseStep[] = [],
+  posture: 'sit' | 'stand' = 'sit',
 ): Exercise => {
   const around = supplementary === 'D0a' || supplementary === 'D0c'
   const sits = supplementary === 'D0a' || supplementary === 'D0b'
@@ -212,7 +222,7 @@ const frontAndFinish = (
       { walk: 3.5, caption: 'approach' },
       // The handler stops and the dog goes on round into the front without stopping.
       { dogPath: 'toFront', caption: 'toFront' },
-      { dog: 'sit', caption: 'frontSit' },
+      { dog: posture, caption: posture === 'sit' ? 'frontSit' : 'frontStand' },
       { wait: 1, caption: 'frontHold' },
       ...inFront,
       {
@@ -236,14 +246,27 @@ export const Z014_D0C = frontAndFinish('D0c')
 export const Z014_D0D = frontAndFinish('D0d')
 
 /**
- * One step back, the dog in front following (Z-025, Z-032): "Poté co pes zaujme pozici před
- * psovodem, udělá psovod jeden krok vzad, pes jej následuje" (p. 27, 29) — the right foot
- * back, the left one closing up beside it.
+ * Steps straight back or forward, set by hand, so there are exactly as many as the card says
+ * (Z-025, Z-032, 1-107, 1-108, 2-221, 2-227): "udělá psovod jeden krok vzad, pes jej
+ * následuje" (p. 27, 29). Back the right foot goes first, forward the left; one foot after
+ * the other, and the last step's other foot closes up beside it.
  */
-const STEP_BACK: FootTarget[] = [
-  { foot: 1, x: -0.1, z: -0.48, yaw: 0 },
-  { foot: 0, x: 0.1, z: -0.48, yaw: 0 },
-]
+const stepsAlong = (count: number, direction: 1 | -1): FootTarget[] => {
+  const steps: FootTarget[] = []
+  const first = direction === 1 ? 0 : 1
+  for (let i = 1; i <= count; i++) {
+    const foot = (first + i - 1) % 2
+    steps.push({ foot, x: foot ? -0.1 : 0.1, z: -0.08 + direction * STEP_LENGTH * i, yaw: 0 })
+  }
+  const last = steps.at(-1)!
+  steps.push({ foot: 1 - last.foot, x: last.foot ? 0.1 : -0.1, z: last.z, yaw: 0 })
+  return steps
+}
+export const stepsBack = (count: number) => stepsAlong(count, -1)
+export const stepsForward = (count: number) => stepsAlong(count, 1)
+/** A step, metres. */
+const STEP_LENGTH = 0.4
+const STEP_BACK = stepsBack(1)
 
 /**
  * Z-025 Předsednutí jeden krok zpět (p. 27): "… udělá psovod jeden krok vzad, pes jej
@@ -311,7 +334,7 @@ export const Z017 = changePace('Z-017', 'normal', 'normalPace', 'slow')
 export const Z017_FROM_FAST = changePace('Z-017', 'normal', 'normalPace', 'fast')
 
 /** The card "před prvním kuželem, viditelná ze směru příchodu týmu" (p. 24–28). */
-const cardBeforeCones = (course: Course) => ({ x: course.cones[0]!.x, z: 0.5 })
+export const cardBeforeCones = (course: Course) => ({ x: course.cones[0]!.x, z: 0.5 })
 
 /**
  * Z-018 Spirála doprava, Z-019 Spirála doleva (p. 24): "Tým míjí kartu i kužely po své pravé
@@ -343,13 +366,16 @@ export const Z019 = spiralExercise('Z-019', true)
 /**
  * Z-020 Slalom jednoduchý, Z-021 Slalom tam a zpět (p. 25): four cones; "Tým vstupuje do
  * slalomu vždy zprava (tj. první kužel po své levé straně)"; Z-021 "překoná jej ve směru tam
- * i zpět" — round the last cone and back through.
+ * i zpět" — round the last cone and back through. `bowls` (1-111, 2-220): "Dva kužely a dvě
+ * misky … tak, že misky jsou v řadě umístěny mezi kužely."
  */
-const slalomExercise = (code: string, back: boolean): Exercise => {
+export const slalomExercise = (code: string, back: boolean, bowls = false): Exercise => {
   const course = slalom(back)
+  const [first, second, third, fourth] = course.cones as [Point, Point, Point, Point]
   return {
     code,
-    cones: course.cones,
+    cones: bowls ? [first, fourth] : course.cones,
+    ...(bowls && { bowls: [second, third] }),
     cardAt: cardBeforeCones(course),
     steps: back
       ? [
@@ -373,12 +399,13 @@ export const Z020 = slalomExercise('Z-020', false)
 export const Z021 = slalomExercise('Z-021', true)
 
 /**
- * Z-022 Figura 8 bez rušivého vlivu (p. 25): "Vstup do figury určuje karta, kterou tým vždy
- * míjí po své levé straně (karta vždy vlevo od psa)." The figure itself in `figureEight`.
+ * Z-022 Figura 8 bez rušivého vlivu (p. 25), 1-117 the same with treats and toys in the
+ * bowls: "Vstup do figury určuje karta, kterou tým vždy míjí po své levé straně (karta vždy
+ * vlevo od psa)." The figure itself in `figureEight`.
  */
 const eight = figureEight()
-export const Z022: Exercise = {
-  code: 'Z-022',
+export const eightExercise = (code: string): Exercise => ({
+  code,
   bowls: eight.bowls,
   cardAt: eight.card,
   steps: [
@@ -392,7 +419,8 @@ export const Z022: Exercise = {
     { course: eight, parts: [7, 9], caption: 'eightOut' },
     { walk: 2, caption: 'eightOut' },
   ],
-}
+})
+export const Z022 = eightExercise('Z-022')
 
 /**
  * Z-026 Kruhová spirála – pes vně doprava, Z-027 – pes uvnitř doleva (p. 27): "Tým obejde
@@ -471,7 +499,7 @@ export const Z029 = turnOnTheSpot('Z-029', -225, 'turnLeft225', 'ahead')
  * turned 45°; the right foot round it into the new direction; the left foot closing up
  * beside it. Turning right, the same mirrored.
  */
-const turnSteps = (sign: 1 | -1): FootTarget[] => {
+export const turnSteps = (sign: 1 | -1): FootTarget[] => {
   const [inner, outer] = sign === 1 ? [0, 1] : [1, 0]
   return [
     { foot: inner, x: sign * 0.1, z: 0.05, yaw: (sign * Math.PI) / 4 },
@@ -480,7 +508,7 @@ const turnSteps = (sign: 1 | -1): FootTarget[] => {
   ]
 }
 
-const stopTurnStop = (code: string, sign: 1 | -1, caption: string): Exercise => ({
+export const stopTurnStop = (code: string, sign: 1 | -1, caption: string): Exercise => ({
   code,
   card: 'ahead',
   steps: [
@@ -499,8 +527,8 @@ const stopTurnStop = (code: string, sign: 1 | -1, caption: string): Exercise => 
 export const Z030 = stopTurnStop('Z-030', -1, 'stopTurnRight')
 export const Z031 = stopTurnStop('Z-031', 1, 'stopTurnLeft')
 
-/** The exercises the page can play, in card order (Z-014 once per supplementary card). */
-export const EXERCISES: Exercise[] = [
+/** The RO-Z exercises, in card order (Z-014 once per supplementary card). */
+export const ROZ_EXERCISES: Exercise[] = [
   Z001,
   Z002,
   Z003,

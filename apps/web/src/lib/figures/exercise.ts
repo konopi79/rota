@@ -1,6 +1,6 @@
 import type { DogPosture } from './dog'
 import { HEEL, type HandlerPace } from './handler'
-import { angleTo } from './math'
+import { angleTo, ease } from './math'
 import {
   AROUND_DOG,
   DOG_AROUND_FROM_HEEL,
@@ -12,7 +12,15 @@ import {
 } from './paths'
 import type { Course } from './courses'
 import type { FootTarget } from './locomotion'
-import { SETTLE_RATE, TeamAnimator, onField, type TeamControls, type TeamFrame } from './team'
+import {
+  FIRM_STOP,
+  PLACES,
+  SETTLE_RATE,
+  TeamAnimator,
+  onField,
+  type TeamControls,
+  type TeamFrame,
+} from './team'
 
 /**
  * One exercise as a short script for the team. The captions are i18n keys under
@@ -72,10 +80,19 @@ const DOG_MAX_SPIN = 3.5
 const DOG_BRAKING = 3
 /** How far the dog's paws are from its middle, metres: turning, they go round that far out. */
 const PAW_SWING_ARM = 0.23
+/** Steps set by hand: about how long each takes, a moment down included, seconds. */
+const STEP_TIME = 0.7
 /** From the heels to the point the body stands over, metres (the handler's feet). */
 const HEEL_TO_BODY = -HEEL[1]
 /** Steps set by hand: each foot is down this long before the next one lifts, seconds. */
 const FOOTWORK_DWELL = 0.12
+
+/** A dog sitting or lying in front gets up once the handler has stepped back this far, metres. */
+const GETS_UP_AFTER = 0.08
+/** Following a step back, the dog keeps off the forward foot by this much more than its lead. */
+const THIGH_LEAD = 1.3
+/** How fast a dog in front follows the handler's feet (each of two easings), 1/s. */
+const FRONT_FOLLOWS = 5
 /** How quickly the dog takes over the pace the slowing team no longer carries it at, 1/s. */
 const DOG_TAKES_OVER = 20
 /** The dog's path waits for its body once that is this far behind, metres. */
@@ -140,6 +157,8 @@ const END_PAUSE = 1.2
 const MAX_SPIN = Math.PI / 2
 /** The dog's body stops as its planted paws reach this strain (`PawStepper.strain`). */
 const DOG_STRAIN_LIMIT = 1.15
+/** A turn in an arc reaches its full bend over this much of it, radians. */
+const TURN_IN = 0.35
 /** A turn on the spot advances like walking an arc of this radius, metres. */
 const PIVOT_RADIUS = 0.25
 
@@ -170,6 +189,23 @@ const rotateAbout = (p: Pose, cx: number, cz: number, angle: number): Pose => {
  * Where a body stands over its feet: between the heels, a heel's length ahead of them, facing
  * the way the feet point between them.
  */
+/** How far the handler's forward foot is ahead of the body, metres. */
+const footAhead = (feet: readonly { x: number; z: number }[], body: Pose) =>
+  Math.max(
+    ...feet.map(
+      (f) => (f.x - body.x) * Math.sin(body.heading) + (f.z - body.z) * Math.cos(body.heading),
+    ),
+  )
+
+/** A field place in the frame of a team at `team` (the inverse of `onField`). */
+const inTeam = (team: Pose, p: Pose): Pose => {
+  const dx = p.x - team.x
+  const dz = p.z - team.z
+  const c = Math.cos(team.heading)
+  const s = Math.sin(team.heading)
+  return { x: c * dx - s * dz, z: s * dx + c * dz, heading: p.heading - team.heading }
+}
+
 const bodyOver = (feet: readonly { x: number; z: number; yaw: number }[]): Pose => {
   const [a, b] = feet as [
     { x: number; z: number; yaw: number },
@@ -182,6 +218,14 @@ const bodyOver = (feet: readonly { x: number; z: number; yaw: number }[]): Pose 
     heading,
   }
 }
+
+/** A path point moved by `shift`, the less the further along the path (`s` metres). */
+const shifted = (p: Pose, shift: { x: number; z: number }, s: number): Pose => {
+  const left = Math.max(0, 1 - s / SHIFT_FADES)
+  return { ...p, x: p.x + shift.x * left, z: p.z + shift.z * left }
+}
+/** Over this much of its path, metres, a dog's path shifted to where it really is fades. */
+const SHIFT_FADES = 0.8
 
 /** `p` moved `d` metres straight ahead. */
 const forward = (p: Pose, d: number): Pose => ({
@@ -281,6 +325,20 @@ export class ExercisePlayer {
   private footworkIndex = 0
   private footworkDwell = 0
   private footworkOffset: Pose = { x: 0, z: 0, heading: 0 }
+  /** Steps set by hand: the body glides from here to there over this long. */
+  private footworkFrom: Pose = { x: 0, z: 0, heading: 0 }
+  private footworkTo: Pose = { x: 0, z: 0, heading: 0 }
+  private footworkTime = 0
+  private footworkDuration = 1
+  /** A dog in front following the feet: how far forward the forward foot stood at first, and
+   *  where on the field the dog is headed (eased) and is (eased again). */
+  private footRest = 0
+  private frontAim = { x: 0, z: 0 }
+  private frontDog = { x: 0, z: 0 }
+  /** Where the dog's body is in the team's frame, before it lies down over its forelegs. */
+  private dogAt: Pose = { x: 0, z: 0, heading: 0 }
+  /** How far in front of the handler the dog stood as the steps began, metres. */
+  private frontStart = 0
   /** A course: where the team stood as it began, how far along it the team has come. */
   private courseBase: Pose = { x: 0, z: 0, heading: 0 }
   private courseWalked = 0
@@ -289,6 +347,7 @@ export class ExercisePlayer {
   /** Metres the dog has gone along its current path, and how fast it goes. */
   private dogWalked = 0
   private dogPathSpeed = 0
+  private dogPathShift = { x: 0, z: 0 }
   private dogBody = new Follower()
 
   constructor(private readonly exercise: Exercise) {}
@@ -353,7 +412,14 @@ export class ExercisePlayer {
       done = !walking && speed < 0.01 && (this.last?.feet.handlerStill ?? true)
     } else if (current && 'dogPath' in current) {
       const { path, ends } = DOG_PATHS[current.dogPath]
-      if (starting) this.dogWalked = 0
+      if (starting) {
+        this.dogWalked = 0
+        // The path starts where the dog usually is; from wherever it really is, the difference
+        // fades out over the first stretch of the way.
+        const from = path.at(0)
+        const at = this.last ? this.dogAt : from
+        this.dogPathShift = { x: at.x - from.x, z: at.z - from.z }
+      }
       const left = path.length - this.dogWalked
       // The dog gets up first (from a sit in front), then trots off, slows into tight bends
       // and comes to a stand at the end.
@@ -387,7 +453,9 @@ export class ExercisePlayer {
         place: this.dogPlace,
         handler: 'stand',
         // Getting up it keeps to where it sat, facing the same way.
-        dogAt: onLegs ? path.at(this.dogWalked) : undefined,
+        dogAt: onLegs
+          ? shifted(path.at(this.dogWalked), this.dogPathShift, this.dogWalked)
+          : undefined,
       }
       done = this.dogWalked >= path.length && this.dogBody.lag < DOG_ARRIVED
       if (done) {
@@ -403,6 +471,11 @@ export class ExercisePlayer {
         // Where the body stands off the point between its feet (they stand a little apart
         // from exactly side by side): kept as it is, so the body never jumps.
         const over = feet ? bodyOver(feet) : this.team
+        this.footRest = feet ? footAhead(feet, this.team) : 0
+        const dog = onField(this.team, this.dogAt)
+        this.frontAim = { x: dog.x, z: dog.z }
+        this.frontDog = { x: dog.x, z: dog.z }
+        this.frontStart = this.dogAt.z
         const c = Math.cos(over.heading)
         const s = Math.sin(over.heading)
         const dx = this.team.x - over.x
@@ -413,16 +486,85 @@ export class ExercisePlayer {
           heading: angleTo(over.heading, this.team.heading),
         }
       }
-      // The body is where its feet have taken it.
-      if (feet) this.team = onField(bodyOver(feet), this.footworkOffset)
-      this.posture = 'stand'
+      // The body moves from where it stood to where the feet will have taken it, setting off
+      // and slowing down smoothly while the feet step under it, not jumping with each footfall.
+      if (starting) {
+        this.footworkFrom = { ...this.team }
+        const end = [0, 1].map((foot) => {
+          const last = current.footwork.findLast((t) => t.foot === foot)
+          const now = feet?.[foot]
+          if (!last) return now ?? { x: 0, z: 0, yaw: this.team.heading }
+          const at = onField(this.footworkBase, { x: last.x, z: last.z, heading: last.yaw })
+          return { x: at.x, z: at.z, yaw: at.heading }
+        })
+        this.footworkTo = onField(bodyOver(end), this.footworkOffset)
+        // Walking on from feet still apart, the team goes the way the leading foot points —
+        // the full turn — not between that and the foot left behind.
+        const then = steps[this.index + 1]
+        if (then !== undefined && 'walk' in then)
+          this.footworkTo.heading = this.footworkBase.heading + current.footwork.at(-1)!.yaw
+        this.footworkTo.heading =
+          this.footworkFrom.heading + angleTo(this.footworkFrom.heading, this.footworkTo.heading)
+        this.footworkTime = 0
+        this.footworkDuration = current.footwork.length * STEP_TIME
+      }
+      this.footworkTime += dt
+      const time = Math.min(1, this.footworkTime / this.footworkDuration)
+      const glide = ease(time)
+      // Walking on straight after the steps, the body does not slow down at their end: it
+      // sets off smoothly and is already on its way when the walk takes over.
+      const next = steps[this.index + 1]
+      const walksOn = next !== undefined && 'walk' in next
+      const travel = walksOn ? time * time : glide
+      // Turning, the whole body glides — the dog at heel swings round in one smooth go.
+      // Stepping straight on or back, it stays over its feet: a body behind a foot stepping
+      // ahead would sag over the step.
+      const turning = Math.abs(this.footworkTo.heading - this.footworkFrom.heading) > 0.2
+      const over = feet && !turning ? onField(bodyOver(feet), this.footworkOffset) : null
+      this.team = {
+        x: over?.x ?? this.footworkFrom.x + (this.footworkTo.x - this.footworkFrom.x) * travel,
+        z: over?.z ?? this.footworkFrom.z + (this.footworkTo.z - this.footworkFrom.z) * travel,
+        heading:
+          this.footworkFrom.heading + (this.footworkTo.heading - this.footworkFrom.heading) * glide,
+      }
+      const moved = Math.hypot(this.team.x - this.footworkFrom.x, this.team.z - this.footworkFrom.z)
+      // A dog sitting or lying in front gets up once the handler has moved off — not while
+      // the knee of the leg stepping back still comes forward towards its head.
+      if (this.dogPlace !== 'front' || this.posture === 'stand' || moved >= GETS_UP_AFTER)
+        this.posture = 'stand'
       const target = current.footwork[Math.min(this.footworkIndex, current.footwork.length - 1)]!
       const at = onField(this.footworkBase, { x: target.x, z: target.z, heading: target.yaw })
       controls = {
-        dog: dogGait(this.pace),
+        dog: this.posture === 'stand' ? dogGait(this.pace) : this.posture,
         place: this.dogPlace,
         handler: 'stand',
         footstep: { foot: target.foot, x: at.x, z: at.z, yaw: at.heading },
+      }
+      // A dog in front keeps its distance from the handler's forward foot, not from the body
+      // between the feet: following the handler back, it goes where that foot goes, smoothly
+      // (two easings in a row, so its pace changes without a jolt) and on the field — a dog
+      // lagging behind stays further off, never closer.
+      let followed = true
+      if (this.dogPlace === 'front' && feet) {
+        // It never backs away: it stays where it is until the handler has moved off, then
+        // follows.
+        const place = PLACES[this.dogPlace]
+        const ahead = Math.max(0, footAhead(feet, this.team) - this.footRest)
+        // A little more than the forward foot's lead: that leg's thigh reaches forward too, and
+        // the dog's head is at its height.
+        const off = Math.min(place.z + ahead * THIGH_LEAD, this.frontStart + moved)
+        const aim = onField(this.team, { ...place, z: off })
+        const k = 1 - Math.exp(-FRONT_FOLLOWS * dt)
+        this.frontAim = {
+          x: this.frontAim.x + (aim.x - this.frontAim.x) * k,
+          z: this.frontAim.z + (aim.z - this.frontAim.z) * k,
+        }
+        this.frontDog = {
+          x: this.frontDog.x + (this.frontAim.x - this.frontDog.x) * k,
+          z: this.frontDog.z + (this.frontAim.z - this.frontDog.z) * k,
+        }
+        controls.dogAt = inTeam(this.team, { ...this.frontDog, heading: aim.heading })
+        followed = Math.hypot(aim.x - this.frontDog.x, aim.z - this.frontDog.z) < 0.005
       }
       // On to the next step once this one has landed there and taken the weight.
       const foot = this.last?.feet.handler[target.foot]
@@ -433,7 +575,18 @@ export class ExercisePlayer {
         this.footworkIndex++
         this.footworkDwell = 0
       }
-      done = this.footworkIndex >= current.footwork.length
+      // Done once the last step has landed and a dog following in front has caught up.
+      done = this.footworkIndex >= current.footwork.length && followed
+      if (done && walksOn && turning) {
+        // On at the speed the body has, the way the turn ends (the last steps may land a
+        // moment before the turn's last fraction of a degree).
+        const way = Math.hypot(
+          this.footworkTo.x - this.footworkFrom.x,
+          this.footworkTo.z - this.footworkFrom.z,
+        )
+        this.animator.carryOn((2 * time * way) / this.footworkDuration)
+        this.team = { ...this.team, heading: this.footworkTo.heading }
+      }
     } else if (current && 'course' in current) {
       const { path } = current.course
       if (starting && current.parts[0] === 0) {
@@ -481,6 +634,13 @@ export class ExercisePlayer {
 
     const advanced = this.animator.advance(dt, controls)
     const moved = advanced.travelled - travelled
+    // The team coming to a stop: where the dog will stand, so its last steps land there.
+    if (controls.handler === 'stand' && !controls.stay && !controls.dogAt && advanced.speed > 0)
+      // Easing out at SETTLE_RATE down to the firm stop (`team.ts`).
+      controls.dogRest = onField(
+        forward(this.team, Math.max(0, advanced.speed - FIRM_STOP) / SETTLE_RATE),
+        advanced.place,
+      )
     const frameWalked = advanced.walked
 
     if (current && 'turn' in current) {
@@ -493,7 +653,11 @@ export class ExercisePlayer {
         this.turnLeft -= angle
         this.team = forward(this.team, moved)
       } else {
-        const arc = Math.min(moved, this.turnLeft * current.radius)
+        // Into the bend gradually: over the first part of the turn only some of the way
+        // goes round, the rest straight on, so the turning picks up smoothly.
+        const total = (Math.abs(current.turn) * Math.PI) / 180
+        const into = Math.min(1, 0.25 + (total - this.turnLeft) / TURN_IN)
+        const arc = Math.min(moved * into, this.turnLeft * current.radius)
         // The centre of the arc is to the side the team turns: left = +x of its frame.
         const side = sign * current.radius
         const cx = this.team.x + side * Math.cos(this.team.heading)
@@ -532,18 +696,17 @@ export class ExercisePlayer {
     // …and no faster than its legs carry it: with a paw at the edge of its reach, the body
     // waits for that paw to step.
     const hold = Math.max(0.1, Math.min(1, (DOG_STRAIN_LIMIT - this.animator.dogStrain) / 0.25))
-    const dog = this.dogBody.follow(onField(this.team, advanced.place), dt, hold)
-    const frame = this.animator.pose(dt, controls, onField(this.team, this.offset), dog)
-    const c = Math.cos(this.team.heading)
-    const s = Math.sin(this.team.heading)
-    const dx = dog.x - this.team.x
-    const dz = dog.z - this.team.z
-    frame.dog = {
-      ...frame.dog,
-      x: c * dx - s * dz,
-      z: s * dx + c * dz,
-      heading: dog.heading - this.team.heading,
+    const body = this.dogBody.follow(onField(this.team, advanced.place), dt, hold)
+    this.dogAt = inTeam(this.team, body)
+    // Lying down in front, the body goes back over the forelegs (`TeamAnimator.dogFold`).
+    const fold = this.animator.dogFold
+    const dog = {
+      ...body,
+      x: body.x - fold * Math.sin(body.heading),
+      z: body.z - fold * Math.cos(body.heading),
     }
+    const frame = this.animator.pose(dt, controls, onField(this.team, this.offset), dog)
+    frame.dog = { ...frame.dog, ...inTeam(this.team, dog) }
     this.last = frame
 
     if (done) {

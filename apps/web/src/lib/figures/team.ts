@@ -1,4 +1,5 @@
 import {
+  DOG,
   DOG_FEET,
   DOG_POSTURES,
   dogLegs,
@@ -19,9 +20,17 @@ import {
   handlerStep,
   type HandlerPace,
 } from './handler'
-import { BipedStepper, PawStepper, type Body, type FootState, type FootTarget } from './locomotion'
-import { angleTo } from './math'
-import { blendPoses, lowestPoint, type Pose } from './rig'
+import {
+  BipedStepper,
+  PawStepper,
+  type Body,
+  type Clearance,
+  type FootState,
+  type FootTarget,
+} from './locomotion'
+import { angleTo, apply } from './math'
+import { FRONT } from './paths'
+import { blendPoses, jointFrames, lowestPoint, type Pose } from './rig'
 
 /** What the two figures are asked to do. */
 export type TeamControls = {
@@ -38,6 +47,8 @@ export type TeamControls = {
   maxSpeed?: number
   /** A step the handler takes as set by hand (field coordinates). */
   footstep?: FootTarget
+  /** Where the dog will come to a stand, the team stopping (field coordinates). */
+  dogRest?: Body
   /** The dog on a path of its own: its place right now (instead of `place`). */
   dogAt?: { x: number; z: number; heading: number }
 }
@@ -76,10 +87,10 @@ export type TeamFrame = {
  * handler's left). At heel the dog's shoulder blade is level with the handler's leg
  * ("lopatka psa je na úrovni nohy psovoda", regulation, appendix 1, p. 18).
  */
-const PLACES: Record<TeamControls['place'], { x: number; z: number; heading: number }> = {
+export const PLACES: Record<TeamControls['place'], { x: number; z: number; heading: number }> = {
   left: { x: 0.42, z: -0.2, heading: 0 },
   right: { x: -0.42, z: -0.2, heading: 0 },
-  front: { x: 0, z: 0.6, heading: Math.PI },
+  front: { x: 0, z: FRONT, heading: Math.PI },
 }
 
 /** The fastest a foot tips heel-to-toe, radians per second (about a walking push-off). */
@@ -99,11 +110,89 @@ const UPPER_BODY_RATE = 5
 /** How fast the team picks up speed: the gap shrinks by e every 1/RATE seconds. */
 const SET_OFF_RATE = 2.5
 
+/** Stopping, below this speed (m/s) the team stands at once: one firm last step. */
+export const FIRM_STOP = 0.08
+
 /** How fast a change settles: the gap shrinks by e every 1/RATE seconds. */
 export const SETTLE_RATE = 5
 
 /** How fast the dog gets up from a sit or down: the gap shrinks by e every 1/RATE s. */
 const RISE_RATE = 9
+
+/** The dog's parts lower than this (metres) are in the way of the handler's feet. */
+const UNDERFOOT = 0.35
+
+type Point = { x: number; z: number }
+
+/** The convex hull of points on the ground, counter-clockwise. */
+const hull = (points: Point[]): Point[] => {
+  const p = [...points].sort((a, b) => a.x - b.x || a.z - b.z)
+  const cross = (o: Point, a: Point, b: Point) =>
+    (a.x - o.x) * (b.z - o.z) - (a.z - o.z) * (b.x - o.x)
+  const half = (list: Point[]) => {
+    const out: Point[] = []
+    for (const q of list) {
+      while (out.length >= 2 && cross(out.at(-2)!, out.at(-1)!, q) <= 0) out.pop()
+      out.push(q)
+    }
+    return out.slice(0, -1)
+  }
+  return [...half(p), ...half([...p].reverse())]
+}
+
+/** How far `q` is from the convex polygon `poly` (0 inside). */
+const distanceTo = (q: Point, poly: Point[]) => {
+  let inside = true
+  let nearest = Infinity
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i]!
+    const b = poly[(i + 1) % poly.length]!
+    const ex = b.x - a.x
+    const ez = b.z - a.z
+    if (ex * (q.z - a.z) - ez * (q.x - a.x) < 0) inside = false
+    const t = Math.max(
+      0,
+      Math.min(1, ((q.x - a.x) * ex + (q.z - a.z) * ez) / (ex * ex + ez * ez || 1)),
+    )
+    nearest = Math.min(nearest, Math.hypot(q.x - a.x - t * ex, q.z - a.z - t * ez))
+  }
+  return inside ? 0 : nearest
+}
+
+/**
+ * The ground under the dog's low parts — legs, paws, a sitting or lying body, a tail on the
+ * ground — as the distance of a point from it: what the handler's feet keep clear of.
+ */
+const footprint = (pose: Pose, body: Body): Clearance => {
+  const up = -lowestPoint(DOG, pose)
+  const c = Math.cos(body.heading)
+  const s = Math.sin(body.heading)
+  const shapes: Point[][] = []
+  for (const { joint, position, rotation } of jointFrames(DOG, pose).values())
+    for (const box of joint.boxes) {
+      const [w, h, d] = box.size
+      const corners: Point[] = []
+      let lowest = Infinity
+      for (const x of [-w / 2, w / 2])
+        for (const y of [-h / 2, h / 2])
+          for (const z of [-d / 2, d / 2]) {
+            const p = apply(rotation, [box.at[0] + x, box.at[1] + y, box.at[2] + z])
+            lowest = Math.min(lowest, position[1] + p[1] + up)
+            const lx = position[0] + p[0]
+            const lz = position[2] + p[2]
+            corners.push({ x: body.x + c * lx + s * lz, z: body.z - s * lx + c * lz })
+          }
+      if (lowest < UNDERFOOT) shapes.push(hull(corners))
+    }
+  return (q) => Math.min(...shapes.map((shape) => distanceTo(q, shape)))
+}
+
+/** How far ahead of the dog's body its front paws are in a posture, metres. */
+const forepawReach = (pose: Pose) => {
+  const frames = jointFrames(DOG, pose)
+  return (frames.get('leftFrontPaw')!.position[2] + frames.get('rightFrontPaw')!.position[2]) / 2
+}
+const STANDING_REACH = forepawReach(DOG_POSTURES.stand)
 
 const approach = (from: number, to: number, dt: number) =>
   from + (to - from) * (1 - Math.exp(-SETTLE_RATE * dt))
@@ -143,10 +232,28 @@ export class TeamAnimator {
   /** The handler's pelvis height last frame. */
   private pelvis = Infinity
   private dogFeet: PawStepper | null = null
+  /** How far a point on the ground is from the dog, as it was last frame. */
+  private dogClearance: Clearance | undefined
+
+  /**
+   * How far a dog lying down in front has moved its body back over its forelegs, metres. It
+   * lies down the way a dog taught to keep its front paws in place does: the paws stay, the
+   * shoulders turn over them and the body goes down behind — so it can follow the handler
+   * closely and still has room to lie down.
+   */
+  get dogFold() {
+    return this.fold
+  }
+  private fold = 0
 
   /** How near the dog's planted paws are to the edge of their reach (`PawStepper.strain`). */
   get dogStrain() {
     return this.dogStanding < 0.98 ? 0 : (this.dogFeet?.strain ?? 0)
+  }
+
+  /** Walking on from steps set by hand at the speed the body already had, m/s. */
+  carryOn(speed: number) {
+    this.speed = speed
   }
 
   /** Speeds up or slows down; how far the team and the handler have gone; the dog's place. */
@@ -162,7 +269,7 @@ export class TeamAnimator {
         ? this.speed + (wanted - this.speed) * (1 - Math.exp(-SET_OFF_RATE * dt))
         : approach(this.speed, wanted, dt)
     // Stopping, the last few centimetres are one firm stop, not a long creep.
-    if (!walking && !controls.stay && this.speed < 0.08) this.speed = 0
+    if (!walking && !controls.stay && this.speed < FIRM_STOP) this.speed = 0
     this.walked += this.speed * dt
     if (!controls.stay) this.travelled += this.speed * dt
     const target = controls.dogAt ?? PLACES[controls.place]
@@ -196,7 +303,14 @@ export class TeamAnimator {
     // Too fast to walk — slowing down from a run to a walk — the handler runs on until the
     // speed allows walking steps.
     const gait = this.speed > FASTEST_WALK ? 'fast' : handlerPace
-    const feet = this.handlerFeet.update(dt, handler, handlerStep(gait), rest, controls.footstep)
+    const feet = this.handlerFeet.update(
+      dt,
+      handler,
+      handlerStep(gait),
+      rest,
+      controls.footstep,
+      this.dogClearance,
+    )
     // How the pace looks changes over about a second, with the speed.
     this.style = blendPaceStyle(
       this.style,
@@ -239,6 +353,8 @@ export class TeamAnimator {
     // A dog springs up quicker than it settles down.
     const rate = posture === 'stand' ? RISE_RATE : SETTLE_RATE
     this.dogPosture = blendPoses(this.dogPosture, DOG_POSTURES[posture], 1 - Math.exp(-rate * dt))
+    this.fold =
+      controls.place === 'front' ? Math.max(0, forepawReach(this.dogPosture) - STANDING_REACH) : 0
     const standing = posture === 'stand' ? 1 : 0
     this.dogStanding += (standing - this.dogStanding) * (1 - Math.exp(-rate * dt))
     this.dogFeet ??= new PawStepper(DOG_FEET[this.dogGait], dog)
@@ -247,7 +363,9 @@ export class TeamAnimator {
     let dogPose = this.dogPosture
     if (!sitting || this.dogStanding > 0.02) {
       // On its legs (or still settling out of them): paws planted, legs solved to them.
-      const paws = sitting ? this.dogFeet.feet : this.dogFeet.update(dt, dog, dogStep(this.dogGait))
+      const paws = sitting
+        ? this.dogFeet.feet
+        : this.dogFeet.update(dt, dog, dogStep(this.dogGait), controls.dogRest)
       const tail = -0.15 * Math.sin(4 * Math.PI * this.dogFeet.cycle) * motion
       const carried: Pose = {
         ...DOG_POSTURES.stand,
@@ -260,6 +378,9 @@ export class TeamAnimator {
     // Sitting or lying: the paws are where the posture puts them, ready to carry the dog
     // from there when it gets up.
     if (sitting && this.dogStanding <= 0.02) this.dogFeet.plant(dogPawsOnGround(dogPose, dog), dog)
+
+    // Where the dog is on the ground, for the handler's feet to keep clear of next frame.
+    this.dogClearance = footprint(dogPose, dog)
 
     return {
       dog: { pose: dogPose, ...this.place },

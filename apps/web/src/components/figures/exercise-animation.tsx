@@ -14,7 +14,7 @@ import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { DOG } from '@/lib/figures/dog'
 import { ExercisePlayer, cardPlace, stationOf, type Exercise } from '@/lib/figures/exercise'
-import { EXERCISES } from '@/lib/figures/roz-exercises'
+import { EXERCISES } from '@/lib/figures/exercises'
 import { HANDLER } from '@/lib/figures/handler'
 import { cn } from '@/lib/utils'
 
@@ -158,6 +158,11 @@ type Focus = { x: number; z: number }
 const SUPPLEMENTARY_GAP = 0.55
 /** The cards the page can play, once each (Z-014 has a variant per supplementary card). */
 const CODES = [...new Set(EXERCISES.map((e) => e.code))]
+/** The card series, by the code's prefix — the class whose cards they are new in. */
+const SERIES = ['Z', '1', '2', '3'] as const
+type Series = (typeof SERIES)[number]
+const SERIES_CLASS: Record<Series, string> = { Z: 'RO-Z', 1: 'RO1', 2: 'RO2', 3: 'RO3' }
+const seriesOf = (code: string) => code.split('-')[0] as Series
 /** Which variant of a card an exercise plays: its supplementary card or the pace before. */
 const variantOf = (e: Exercise) => e.supplementary ?? e.fromPace
 
@@ -468,14 +473,27 @@ function Choice<T extends string>({
 
 /** All the animations on one page: pick a card, watch the box-figure team perform it. */
 export function ExerciseAnimation() {
+  const { t } = useTranslation()
+  const [series, setSeries] = useState<Series>('Z')
   const [code, setCode] = useState(CODES[0]!)
+  const codes = CODES.filter((c) => seriesOf(c) === series)
   return (
     <div className="flex flex-1 flex-col">
-      <div className="mx-auto w-full max-w-md px-4 pb-3">
+      <div className="mx-auto grid w-full max-w-md gap-3 px-4 pb-3">
+        <Choice
+          group="series"
+          value={series}
+          options={SERIES}
+          onChange={(s) => {
+            setSeries(s)
+            setCode(CODES.find((c) => seriesOf(c) === s)!)
+          }}
+          label={(s) => t(`classes.${SERIES_CLASS[s]}`)}
+        />
         <Choice
           group="exercise"
           value={code}
-          options={CODES}
+          options={codes}
           onChange={setCode}
           label={(o) => `${o} ${cardName(o)}`}
         />

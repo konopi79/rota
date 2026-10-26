@@ -84,6 +84,8 @@ const SETTLED_DISTANCE = 0.06
 const SETTLED_YAW = 0.15
 /** A swinging foot expects the body to keep turning this long at most, seconds. */
 const MAX_TURN_LOOKAHEAD = 0.5
+/** A foot turned in more than this (radians) turns out early in its step. */
+const TURNED_IN = 0.3
 /** A swinging foot's aim closes on a changed target at this rate, per second. */
 const AIM_RATE = 10
 /** By default a leg reaches sideways this share of its reach ahead or back. */
@@ -93,6 +95,9 @@ const REACH_ASIDE = 0.6
 const clamp = (x: number, limit: number) => Math.max(-limit, Math.min(limit, x))
 
 type Aim = { x: number; z: number; yaw: number }
+
+/** How far a point on the ground is from what the feet keep clear of (≤ 0 on it), metres. */
+export type Clearance = (p: { x: number; z: number }) => number
 /** A step set by hand: this foot (0 left, 1 right) to there, pointing that way. */
 export type FootTarget = { foot: number; x: number; z: number; yaw: number }
 
@@ -109,6 +114,20 @@ type Swing = {
   /** How high and how (a runner's heel kick) the step lifts the foot — set as it lifts. */
   clearance?: number
   kick?: boolean
+  /** How far it lands and swings off its way to keep clear of the dog (eased, never jumping). */
+  dodgeLanding?: { x: number; z: number }
+  dodgeInAir?: { x: number; z: number }
+}
+
+/** A dodge moves at most this fast, m/s — a foot's own pace, so it never jumps. */
+const DODGE_RATE = 1.5
+
+/** `from` moved towards `to` by at most `step` metres. */
+const towards = (from: { x: number; z: number }, to: { x: number; z: number }, step: number) => {
+  const dx = to.x - from.x
+  const dz = to.z - from.z
+  const d = Math.hypot(dx, dz)
+  return d <= step ? { ...to } : { x: from.x + (dx / d) * step, z: from.z + (dz / d) * step }
 }
 
 /** One step through the air: from where the foot lifted towards its (eased) aim. */
@@ -118,6 +137,7 @@ const swingStep = (
   dt: number,
   clearance: number,
   kick = false,
+  side = 0,
 ): FootState => {
   const follow = Math.min(1, AIM_RATE * dt)
   const aim: Aim = swing.aim
@@ -130,11 +150,15 @@ const swingStep = (
   swing.aim = aim
   const progress = Math.min(1, swing.time / swing.duration)
   const k = ease(progress)
+  const turn = angleTo(swing.from.yaw, aim.yaw)
+  const turnsOut = side !== 0 && Math.sign(turn) === side && Math.abs(turn) > TURNED_IN
   const step = Math.hypot(aim.x - swing.from.x, aim.z - swing.from.z)
   return {
     x: swing.from.x + (aim.x - swing.from.x) * k,
     z: swing.from.z + (aim.z - swing.from.z) * k,
-    yaw: swing.from.yaw + angleTo(swing.from.yaw, aim.yaw) * k,
+    // A foot that was turned in towards the other one turns out early in the step, so its
+    // knee does not swing across the other leg; otherwise it turns along with the step.
+    yaw: swing.from.yaw + turn * (turnsOut ? ease(Math.min(1, 2 * progress)) : k),
     // Short steps (closing up, shuffling round) lift less than full ones.
     // A runner kicks the heel up behind: the foot is highest before halfway through.
     lift:
@@ -175,6 +199,8 @@ const WALKING = 0.3
 const RUNNING = 1.3
 /** Running, a foot pushes off once the other one is this far through its step. */
 const RUN_PUSH_OFF = 0.5
+/** A planted foot this far out to the side of its place steps back under the body, metres. */
+const ACROSS_TRIGGER = 0.08
 /** A planted foot lets the body turn this far past it before it steps round (share of pivot). */
 const TURN_TRIGGER = 0.85
 /** Setting off with the feet side by side, the foot behind by this much leads (else the right). */
@@ -187,7 +213,45 @@ const FEET_APART = 0.14
 /** Points along a shoe from the heel, metres, and how far apart two shoes keep across. */
 const SHOE = [0.02, 0.14, 0.26]
 const SHOES_APART = 0.12
+/** Half a shoe's width, metres. */
+const SHOE_HALF_WIDTH = 0.055
+/** How far a shoe keeps from the dog, metres; nearer, a planted foot steps away. */
+const KEEP_CLEAR = 0.06
 
+/** How far `foot`'s shoe is from what it keeps clear of. */
+const shoeClear = (foot: Aim, clear: Clearance) =>
+  Math.min(
+    ...SHOE.map((d) =>
+      clear({ x: foot.x + d * Math.sin(foot.yaw), z: foot.z + d * Math.cos(foot.yaw) }),
+    ),
+  ) - SHOE_HALF_WIDTH
+
+/**
+ * The smallest shift (across and along a body facing `heading`) that takes `foot` clear of
+ * `clear` without bringing it closer to the `other` foot than the feet keep apart; none if
+ * it is clear already (or no shift does it).
+ */
+const clearShift = (foot: Aim, other: Aim, heading: number, side: number, clear: Clearance) => {
+  if (shoeClear(foot, clear) >= KEEP_CLEAR) return { x: 0, z: 0 }
+  const c = Math.cos(heading)
+  const s = Math.sin(heading)
+  let best = { x: 0, z: 0 }
+  let bestCost = Infinity
+  for (let a = -10; a <= 10; a++)
+    for (let b = -10; b <= 10; b++) {
+      const across = a * 0.02
+      const along = b * 0.02
+      const cost = Math.hypot(across, along)
+      if (cost >= bestCost) continue
+      const shift = { x: across * c + along * s, z: -across * s + along * c }
+      const moved = { ...foot, x: foot.x + shift.x, z: foot.z + shift.z }
+      if (shoeClear(moved, clear) < KEEP_CLEAR) continue
+      if (shortOfApart(moved, other, heading, side, false) > 0) continue
+      best = shift
+      bestCost = cost
+    }
+  return best
+}
 /** 1 while `along` is within `near`, fading out over `fade` beyond it. */
 const within = (along: number, near: number, fade: number) =>
   Math.max(0, Math.min(1, (near + fade - Math.abs(along)) / fade))
@@ -284,7 +348,15 @@ export class BipedStepper {
    * `script`: a step set by hand — that foot steps exactly there once both feet have been
    * down a moment; the stepper takes no steps of its own meanwhile.
    */
-  update(dt: number, body: Body, gait: StepGait, rest?: Body, script?: FootTarget): FootState[] {
+  /** `avoid`: what the feet keep clear of — the dog. */
+  update(
+    dt: number,
+    body: Body,
+    gait: StepGait,
+    rest?: Body,
+    script?: FootTarget,
+    avoid?: Clearance,
+  ): FootState[] {
     const prev = this.last
     this.last = { ...body }
     const { vx, vz, spin, speed, still } = motionOf(prev, body, dt)
@@ -357,12 +429,21 @@ export class BipedStepper {
           strain = o.off > SETTLED_DISTANCE || o.turned > SETTLED_YAW ? 1 + o.off : 0
         } else {
           const behind = Math.max(0, -o.along) / reach
-          strain = Math.max(behind, o.turned / (pivot * TURN_TRIGGER), Math.abs(o.across) / 0.12)
+          strain = Math.max(
+            behind,
+            o.turned / (pivot * TURN_TRIGGER),
+            Math.abs(o.across) / ACROSS_TRIGGER,
+          )
           // Walking on, the feet keep their rhythm: the foot behind steps as soon as the one
           // ahead has landed and taken the weight.
           const otherAlong = offsets[1 - i]!.along
           if (!running && forward > WALKING && o.along < otherAlong - 0.05)
             strain = Math.max(strain, 1)
+          // A planted foot the dog comes too near (turning towards it) steps away.
+          if (avoid) {
+            const k = shoeClear(this.state[i]!, avoid)
+            if (k < KEEP_CLEAR) strain = Math.max(strain, 1 + KEEP_CLEAR - k)
+          }
         }
         return strain
       })
@@ -455,10 +536,29 @@ export class BipedStepper {
           wanted.yaw,
           side * shortOfApart(wanted, other, wanted.yaw, side, false),
         )
-      let next = swingStep(swing, wanted, dt, gait.clearance, running)
+      // …and clear of the dog, landing and on the way.
+      if (avoid && !swing.fixed) {
+        const shift = clearShift(wanted, other, wanted.yaw, side, avoid)
+        swing.dodgeLanding = towards(swing.dodgeLanding ?? shift, shift, DODGE_RATE * dt)
+        wanted = {
+          ...wanted,
+          x: wanted.x + swing.dodgeLanding.x,
+          z: wanted.z + swing.dodgeLanding.z,
+        }
+      }
+      let next = swingStep(swing, wanted, dt, gait.clearance, running, side)
       const inAir = Math.sin(Math.PI * (next.swing ?? 0))
       const clear = shortOfApart(next, other, body.heading, side, true)
       next = movedAcross(next, body.heading, side * clear * inAir)
+      if (avoid && !swing.fixed) {
+        const shift = clearShift(next, other, body.heading, side, avoid)
+        swing.dodgeInAir = towards(swing.dodgeInAir ?? { x: 0, z: 0 }, shift, DODGE_RATE * dt)
+        next = {
+          ...next,
+          x: next.x + swing.dodgeInAir.x * inAir,
+          z: next.z + swing.dodgeInAir.z * inAir,
+        }
+      }
       if (swing.time >= swing.duration) {
         this.swings[i] = null
         this.down[i] = 0
@@ -535,7 +635,8 @@ export class PawStepper {
     this.specs = specs
   }
 
-  update(dt: number, body: Body, gait: StepGait): FootState[] {
+  /** `rest`: where the body will come to a stand, when it is stopping. */
+  update(dt: number, body: Body, gait: StepGait, rest?: Body): FootState[] {
     const prev = this.last
     this.last = { ...body }
     const { vx, vz, spin, speed, still } = motionOf(prev, body, dt)
@@ -647,16 +748,27 @@ export class PawStepper {
         return { ...foot, yaw: pivoted(foot, body.heading, gait.pivot), lift: 0, swing: null }
       }
       swing.time += dt
-      // Where it will land: under the body as it will be then, a lead ahead.
+      // Where it will land: under the body as it will be then, a lead ahead — when the body
+      // is coming to a stand, no further than where it stops, so the dog stops on its paws
+      // rather than behind them (and steps back to them).
       const left = Math.max(0, swing.duration - swing.time)
-      const future: Body = {
+      let future: Body = {
         x: body.x + vx * left,
         z: body.z + vz * left,
         heading: body.heading + spin * Math.min(left, MAX_TURN_LOOKAHEAD),
       }
+      let lead = swing.duration
+      if (rest && speed > 1e-3) {
+        const toRest = ((rest.x - body.x) * vx + (rest.z - body.z) * vz) / speed
+        const going = speed * left
+        if (going >= toRest) {
+          future = { ...rest }
+          lead = 0
+        } else lead = Math.min(lead, (toRest - going) / speed)
+      }
       const next = swingStep(
         swing,
-        { ...landing(future, i, swing.duration), yaw: future.heading },
+        { ...landing(future, i, lead), yaw: future.heading },
         dt,
         gait.clearance,
       )
