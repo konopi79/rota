@@ -65,16 +65,21 @@ export const pathFromCurve = (
   }
 }
 
+/** How far behind the handler's base place the path round the dog goes, metres. */
+const BEHIND_DOG = 1.25
+
 /**
- * Around the dog sitting or lying at heel, "zepředu" (regulation p. 19, Z-004/Z-005): a step
+ * Around the dog at heel, "zepředu" (regulation p. 19, Z-004/Z-005; 3-303 standing): a step
  * forward, across in front of the dog, back along its far side, behind it and up to the
- * base place again. An ellipse through the handler's place, 1.1 m across (round enough for
- * a person to walk without crossing their feet), 0.9 m ahead of and behind the handler —
- * clear of a lying dog and its tail too. Round its tight ends the handler slows down.
+ * base place again. Half an ellipse 1.1 m across (round enough for a person to walk without
+ * crossing their feet) and 0.9 m ahead, then a deeper one behind — clear of the rump and the
+ * tail, on the ground behind a sitting or lying dog, up behind a standing one — coming back
+ * up to the base place from straight behind. Round its tight ends the handler slows down.
  */
 export const AROUND_DOG: Path = pathFromCurve((t) => {
   const angle = 2 * Math.PI * t
-  return { x: 0.55 - 0.55 * Math.cos(angle), z: 0.9 * Math.sin(angle) }
+  const sin = Math.sin(angle)
+  return { x: 0.55 - 0.55 * Math.cos(angle), z: sin * (sin > 0 ? 0.9 : BEHIND_DOG) }
 })
 
 /** How sharply the path bends from `behind` before `s` to `ahead` past it, at most: radians per metre. */
@@ -112,8 +117,14 @@ const bezier =
 
 /**
  * The dog's paths around the handler, who stands at the origin facing +z; the dog's places
- * are those of `team.ts` — at heel (0.42, −0.2) and in front (0, 0.6) facing the handler.
+ * are those of `team.ts` — at heel (0.42, −0.2) and in front (0, `FRONT`) facing the handler.
  */
+
+/**
+ * How far in front of the handler the dog sits or stands facing them, middle to middle,
+ * metres: its head clear of the handler's knees, even as one comes forward with a step back.
+ */
+export const FRONT = 0.64
 
 /** From a dog's middle to its shoulders (its front paws' line), metres. */
 const SHOULDERS = 0.22
@@ -149,7 +160,7 @@ const drift = (front: Path, from: number, to: number): Path => {
  * předními přímo před psovoda a dotočit to zadkem". It ends sitting in front, facing them.
  */
 export const DOG_TO_FRONT: Path = drift(
-  pathFromCurve(bezier([0.42, 0.02], [0.42, 0.3], [0.15, 0.42], [0, 0.38])),
+  pathFromCurve(bezier([0.42, 0.02], [0.42, 0.3], [0.15, FRONT - 0.18], [0, FRONT - SHOULDERS])),
   0,
   -Math.PI,
 )
@@ -161,7 +172,7 @@ export const DOG_TO_FRONT: Path = drift(
  * round the handler, 0.45 m to the sides and 0.6 m behind.
  */
 export const DOG_AROUND_HANDLER: Path = pathFromCurve(
-  chain(bezier([0, 0.6], [0, 0.45], [-0.45, 0.4], [-0.45, 0]), (u) => {
+  chain(bezier([0, FRONT], [0, FRONT - 0.15], [-0.45, 0.4], [-0.45, 0]), (u) => {
     const angle = Math.PI / 2 + u * (Math.PI / 2 + 1.2)
     return { x: -0.45 * Math.sin(angle), z: 0.6 * Math.cos(angle) }
   }),
@@ -185,7 +196,9 @@ export const DOG_AROUND_FROM_HEEL: Path = pathFromCurve(
  * swings out to the left and round behind, into heel.
  */
 export const DOG_TO_HEEL: Path = drift(
-  pathFromCurve(bezier([0, 0.38], [0.15, 0.3], [0.42, 0.2], [0.42, 0.02])),
+  // Its shoulders swing out wide to the left while it turns, its head clear of the handler's
+  // left leg, and come in to heel from the front.
+  pathFromCurve(bezier([0, FRONT - SHOULDERS], [0.3, 0.45], [0.62, 0.3], [0.42, 0.02])),
   Math.PI,
   2 * Math.PI,
 )

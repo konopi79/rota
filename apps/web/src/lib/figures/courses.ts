@@ -92,7 +92,7 @@ const conesAt = (x: number) => [0, 1, 2].map((i) => ({ x, z: FIRST_CONE + i * CO
  * How far the handler keeps from the cones, metres: with the dog outside the bends just
  * clear of them, with the dog inside (between the handler and the cones) far enough for it.
  */
-export const CONE_CLEARANCE = { dogOutside: 0.5, dogInside: 0.95 }
+export const CONE_CLEARANCE = { dogOutside: 0.65, dogInside: 0.95 }
 
 /**
  * Z-018 / Z-019 Spirála (p. 24): past the card and the cones, round the third (furthest) and
@@ -147,7 +147,7 @@ export const circleSpiral = (left: boolean): Course => {
 }
 
 /** Slalom: how far the middle of the team swings off the cones' line, metres. */
-const WEAVE = 0.6
+const WEAVE = 0.78
 /** From the handler to the middle of the team (the dog at heel on the left), metres. */
 const TEAM_MIDDLE = 0.21
 
@@ -204,10 +204,10 @@ export const slalom = (back: boolean): Course => {
 export const figureEight = (): Course => {
   const half = 1.5
   const outer = CONE_CLEARANCE.dogInside
-  const inner = outer - 2 * TEAM_MIDDLE
-  // Through the middle the handler goes at a slant to the long diagonal, just clearing
-  // the bowls at its ends; one way it heads `through`, back the other way.
-  const slant = Math.asin((outer - TEAM_MIDDLE) / half)
+  const inner = CONE_CLEARANCE.dogOutside
+  // Through the middle the handler goes at a slant to the long diagonal, from round one bowl
+  // straight on round the other; one way it heads `through`, back the other way.
+  const slant = Math.asin((outer + inner) / (2 * half))
   const [s, c] = [Math.sin(slant), Math.cos(slant)]
   // The middle at the origin, the short diagonal along z (the way in), the long one along x:
   // the left bowl (+x) gone round turning left, the right one (-x) turning right.

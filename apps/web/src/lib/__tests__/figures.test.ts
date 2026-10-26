@@ -12,8 +12,8 @@ import {
 import { HANDLER, HANDLER_STAND } from '../figures/handler'
 import { apply } from '../figures/math'
 import { jointFrames, jointNames, lowestPoint, type Joint, type Pose } from '../figures/rig'
+import { EXERCISES } from '../figures/exercises'
 import {
-  EXERCISES,
   Z001,
   Z002,
   Z003,
@@ -73,6 +73,66 @@ const onGround = (
 }
 
 const PAWS = ['leftFrontPaw', 'rightFrontPaw', 'leftHindPaw', 'rightHindPaw']
+
+type V3 = [number, number, number]
+/** A figure's box on the field: centre, axes, half sizes, and a sphere round it. */
+type Solid = { joint: string; c: V3; axes: [V3, V3, V3]; half: V3; radius: number }
+
+/** A figure's boxes on the field as drawn (standing on the ground, lifted if it runs). */
+const solids = (
+  rig: Joint,
+  figure: { pose: Pose; x: number; z: number; heading: number; lift?: number },
+): Solid[] => {
+  const up = -lowestPoint(rig, figure.pose) + (figure.lift ?? 0)
+  const c = Math.cos(figure.heading)
+  const s = Math.sin(figure.heading)
+  const field = (v: readonly number[]): V3 => [c * v[0]! + s * v[2]!, v[1]!, -s * v[0]! + c * v[2]!]
+  const out: Solid[] = []
+  for (const { joint, position, rotation } of jointFrames(rig, figure.pose).values())
+    for (const box of joint.boxes) {
+      const at = apply(rotation, box.at)
+      const p = field([position[0] + at[0], position[1] + at[1] + up, position[2] + at[2]])
+      const half: V3 = [box.size[0] / 2, box.size[1] / 2, box.size[2] / 2]
+      out.push({
+        joint: joint.name,
+        c: [figure.x + p[0], p[1], figure.z + p[2]],
+        axes: [
+          field(apply(rotation, [1, 0, 0])),
+          field(apply(rotation, [0, 1, 0])),
+          field(apply(rotation, [0, 0, 1])),
+        ],
+        half,
+        radius: Math.hypot(...half),
+      })
+    }
+  return out
+}
+
+/** The widest gap between two boxes along any separating axis (negative: they overlap). */
+const separation = (a: Solid, b: Solid) => {
+  const d: V3 = [b.c[0] - a.c[0], b.c[1] - a.c[1], b.c[2] - a.c[2]]
+  const far = Math.hypot(...d) - a.radius - b.radius
+  if (far > 0) return far
+  const dot = (u: V3, v: V3) => u[0] * v[0] + u[1] * v[1] + u[2] * v[2]
+  const axes: V3[] = [...a.axes, ...b.axes]
+  for (const u of a.axes)
+    for (const v of b.axes) {
+      const w: V3 = [
+        u[1] * v[2] - u[2] * v[1],
+        u[2] * v[0] - u[0] * v[2],
+        u[0] * v[1] - u[1] * v[0],
+      ]
+      const n = Math.hypot(...w)
+      if (n > 1e-6) axes.push([w[0] / n, w[1] / n, w[2] / n])
+    }
+  let widest = -Infinity
+  for (const axis of axes) {
+    const ra = a.axes.reduce((sum, u, i) => sum + a.half[i]! * Math.abs(dot(u, axis)), 0)
+    const rb = b.axes.reduce((sum, u, i) => sum + b.half[i]! * Math.abs(dot(u, axis)), 0)
+    widest = Math.max(widest, Math.abs(dot(d, axis)) - ra - rb)
+  }
+  return widest
+}
 
 type Point = { x: number; y: number; z: number }
 
@@ -211,6 +271,22 @@ describe.each(EXERCISES.map((e) => [e.code, e] as const))('%s: feet', (_, exerci
           // Boxes drawn round segments: a little leeway for their corners.
           if (apart < (l.width + r.width) / 2 - 0.02)
             throw new Error(`legs ${(apart * 100).toFixed(1)} cm apart (${frame.caption})`)
+        }
+    }
+  })
+
+  test('the handler and the dog never pass through each other', () => {
+    for (const frame of frames) {
+      const handler = solids(HANDLER, frame.handler)
+      const dog = solids(DOG, frame.dog)
+      for (const a of handler)
+        for (const b of dog) {
+          // The boxes overlap by this much at least (a thin box a hair into another: leeway).
+          const overlap = -separation(a, b)
+          if (overlap > 0.005)
+            throw new Error(
+              `${a.joint} ${(overlap * 100).toFixed(1)} cm into the dog's ${b.joint} (${frame.caption})`,
+            )
         }
     }
   })
@@ -399,7 +475,22 @@ describe('Z-004 Stop – okolo psa', () => {
   })
 })
 
-describe('every RO-Z exercise', () => {
+/** How far a point is from the segment a–b on the ground. */
+const toSegment = (
+  p: { x: number; z: number },
+  a: { x: number; z: number },
+  b: { x: number; z: number },
+) => {
+  const dx = b.x - a.x
+  const dz = b.z - a.z
+  const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / (dx * dx + dz * dz)))
+  return Math.hypot(p.x - a.x - t * dx, p.z - a.z - t * dz)
+}
+
+/** The dog's parts that reach out furthest. */
+const DOG_REACH = ['head', 'leftFrontPaw', 'rightFrontPaw', 'leftHindPaw', 'rightHindPaw']
+
+describe('every exercise', () => {
   /** A team-frame point (handler's base place at the origin) on the field. */
   const onField = (team: { x: number; z: number; heading: number }, x: number, z: number) => ({
     x: team.x + x * Math.cos(team.heading) + z * Math.sin(team.heading),
@@ -423,11 +514,37 @@ describe('every RO-Z exercise', () => {
         const dog = onField(f.team, f.dog.x, f.dog.z)
         expect(Math.hypot(handler.x - card.x, handler.z - card.z)).toBeGreaterThan(0.4)
         expect(Math.hypot(dog.x - card.x, dog.z - card.z)).toBeGreaterThan(0.35)
+        // The dog's head and paws stay off the stand: 0.5 m wide facing the team, its tent
+        // reaching about 0.3 m back (1-116's dog ran through it going round the handler).
+        const frames = jointFrames(DOG, f.dog.pose)
+        const heading = f.team.heading + f.dog.heading
+        for (const joint of DOG_REACH) {
+          const [x, , z] = frames.get(joint)!.position
+          const at = {
+            x: dog.x + x * Math.cos(heading) + z * Math.sin(heading),
+            z: dog.z - x * Math.sin(heading) + z * Math.cos(heading),
+          }
+          const dx = Math.max(0, Math.abs(at.x - card.x) - 0.25)
+          const dz = Math.max(0, card.z - at.z, at.z - card.z - 0.3)
+          expect(Math.hypot(dx, dz)).toBeGreaterThan(0.02)
+        }
         // …nor knocks over a cone (the bodies' middles, a body's half width off it).
         for (const cone of [...(exercise.cones ?? []), ...(exercise.bowls ?? [])]) {
           const at = { x: cone.x, z: station + cone.z }
           expect(Math.hypot(handler.x - at.x, handler.z - at.z)).toBeGreaterThan(0.3)
           expect(Math.hypot(dog.x - at.x, dog.z - at.z)).toBeGreaterThan(0.25)
+          // Nor does a shoe or a paw step on one (2-220: a shoe went through a bowl). A
+          // cone stands on a 24 cm plate, a bowl is 22 cm across; a shoe is 26 cm heel to
+          // toe and 11 cm wide.
+          for (const foot of f.feet.handler) {
+            const toe = {
+              x: foot.x + 0.26 * Math.sin(foot.yaw),
+              z: foot.z + 0.26 * Math.cos(foot.yaw),
+            }
+            expect(toSegment(at, foot, toe)).toBeGreaterThan(0.12 + 0.055)
+          }
+          for (const paw of f.feet.dog)
+            expect(Math.hypot(paw.x - at.x, paw.z - at.z)).toBeGreaterThan(0.12 + 0.035)
         }
       }
     },
@@ -595,7 +712,7 @@ describe('animations in the card details', () => {
   test('a supplementary card plays Z-014 ending with it; others have none', () => {
     expect(animationFor('D0c')).toEqual({ code: 'Z-014', variant: 'D0c' })
     expect(animationFor('Z-022')).toEqual({ code: 'Z-022' })
-    expect(animationFor('1-101')).toBeNull()
+    expect(animationFor('1-102')).toBeNull()
     for (const d0 of ['D0a', 'D0b', 'D0c', 'D0d'])
       expect(EXERCISES.some((e) => e.code === 'Z-014' && e.supplementary === d0)).toBe(true)
   })

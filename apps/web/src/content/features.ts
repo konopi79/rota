@@ -49,7 +49,7 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
       {
         id: 'animations',
         title: 'Animace cviků',
-        desc: 'U každé karty RO-Z (i u doplňkových karet D0) si v detailu karty pustíš 3D animaci, jak psovod a pes cvik podle zkušebního řádu provedou – s popisky, zpomalením, otáčením pohledu a vyznačeným místem pro provedení cviku. V katalogu takové karty poznáš podle štítku „animace“.',
+        desc: 'U všech karet RO-Z, doplňkových karet D0 a čtyřiceti karet RO1–RO3 si v detailu karty pustíš 3D animaci, jak psovod a pes cvik podle zkušebního řádu provedou – s popisky, zpomalením, otáčením pohledu a vyznačeným místem pro provedení cviku. V katalogu takové karty poznáš podle štítku „animace“.',
       },
     ],
   },
