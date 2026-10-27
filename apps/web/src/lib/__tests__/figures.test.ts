@@ -6,6 +6,9 @@ import {
   ExercisePlayer,
   cardPlace,
   stationOf,
+  supplementaryPlace,
+  exerciseSpace,
+  SPACE_SIDE,
   type Exercise,
   type ExerciseFrame,
 } from '../figures/exercise'
@@ -504,29 +507,61 @@ describe('every exercise', () => {
   })
 
   test.each(EXERCISES.map((e) => [e.code, e] as const))(
+    '%s: standing to begin, the handler has both shoes in the exercise space',
+    (_, exercise) => {
+      // §5.3.1: the exercise starts in its space, "rozhodující zde jsou nohy psovoda" (2-222's
+      // handler stood with a shoe outside it). The start: the first step after the walk up,
+      // once the handler stands still in it; exercises begun walking are not checked here.
+      const frames = playAll(exercise)
+      const begun = frames.findIndex((f, i) => i > 1 && f.caption !== frames[1]!.caption)
+      const start = frames
+        .slice(begun, begun + 90)
+        .find((f) => f.speed < 0.01 && f.feet.handlerStill)
+      if (begun < 0 || !start) return
+      const station = stationOf(exercise)
+      const space = exerciseSpace(exercise)
+      for (const foot of start.feet.handler) {
+        const toe = { x: foot.x + 0.26 * Math.sin(foot.yaw), z: foot.z + 0.26 * Math.cos(foot.yaw) }
+        for (const q of [foot, toe])
+          for (const side of [-1, 1]) {
+            // The shoe's edges, 11 cm wide.
+            const x = q.x + side * 0.055 * Math.cos(foot.yaw) - space.x
+            const z = q.z - station - space.z
+            expect(Math.abs(x)).toBeLessThanOrEqual(SPACE_SIDE / 2)
+            expect(Math.abs(z)).toBeLessThanOrEqual(SPACE_SIDE / 2)
+          }
+      }
+    },
+  )
+
+  test.each(EXERCISES.map((e) => [e.code, e] as const))(
     '%s: nobody walks through the card',
     (_, exercise) => {
       const station = stationOf(exercise)
-      const place = cardPlace(exercise)
-      const card = { x: place.x, z: station + place.z }
+      // The card and its supplementary card next to it (1-114's dog walked through the D0).
+      const cards = [cardPlace(exercise), supplementaryPlace(exercise)]
+        .filter((p) => p !== null)
+        .map((p) => ({ x: p.x, z: station + p.z }))
       for (const f of playAll(exercise)) {
         const handler = onField(f.team, f.handler.x, f.handler.z)
         const dog = onField(f.team, f.dog.x, f.dog.z)
-        expect(Math.hypot(handler.x - card.x, handler.z - card.z)).toBeGreaterThan(0.4)
-        expect(Math.hypot(dog.x - card.x, dog.z - card.z)).toBeGreaterThan(0.35)
-        // The dog's head and paws stay off the stand: 0.5 m wide facing the team, its tent
-        // reaching about 0.3 m back (1-116's dog ran through it going round the handler).
         const frames = jointFrames(DOG, f.dog.pose)
         const heading = f.team.heading + f.dog.heading
-        for (const joint of DOG_REACH) {
-          const [x, , z] = frames.get(joint)!.position
-          const at = {
-            x: dog.x + x * Math.cos(heading) + z * Math.sin(heading),
-            z: dog.z - x * Math.sin(heading) + z * Math.cos(heading),
+        for (const card of cards) {
+          expect(Math.hypot(handler.x - card.x, handler.z - card.z)).toBeGreaterThan(0.4)
+          expect(Math.hypot(dog.x - card.x, dog.z - card.z)).toBeGreaterThan(0.35)
+          // The dog's head and paws stay off the stand: 0.5 m wide facing the team, its tent
+          // reaching about 0.3 m back (1-116's dog ran through it going round the handler).
+          for (const joint of DOG_REACH) {
+            const [x, , z] = frames.get(joint)!.position
+            const at = {
+              x: dog.x + x * Math.cos(heading) + z * Math.sin(heading),
+              z: dog.z - x * Math.sin(heading) + z * Math.cos(heading),
+            }
+            const dx = Math.max(0, Math.abs(at.x - card.x) - 0.25)
+            const dz = Math.max(0, card.z - at.z, at.z - card.z - 0.3)
+            expect(Math.hypot(dx, dz)).toBeGreaterThan(0.02)
           }
-          const dx = Math.max(0, Math.abs(at.x - card.x) - 0.25)
-          const dz = Math.max(0, card.z - at.z, at.z - card.z - 0.3)
-          expect(Math.hypot(dx, dz)).toBeGreaterThan(0.02)
         }
         // …nor knocks over a cone (the bodies' middles, a body's half width off it).
         for (const cone of [...(exercise.cones ?? []), ...(exercise.bowls ?? [])]) {
@@ -712,7 +747,7 @@ describe('animations in the card details', () => {
   test('a supplementary card plays Z-014 ending with it; others have none', () => {
     expect(animationFor('D0c')).toEqual({ code: 'Z-014', variant: 'D0c' })
     expect(animationFor('Z-022')).toEqual({ code: 'Z-022' })
-    expect(animationFor('1-102')).toBeNull()
+    expect(animationFor('2-211')).toBeNull()
     for (const d0 of ['D0a', 'D0b', 'D0c', 'D0d'])
       expect(EXERCISES.some((e) => e.code === 'Z-014' && e.supplementary === d0)).toBe(true)
   })

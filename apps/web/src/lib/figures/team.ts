@@ -51,6 +51,8 @@ export type TeamControls = {
   dogRest?: Body
   /** The dog on a path of its own: its place right now (instead of `place`). */
   dogAt?: { x: number; z: number; heading: number }
+  /** The dog at heel this much further out to its side than its `place`, metres. */
+  dogOut?: number
 }
 
 export type FigureFrame = {
@@ -118,6 +120,12 @@ export const SETTLE_RATE = 5
 
 /** How fast the dog gets up from a sit or down: the gap shrinks by e every 1/RATE s. */
 const RISE_RATE = 9
+
+/** The tail swings out of a turn this far for each radian a second the dog turns, at most so far. */
+const TAIL_SWING = 0.35
+const TAIL_SWING_MOST = 0.9
+/** How fast the tail follows the turn, 1/s. */
+const TAIL_SETTLES = 8
 
 /** The dog's parts lower than this (metres) are in the way of the handler's feet. */
 const UNDERFOOT = 0.35
@@ -232,6 +240,9 @@ export class TeamAnimator {
   /** The handler's pelvis height last frame. */
   private pelvis = Infinity
   private dogFeet: PawStepper | null = null
+  /** The dog's heading last frame, and how far its tail swings out of a turn (radians). */
+  private lastDogHeading: number | null = null
+  private tailYaw = 0
   /** How far a point on the ground is from the dog, as it was last frame. */
   private dogClearance: Clearance | undefined
 
@@ -272,7 +283,11 @@ export class TeamAnimator {
     if (!walking && !controls.stay && this.speed < FIRM_STOP) this.speed = 0
     this.walked += this.speed * dt
     if (!controls.stay) this.travelled += this.speed * dt
-    const target = controls.dogAt ?? PLACES[controls.place]
+    const place = PLACES[controls.place]
+    const target = controls.dogAt ?? {
+      ...place,
+      x: place.x + Math.sign(place.x) * (controls.dogOut ?? 0),
+    }
     // The heading turns the short way round, never by a whole turn at once.
     const heading = this.place.heading + angleTo(this.place.heading, target.heading)
     this.place = controls.dogAt
@@ -375,6 +390,14 @@ export class TeamAnimator {
       }
       dogPose = blendPoses(this.dogPosture, carried, this.dogStanding)
     }
+    // Turning, the tail swings out of the turn, the more the faster the dog turns — it trails
+    // behind, it does not sweep in at whoever the dog turns round.
+    const spin =
+      dt > 0 && this.lastDogHeading !== null ? angleTo(this.lastDogHeading, dog.heading) / dt : 0
+    this.lastDogHeading = dog.heading
+    const swing = Math.max(-TAIL_SWING_MOST, Math.min(TAIL_SWING_MOST, TAIL_SWING * spin))
+    this.tailYaw += (swing - this.tailYaw) * (1 - Math.exp(-TAIL_SETTLES * dt))
+    dogPose = { ...dogPose, 'tail.yaw': this.tailYaw }
     // Sitting or lying: the paws are where the posture puts them, ready to carry the dog
     // from there when it gets up.
     if (sitting && this.dogStanding <= 0.02) this.dogFeet.plant(dogPawsOnGround(dogPose, dog), dog)

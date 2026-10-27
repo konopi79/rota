@@ -119,6 +119,18 @@ type Swing = {
   dodgeInAir?: { x: number; z: number }
 }
 
+/** A step aside lifts the foot this share of a usual step. */
+const ASIDE_LIFT = 0.4
+
+/** Whether a step from `from` to `to` goes mostly sideways across a body facing as `body`. */
+const aside = (from: { x: number; z: number }, to: { x: number; z: number }, body: Body) => {
+  const dx = to.x - from.x
+  const dz = to.z - from.z
+  const across = Math.abs(dx * Math.cos(body.heading) - dz * Math.sin(body.heading))
+  const along = Math.abs(dx * Math.sin(body.heading) + dz * Math.cos(body.heading))
+  return across > 2 * along
+}
+
 /** A dodge moves at most this fast, m/s — a foot's own pace, so it never jumps. */
 const DODGE_RATE = 1.5
 
@@ -410,7 +422,8 @@ export class BipedStepper {
           aim: null,
           time: 0,
           duration: SCRIPTED_STEP,
-          clearance: gait.clearance,
+          // A step aside goes low over the ground, the knee hardly forward.
+          clearance: gait.clearance * (aside(f, script, body) ? ASIDE_LIFT : 1),
           kick: false,
         }
       }
@@ -570,6 +583,8 @@ export class BipedStepper {
   }
 }
 
+/** Spinning, a paw's step takes no longer than this many radians of the turn. */
+const SPIN_STEP = 0.45
 /** A paw steps once it is this near the edge of its reach (1 = there). */
 const PAW_TRIGGER = 0.8
 /** Standing, a paw this far from where it belongs is put right, metres. */
@@ -653,9 +668,11 @@ export class PawStepper {
       return dt > 0 ? { x: (now.x - before.x) / dt, z: (now.z - before.z) / dt } : { x: 0, z: 0 }
     })
     // A faster paw steps quicker, as a dog's cadence rises with its speed.
+    // …and turning fast on the spot, in quick short steps, as a dog spins.
     const swingTime = (i: number) => {
       const v = Math.hypot(homeVelocity[i]!.x, homeVelocity[i]!.z)
-      return Math.max(0.12, Math.min(gait.swingTime, (stride * 0.8) / Math.max(v, 1e-6)))
+      const turning = SPIN_STEP / Math.max(Math.abs(spin), 1e-6)
+      return Math.max(0.12, Math.min(gait.swingTime, (stride * 0.8) / Math.max(v, 1e-6), turning))
     }
 
     /**

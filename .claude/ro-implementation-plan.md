@@ -21,21 +21,27 @@ dog** (§5), and every card must be readable in one glance.
 Source material: `podklady/` (downloaded from the author's Google Drive, **not
 committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 
-| #   | Phase                                         | Status        |
-| --- | --------------------------------------------- | ------------- |
-| R0  | Scaffold (monorepo, tooling, CLAUDE.md)       | ✅ 2026-09-27 |
-| R1  | Content pipeline + national ruleset (CZ 2026) | ✅ 2026-09-27 |
-| R2  | FCI ruleset                                   | ✅ 2026-09-27 |
-| R3  | Random cards mode (rule-aware dealing)        | ✅ 2026-09-27 |
-| R4  | Card catalogue                                | ✅ 2026-09-27 |
-| R5  | PWA: offline + install                        | ✅ 2026-09-27 |
-| R6  | Deploy + open-source release                  | ✅ 2026-09-27 |
-| R7  | Competition-course generator                  | ✅ 2026-09-27 |
-| R8  | Quiz                                          | ✅ 2026-09-27 |
-| R9  | Voice: cards read aloud                       | ✅ 2026-09-27 |
-| R10 | FCI decks laid out on the field               | ✅ 2026-10-19 |
-| R11 | Hand-made course                              | ✅ 2026-10-19 |
-| R12 | Exercise animations                           | ✅ 2026-10-22 |
+| #   | Phase                                                          | Status        |
+| --- | -------------------------------------------------------------- | ------------- |
+| R0  | Scaffold (monorepo, tooling, CLAUDE.md)                        | ✅ 2026-09-27 |
+| R1  | Content pipeline + national ruleset (CZ 2026)                  | ✅ 2026-09-27 |
+| R2  | FCI ruleset                                                    | ✅ 2026-09-27 |
+| R3  | Random cards mode (rule-aware dealing)                         | ✅ 2026-09-27 |
+| R4  | Card catalogue                                                 | ✅ 2026-09-27 |
+| R5  | PWA: offline + install                                         | ✅ 2026-09-27 |
+| R6  | Deploy + open-source release                                   | ✅ 2026-09-27 |
+| R7  | Competition-course generator                                   | ✅ 2026-09-27 |
+| R8  | Quiz                                                           | ✅ 2026-09-27 |
+| R9  | Voice: cards read aloud                                        | ✅ 2026-09-27 |
+| R10 | FCI decks laid out on the field                                | ✅ 2026-10-19 |
+| R11 | Hand-made course                                               | ✅ 2026-10-19 |
+| R12 | Exercise animations                                            | ✅ 2026-10-22 |
+| R13 | Animations: dog on the right, side steps, …                    | ✅ 2026-10-27 |
+| R14 | National course plan on the field                              | ⏳            |
+| R15 | Course walked through in animation (RO-Z, RO1)                 | ⏳            |
+| R16 | Animations: leave, recall, jumps + walkthroughs RO2, RO3, RO-V | ⏳            |
+| R17 | CNDC (several cards at one station)                            | ⏳ answers    |
+| R18 | FCI animations + walkthrough                                   | ⏳            |
 
 > **Order:** R3 is built before R2 so the national classes are usable end to end first;
 > FCI plugs into the same dealer afterwards.
@@ -605,8 +611,43 @@ gesture for audio).
 - [x] In the card detail (2026-10-22): "Jak cvik vypadá" under the card's text for every RO-Z card (and D0a–d, shown finishing Z-014) — a tap loads the player (three.js only then), the same controls as `/animace` with the variant choice; a note that the regulation and the judge decide; an "animace" badge in the catalogue; feature item `animations`. `/animace` stays as the overview of all of them, unlinked (`lib/figures/animated.ts` lists the animated cards, a test keeps it in step with the scripts)
 - [x] RO1–RO3 from the RO-Z building blocks (2026-10-22): 40 cards made only of stops, positions (stand, sit, down), turns on the spot, exact steps forward and back set by hand, the dog in front, slaloms with bowls between the cones and the figure eight — 1-101, 1-103–1-113 (not 1-102), 1-116–1-122, 2-201–2-206, 2-209, 2-210, 2-220, 2-221, 2-223–2-227, 3-303–3-305, 3-316–3-318 (`ro123-exercises.ts`); `/animace` picks the class first
 - [x] The author's review of RO1–RO3 (2026-10-26), fixes reaching back into RO-Z: the handler and the dog never pass through each other — the handler's feet keep clear of the dog's footprint (step early, land and swing clear, `team.ts` / `locomotion.ts`), deeper path behind the dog (Z-004, Z-005, 3-303), the direct finish D0b/D0d wider, the dog in front 4 cm further off and up only once the handler has stepped back; a dog in front follows the handler's forward foot smoothly and lies down keeping its front paws where they are (folding back over them); the dog's last steps land where the team stops (no step back); "pokračuje v chůzi" walks straight on from the turn (1-103, 1-104, 1-119, 1-120); shoes and paws clear of cones and bowls (wider slalom weave and turns round the cones); no figure through the card stand (1-116, 1-121, 1-122, 3-318 stop further from it). Tests check every frame for each of these
-- [ ] RO1–RO3 needing one new skill each: the dog on the right / side changes (1-123–1-125, 2-232, 3-325–3-327), side steps (1-102, 1-114, 1-115, 2-207, 2-222, 2-229), the dog backing up at heel (2-228, 3-306), the dog round a walking handler / spins (2-208, 2-219, 3-315)
-- [ ] Leave and recall cards, jumps
+- [x] The rest of the national cards moved to R13 (one new skill each) and R16 (leave, recall, jumps) — see §14
+
+### R13 — Animations: one new skill each (18 cards)
+
+- [x] The dog on the right / side changes: 1-123–1-125, 2-232, 3-325–3-327 — the dog's own paths round the handler, standing or walking (`paths.ts`, `dogChanges` on a walk, `dogTurns` on a turn: behind the handler's back straight across, 1-124 as in the video; the base position on the right after it)
+- [x] Side steps: 1-102, 1-114, 1-115, 2-207, 2-222, 2-229 — a 90° step aside (1-102 the same on the move: last step with the left foot, the right steps aside, the left closes up, walk on), the dog keeping its distance from the near foot, not moving with the handler when in front; the card passed on the right only for a step to the right (§5.3.1)
+- [x] The dog backing up at heel: 2-228, 3-306
+- [x] The dog round a walking handler / spins: 2-208, 2-219 (a short run ahead, a spin almost on the spot, back to heel), 3-315 (both round once, finishing together)
+- [x] The exercise space of §5.3.1 the same for every card — left in front of the card, directly in front of it for a change of direction or a side step (`exerciseSpace`); shown by default; a test keeps the handler's shoes inside it at the start; the D0 card right next to the main card (p. 8)
+- [x] RO1 complete (25/25); RO-V 50/54
+
+### R14 — National course plan on the field
+
+- [ ] Each card's geometry (how the team comes in, turns, where it leaves, cones and bowls) read off its animation script, by hand for the cards not animated yet
+- [ ] Layout for every national class like R10: each card its own station (no CNDC), distances and card placement per the guidelines §1.1.2–1.1.4
+- [ ] Plan on the course page and behind the map button in the deck; validator + tests
+
+### R15 — Course walked through in animation (RO-Z, RO1)
+
+- [ ] A course player chaining the exercise scripts along the plan: start → walk to each card → its exercise → finish, the dog's side and pace carried on
+- [ ] Whole-field view, camera following the team, pause, jump to a card; from the course page
+- [ ] Only for classes whose cards are all animated (RO-Z, RO1 after R13)
+
+### R16 — Leave, recall, jumps + walkthroughs RO2, RO3, RO-V
+
+- [ ] Leave and recall: 2-211–2-216, 2-230, 2-231, 3-301, 3-302, 3-307–3-312, 3-319–3-322
+- [ ] Jumps (a jump to build): 2-217, 2-218, 3-313, 3-314; sending to a cone 3-324; running off 3-323
+- [ ] Walkthroughs for RO2, RO3, RO-V
+
+### R17 — CNDC
+
+- [ ] Waiting for the answers to the six questions posted on 2026-10-20 — then design (grouping over a valid deck), plan and walkthrough
+
+### R18 — FCI animations + walkthrough
+
+- [ ] FCI exercises (~90 cards) from the national building blocks, FCI placements A/B/C/D
+- [ ] Walkthrough on the existing FCI field plan
 
 Each phase ends green on `bun run format && bun run typecheck && bun run lint` plus its
 own tests, and is committed separately.
@@ -665,3 +706,20 @@ a hidden page; whether it grows depends on the community's interest.
   with the rest: the precache grew from 17.6 to ~20.3 MB, under the 25 MB budget).
 - **Not linked, `noindex`.** The author shares the address to ask whether the animations
   are wanted before more cards are scripted.
+
+## 14. Roadmap: course plan and walkthrough (R13–R18)
+
+The author's long-term aim (2026-10-27): plan a course on the field for every class and
+walk it through in animation. It had diverged — FCI has a field plan (R10) but no
+animations, the national classes animations (R12) but no plan.
+
+- **CNDC does not block the national plan.** ROTA builds every card as its own station,
+  which the regulation and the guidelines allow; several cards at one station (R17) join
+  later, once the answers to the questions from 2026-10-20 are in.
+- **The animations give the plan its geometry.** Each animated card's script already says
+  how the team comes in, turns and leaves — the per-card geometry R10 needed by hand for
+  FCI. Cards not animated yet get it by hand.
+- **Walkthroughs only where every card is animated** (the author, 2026-10-27): RO-Z and
+  RO1 first (RO1 complete after R13); the plan for RO2, RO3 and RO-V can come without a
+  walkthrough, which joins after R16 — no course with a card missing its animation.
+- **Order:** R13 → R14 → R15 → R16 → R17 (when the answers come) → R18.
