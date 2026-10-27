@@ -20,7 +20,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'plan-zoom-print'
+export const LATEST_FEATURE_ID = 'national-field-plan'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -77,6 +77,11 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
         desc: 'Karty FCI-ROB rozmístí aplikace na plochu 20 × 20 m, nebo 20 × 30 m, když ji vybereš v nastavení: start na kraji, 3–5 m mezi kartami, mezi kartami rovně (směr mění jen karty), místo pro kužely, přivolání i skoky. Plánek s vyznačenou aktuální kartou otevřeš ikonou mapy; má ho balíček do 20 karet.',
       },
       {
+        id: 'national-field-plan',
+        title: 'Plánek i pro národní třídy',
+        desc: 'Karty RO-Z až RO3 a RO-V rozmístí aplikace na plochu 20 × 30 m, jak ji doporučuje řád (RO-Z, RO1 a RO-V i na 20 × 20 m): každý cvik na vlastním stanovišti, mezi kartami rovně a nejméně 3 m, u skoků, odložení s přivoláním a některých cviků dál podle směrnic pro rozhodčí, ulička mezi kartami volná. Plánek má tréninkový parkur i balíček do délky parkuru.',
+      },
+      {
         id: 'plan-zoom-print',
         title: 'Plánek zvětšený i vytištěný',
         desc: 'Klepnutím na plánek tréninkového parkuru ho otevřeš přes celou obrazovku a přiblížíš tlačítky nebo dvěma prsty. Vytištěný parkur má plánek přes celou první stranu a seznam cviků na další.',
@@ -109,7 +114,7 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
       {
         id: 'course',
         title: 'Tréninkový parkur',
-        desc: 'Parkur o velikosti jako na závodech – u FCI s nejméně sedmi čtyřbodovými a pěti tříbodovými kartami a s plánkem rozmístění na ploše. Číslovaný seznam k vytištění, sdílení nebo projití jako balíček.',
+        desc: 'Parkur o velikosti jako na závodech – u FCI s nejméně sedmi čtyřbodovými a pěti tříbodovými kartami – s plánkem rozmístění na ploše. Číslovaný seznam k vytištění, sdílení nebo projití jako balíček.',
       },
       {
         id: 'fci-judges-course',

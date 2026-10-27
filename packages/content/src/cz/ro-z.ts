@@ -2,7 +2,8 @@ import type { Card } from '../schema'
 
 /**
  * Proofread from Zkušební řád Rally Obedience v ČR 2026, příloha 1 (`sourcePage` = page
- * of the regulation). Sequencing rules cite the regulation; see plan §5.
+ * of the regulation). Sequencing rules cite the regulation; see plan §5. `placement` and
+ * `geometry` (the course plan) are read off each card's animation, the rest by hand.
  */
 export const RO_Z_CARDS: Card[] = [
   {
@@ -101,11 +102,13 @@ export const RO_Z_CARDS: Card[] = [
     code: 'Z-006',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'B',
     name: 'Obrat vpravo za chůze',
     description: ['Tým provede před kartou obrat vpravo o 90° a bez zastavení pokračuje dál.'],
     subParts: [{ text: 'obrat vpravo', main: true }],
     sequencing: {},
+    geometry: { turn: 90 },
     image: 'z-006',
     sourcePage: 20,
   },
@@ -113,11 +116,13 @@ export const RO_Z_CARDS: Card[] = [
     code: 'Z-007',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'B',
     name: 'Obrat vlevo za chůze',
     description: ['Tým provede před kartou obrat vlevo o 90° a bez zastavení pokračuje dál.'],
     subParts: [{ text: 'obrat vlevo', main: true }],
     sequencing: {},
+    geometry: { turn: -90 },
     image: 'z-007',
     sourcePage: 21,
   },
@@ -125,6 +130,7 @@ export const RO_Z_CARDS: Card[] = [
     code: 'Z-008',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'B',
     name: 'Obrat zpět vpravo',
     description: [
@@ -132,6 +138,7 @@ export const RO_Z_CARDS: Card[] = [
     ],
     subParts: [{ text: 'obrat vpravo 180°', main: true }],
     sequencing: {},
+    geometry: { turn: 180 },
     image: 'z-008',
     sourcePage: 21,
   },
@@ -139,6 +146,7 @@ export const RO_Z_CARDS: Card[] = [
     code: 'Z-009',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'B',
     name: 'Obrat zpět vlevo',
     description: [
@@ -146,6 +154,7 @@ export const RO_Z_CARDS: Card[] = [
     ],
     subParts: [{ text: 'obrat vlevo 180°', main: true }],
     sequencing: {},
+    geometry: { turn: -180 },
     image: 'z-009',
     sourcePage: 21,
   },
@@ -153,6 +162,7 @@ export const RO_Z_CARDS: Card[] = [
     code: 'Z-010',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'B',
     name: 'Čelem vzad - pes za psovodem',
     description: [
@@ -160,6 +170,7 @@ export const RO_Z_CARDS: Card[] = [
     ],
     subParts: [{ text: 'čelem vzad - pes za psovodem', main: true }],
     sequencing: {},
+    geometry: { turn: -180 },
     image: 'z-010',
     sourcePage: 21,
   },
@@ -167,6 +178,7 @@ export const RO_Z_CARDS: Card[] = [
     code: 'Z-011',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'B',
     name: '270° vpravo',
     description: [
@@ -177,6 +189,7 @@ export const RO_Z_CARDS: Card[] = [
       { text: 'pes zůstává u nohy psovoda', main: true },
     ],
     sequencing: {},
+    geometry: { turn: 270 },
     image: 'z-011',
     sourcePage: 22,
   },
@@ -184,6 +197,7 @@ export const RO_Z_CARDS: Card[] = [
     code: 'Z-012',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'B',
     name: '270° vlevo',
     description: [
@@ -194,6 +208,7 @@ export const RO_Z_CARDS: Card[] = [
       { text: 'pes zůstává u nohy psovoda', main: true },
     ],
     sequencing: {},
+    geometry: { turn: -270 },
     image: 'z-012',
     sourcePage: 22,
   },
@@ -312,6 +327,19 @@ export const RO_Z_CARDS: Card[] = [
     sequencing: {
       equipment: ['cones'],
     },
+    // Out between the first and second cone, turned right, as animated (the execution
+    // diagram) — "Směr postupu ze spirály určuje poloha další karty" leaves it open.
+    geometry: {
+      turn: 90,
+      exit: 3.2,
+      exitSide: -3.2,
+      card: { ahead: 0.5, side: -0.65 },
+      props: [
+        { kind: 'cone', ahead: 2.5, side: -0.65 },
+        { kind: 'cone', ahead: 4, side: -0.65 },
+        { kind: 'cone', ahead: 5.5, side: -0.65 },
+      ],
+    },
     image: 'z-018',
     diagram: 'z-018-diagram',
     sourcePage: 24,
@@ -334,6 +362,19 @@ export const RO_Z_CARDS: Card[] = [
     sequencing: {
       equipment: ['cones'],
     },
+    // Out between the first and second cone, turned left, as animated (the execution
+    // diagram) — "Směr postupu ze spirály určuje poloha další karty" leaves it open.
+    geometry: {
+      turn: -90,
+      exit: 3.5,
+      exitSide: 3.5,
+      card: { ahead: 0.5, side: 0.95 },
+      props: [
+        { kind: 'cone', ahead: 2.5, side: 0.95 },
+        { kind: 'cone', ahead: 4, side: 0.95 },
+        { kind: 'cone', ahead: 5.5, side: 0.95 },
+      ],
+    },
     image: 'z-019',
     diagram: 'z-019-diagram',
     sourcePage: 25,
@@ -354,6 +395,17 @@ export const RO_Z_CARDS: Card[] = [
     sequencing: {
       equipment: ['cones'],
     },
+    geometry: {
+      exit: 8,
+      exitSide: 1.6,
+      card: { ahead: 0.5, side: 1 },
+      props: [
+        { kind: 'cone', ahead: 2.5, side: 1 },
+        { kind: 'cone', ahead: 4, side: 1 },
+        { kind: 'cone', ahead: 5.5, side: 1 },
+        { kind: 'cone', ahead: 7, side: 1 },
+      ],
+    },
     image: 'z-020',
     sourcePage: 25,
   },
@@ -372,6 +424,18 @@ export const RO_Z_CARDS: Card[] = [
     ],
     sequencing: {
       equipment: ['cones'],
+    },
+    geometry: {
+      turn: 180,
+      exit: 1.5,
+      exitSide: 2,
+      card: { ahead: 0.5, side: 1 },
+      props: [
+        { kind: 'cone', ahead: 2.5, side: 1 },
+        { kind: 'cone', ahead: 4, side: 1 },
+        { kind: 'cone', ahead: 5.5, side: 1 },
+        { kind: 'cone', ahead: 7, side: 1 },
+      ],
     },
     image: 'z-021',
     sourcePage: 25,
@@ -396,6 +460,17 @@ export const RO_Z_CARDS: Card[] = [
     ],
     sequencing: {
       equipment: ['bowls'],
+    },
+    geometry: {
+      exit: 7.2,
+      exitSide: 2.7,
+      card: { ahead: 1, side: 0.95 },
+      props: [
+        { kind: 'bowl', ahead: 2.9, side: 2.45 },
+        { kind: 'bowl', ahead: 2.9, side: -0.55 },
+        { kind: 'bowl', ahead: 2.2, side: 0.95 },
+        { kind: 'bowl', ahead: 3.7, side: 0.95 },
+      ],
     },
     image: 'z-022',
     sourcePage: 26,
@@ -433,6 +508,7 @@ export const RO_Z_CARDS: Card[] = [
       { text: 'sed', main: false },
     ],
     sequencing: {},
+    geometry: { exit: 0.5 },
     image: 'z-024',
     sourcePage: 26,
   },
@@ -455,6 +531,7 @@ export const RO_Z_CARDS: Card[] = [
       // p. 27: "K tomuto cviku je třeba přidat doplňkovou kartu D0a–d."
       requiresSupplementary: true,
     },
+    geometry: { exit: -0.2 },
     image: 'z-025',
     sourcePage: 27,
   },
@@ -475,6 +552,15 @@ export const RO_Z_CARDS: Card[] = [
     ],
     sequencing: {
       equipment: ['cones'],
+    },
+    geometry: {
+      exit: 6.5,
+      card: { ahead: 0.5, side: -0.65 },
+      props: [
+        { kind: 'cone', ahead: 2.5, side: -0.65 },
+        { kind: 'cone', ahead: 4, side: -0.65 },
+        { kind: 'cone', ahead: 5.5, side: -0.65 },
+      ],
     },
     image: 'z-026',
     sourcePage: 27,
@@ -497,6 +583,15 @@ export const RO_Z_CARDS: Card[] = [
     sequencing: {
       equipment: ['cones'],
     },
+    geometry: {
+      exit: 6.5,
+      card: { ahead: 0.5, side: 0.95 },
+      props: [
+        { kind: 'cone', ahead: 2.5, side: 0.95 },
+        { kind: 'cone', ahead: 4, side: 0.95 },
+        { kind: 'cone', ahead: 5.5, side: 0.95 },
+      ],
+    },
     image: 'z-027',
     sourcePage: 28,
   },
@@ -504,6 +599,7 @@ export const RO_Z_CARDS: Card[] = [
     code: 'Z-028',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'B',
     name: '225° vpravo',
     description: [
@@ -514,6 +610,7 @@ export const RO_Z_CARDS: Card[] = [
       { text: 'pes zůstává u nohy psovoda', main: true },
     ],
     sequencing: {},
+    geometry: { turn: 225 },
     image: 'z-028',
     sourcePage: 28,
   },
@@ -521,6 +618,7 @@ export const RO_Z_CARDS: Card[] = [
     code: 'Z-029',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'B',
     name: '225° vlevo',
     description: [
@@ -531,6 +629,7 @@ export const RO_Z_CARDS: Card[] = [
       { text: 'pes zůstává u nohy psovoda', main: true },
     ],
     sequencing: {},
+    geometry: { turn: -225 },
     image: 'z-029',
     sourcePage: 28,
   },
@@ -538,6 +637,7 @@ export const RO_Z_CARDS: Card[] = [
     code: 'Z-030',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'A',
     name: 'Stop - vpravo - stop',
     description: [
@@ -550,6 +650,7 @@ export const RO_Z_CARDS: Card[] = [
       { text: 'obrat vpravo', main: true },
     ],
     sequencing: {},
+    geometry: { turn: 90 },
     image: 'z-030',
     sourcePage: 29,
   },
@@ -557,6 +658,7 @@ export const RO_Z_CARDS: Card[] = [
     code: 'Z-031',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'A',
     name: 'Stop - vlevo - stop',
     description: [
@@ -569,6 +671,7 @@ export const RO_Z_CARDS: Card[] = [
       { text: 'obrat vlevo', main: true },
     ],
     sequencing: {},
+    geometry: { turn: -90 },
     image: 'z-031',
     sourcePage: 29,
   },
@@ -592,6 +695,7 @@ export const RO_Z_CARDS: Card[] = [
       // p. 29: "K tomuto cviku je třeba přidat doplňkovou kartu D0a–d."
       requiresSupplementary: true,
     },
+    geometry: { exit: -0.2 },
     image: 'z-032',
     sourcePage: 29,
   },

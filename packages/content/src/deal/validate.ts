@@ -12,7 +12,9 @@ import {
   shapeOf,
   signOf,
   turnsOf,
+  WALK_SPACING,
   walkOf,
+  walkStart,
   type Shape,
 } from './geometry'
 import { endsStatic, fieldOf, followUpsOf, hasEquipment, paceAfter, sideAfter } from './rules'
@@ -97,7 +99,7 @@ export function validateDeck(deck: Deck): string[] {
  * only limit how often, §1.2.1), FCI judges set it (308 308, 312 312, 406 406 on the Czech
  * championship 2024 — the FCI Rally Obedience HUB's course catalogue, 2026-10-22), and two
  * pace cards in a row are `same-pace` anyway (author: "nemusíme být přísnější"). The
- * field layout is not checked: a hand-made FCI course is not laid out.
+ * field layout is not checked: a hand-made course is not laid out.
  *
  * `guidelines` (national classes) adds the judges' guidelines: card repeats, required
  * exercises, RO-Z's balance, right-hand stretches. Course size and the FCI point mix stay
@@ -411,12 +413,12 @@ function rightHandIssues(
 const EPS = 0.01
 
 /**
- * The deck fits its field (plan §5, FCI): start on the edge, each card
- * 3–5 m straight on from the end of the previous exercise (recall cards and recall cones
- * at their stated distance; after a turn about beside the way in), the direction changed
- * only by the cards, everything inside
- * the field, cards (where they stand) and equipment clear of each other, steps back clear
- * of the other exercises, at most two jumps.
+ * The deck fits its field (plan §5, FCI and national): start on the edge, each card 3–5 m
+ * straight on from the end of the previous exercise (recall cards and recall cones at their
+ * stated distance, more room where an exercise needs it; after a turn about beside the way
+ * in), the direction changed only by the cards, everything inside the field, cards (where
+ * they stand) and equipment clear of each other, steps back clear of the other exercises,
+ * the jumps a class allows; national: the ways walked clear of the other exercises.
  */
 function validateLayout(cls: RoClass, deck: Deck): string[] {
   const { layout, entries } = deck
@@ -472,8 +474,9 @@ function validateRound(
       errors.push(`${at}: recall card without its leave card on the field`)
     }
     const from = previous?.exit ?? start
-    const { min, max, shifts } = approachOf(previous, card)
-    // Straight on from the exercise; only a turn about brings the team back beside its way in.
+    const { min, max, shifts, hairpin } = approachOf(previous, card)
+    // Straight on from the exercise; only a turn about brings the team back beside its way
+    // in, and a recall card may stand to the side of its leave card.
     const walk = walkOf(from, to)
     if (!walk) {
       errors.push(`${at}: changes direction between cards`)
@@ -482,9 +485,9 @@ function validateRound(
         errors.push(`${at}: ${walk.ahead.toFixed(1)} m from the previous exercise`)
       }
       const [low, high] = [Math.min(...shifts), Math.max(...shifts)]
-      const straight = Math.abs(walk.across) < 0.05
-      const hairpin = !!previous?.hairpin && walk.across > low - EPS && walk.across < high + EPS
-      if (!straight && !hairpin) errors.push(`${at}: not straight on from the previous exercise`)
+      const straight = shifts.some((s) => Math.abs(walk.across - s) < 0.05)
+      const beside = !!hairpin && walk.across > low - EPS && walk.across < high + EPS
+      if (!straight && !beside) errors.push(`${at}: not straight on from the previous exercise`)
     }
     if (!inside(to)) errors.push(`${at}: outside the field`)
   }
@@ -516,11 +519,9 @@ function validateRound(
   // where they are done, their cards and their equipment. A card may stand over the edge
   // of the field (`EDGE`), the course may not.
   const signs: { label: string; p: Point }[] = [
-    { label: 'start', p: signOf('A', start) },
-    ...entries.flatMap((e, i) =>
-      e.at ? [{ label: label(i), p: signOf(cards[i]?.placement, e.at) }] : [],
-    ),
-    { label: 'finish', p: signOf('A', finish) },
+    { label: 'start', p: signOf(undefined, start) },
+    ...entries.flatMap((e, i) => (e.at ? [{ label: label(i), p: signOf(cards[i], e.at) }] : [])),
+    { label: 'finish', p: signOf(undefined, finish) },
   ]
   signs.forEach((a, i) => {
     for (const b of signs.slice(i + 1)) {
@@ -539,26 +540,30 @@ function validateRound(
     (shape?.props ?? []).map((p) => ({ owner: label(i), p })),
   )
   props.forEach((a, i) => {
+    const room = a.p.clear ?? PROP_SPACING
     for (const s of spots) {
-      if (s.label !== a.owner && distance(s.p, a.p) < PROP_SPACING - EPS) {
+      if (s.label !== a.owner && distance(s.p, a.p) < room - EPS) {
         errors.push(`${a.owner}: ${a.p.kind} too close to ${s.label}`)
       }
     }
     for (const b of props.slice(i + 1)) {
-      if (b.owner !== a.owner && distance(a.p, b.p) < PROP_SPACING - EPS) {
+      const both = Math.max(room, b.p.clear ?? PROP_SPACING)
+      if (b.owner !== a.owner && distance(a.p, b.p) < both - EPS) {
         errors.push(`${a.owner}: ${a.p.kind} too close to the ${b.p.kind} of ${b.owner}`)
       }
     }
   })
-  // Steps back: clear of the other exercises, their cards and equipment.
+  // Steps back: clear of the other exercises, their cards and equipment — but going back
+  // to the dog (2-213, 3-320, 3-322) leads to the leave card before.
   shapes.forEach((shape, i) => {
     const at = entries[i]?.at
     const back = shape?.back
     if (!at || !back) return
     if (!inside(back)) errors.push(`${label(i)}: steps back off the field`)
+    const own = [label(i), ...(cards[i]?.sequencing.onlyAfterLeave ? [label(i - 1)] : [])]
     const others = [
-      ...spots.filter((s) => s.label !== label(i)),
-      ...props.filter((q) => q.owner !== label(i)),
+      ...spots.filter((s) => !own.includes(s.label)),
+      ...props.filter((q) => !own.includes(q.owner)),
     ]
     for (const o of others) {
       if (distanceToSegment(o.p, at, back) < PROP_SPACING - EPS) {
@@ -567,8 +572,45 @@ function validateRound(
       }
     }
   })
+  // National courses: the way between two cards passes clear of the other exercises,
+  // their cards and equipment (Směrnice §1.1.3: "Dráha v uličce s kartami musí být široká
+  // nejméně 1,5 m").
+  if (cls.ruleset === 'CZ') {
+    const targets = [
+      ...entries.map((e, i) => ({ label: label(i), to: e.at })),
+      { label: 'finish', to: finish },
+    ]
+    targets.forEach(({ label: to, to: at }, i) => {
+      if (!at) return
+      const before = shapes[i - 1]
+      const from = i ? label(i - 1) : 'start'
+      const aisle = [walkStart(before, before?.exit ?? start, at), at] as const
+      const near = (p: Point) => distanceToSegment(p, ...aisle) < WALK_SPACING - EPS
+      for (const o of [...spots, ...props.map((q) => ({ label: q.owner, p: q.p }))]) {
+        if (o.label !== to && o.label !== from && near(o.p)) {
+          errors.push(`${to}: the way to it passes too close to ${o.label}`)
+        }
+      }
+    })
+  }
+
+  // The way walked inside a national exercise, like the way between two cards.
+  shapes.forEach((shape, i) => {
+    const walk = shape?.walk
+    if (!walk) return
+    const others = [
+      ...spots.filter((s) => s.label !== label(i)),
+      ...props.filter((q) => q.owner !== label(i)),
+    ]
+    for (const o of others) {
+      if (distanceToSegment(o.p, ...walk) < WALK_SPACING - EPS) {
+        const what = 'label' in o ? o.label : `the ${o.p.kind} of ${o.owner}`
+        errors.push(`${label(i)}: walks too close to ${what}`)
+      }
+    }
+  })
   const jumps = props.filter(({ p }) => p.kind === 'jump').length
-  if (jumps > MAX_JUMPS)
-    errors.push(`#${first + 1}: ${jumps} jumps in a round, at most ${MAX_JUMPS}`)
+  const maxJumps = cls.course.maxJumps ?? MAX_JUMPS
+  if (jumps > maxJumps) errors.push(`#${first + 1}: ${jumps} jumps in a round, at most ${maxJumps}`)
   return errors
 }

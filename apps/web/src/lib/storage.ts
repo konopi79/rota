@@ -16,7 +16,7 @@ const setupSchema = z.object({
   startSide: z.enum(['left', 'right', 'random']),
   showDescription: z.boolean(),
   speak: z.boolean().default(false),
-  /** The field an FCI deck is laid out on; missing = the class's first. */
+  /** The field a deck is laid out on; missing = the class's first. */
   field: z.object({ width: z.number(), height: z.number() }).optional(),
 })
 export type Setup = z.infer<typeof setupSchema>

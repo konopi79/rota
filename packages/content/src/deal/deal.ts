@@ -3,7 +3,7 @@ import type { Card, Field, RoClass } from '../schema'
 import { mulberry32, pick, pickWeighted } from './prng'
 import { normalize, turnsOf } from './geometry'
 import { FieldPlanner, type PlannerState } from './layout'
-import { NationalCourse } from './course'
+import { NationalCourse, type CourseState } from './course'
 import { cardOf, endsStatic, fieldKey, fieldOf, hasEquipment, paceAfter, sideAfter } from './rules'
 import type { Deck, DeckEntry, DealOptions, Layout, Pace, Side } from './types'
 
@@ -69,7 +69,7 @@ const USAGE_LEAN = { min: 0.5, max: 1 }
  * `count` (the pool is too small for the options), the longest attempt is returned —
  * the caller compares `entries.length` with the requested count.
  *
- * Classes with `course.fields` (FCI) are laid out on one (`fieldOf`) as they are dealt, up to
+ * Classes with `course.fields` (all of them) are laid out on one (`fieldOf`) as they are dealt, up to
  * one course (`course.maxCards`): a card that does not fit where the team stands is set
  * aside for that step, a dead end takes cards back (`BACKTRACKS`), and the deck carries
  * the layout (start, each card's `at`, finish). A longer deck — or a training deck that
@@ -147,7 +147,7 @@ function attemptDeal(
   field?: Field,
 ): Attempt {
   const entries: DeckEntry[] = []
-  const planner = field && new FieldPlanner(field.width, field.height, random)
+  const planner = field && new FieldPlanner(field.width, field.height, random, cls.course.maxJumps)
   // The start is walked through at normal pace, not from a standstill.
   const state: State = {
     prev: undefined,
@@ -171,13 +171,23 @@ function attemptDeal(
       : Math.max(0, (quota[String(points)] ?? 0) - (state.byPoints.get(points) ?? 0))
   // A laid-out deck backtracks (`BACKTRACKS`): the state before each position and the
   // cards that led to a dead end from there.
-  const snapshots: { state: State; layout: PlannerState; banned: Set<string> }[] = []
-  let backtracks = course ? 0 : BACKTRACKS
+  const snapshots: {
+    state: State
+    layout: PlannerState
+    course?: CourseState
+    banned: Set<string>
+  }[] = []
+  let backtracks = BACKTRACKS
 
   while (entries.length < options.count) {
     const position = entries.length
     if (planner && !snapshots[position]) {
-      snapshots[position] = { state: copyState(state), layout: planner.save(), banned: new Set() }
+      snapshots[position] = {
+        state: copyState(state),
+        layout: planner.save(),
+        course: course?.save(),
+        banned: new Set(),
+      }
     }
     const banned = snapshots[position]?.banned
     const remaining = options.count - entries.length
@@ -272,6 +282,7 @@ function attemptDeal(
       snapshot.banned.add(last.code)
       Object.assign(state, copyState(snapshot.state))
       planner.restore(snapshot.layout)
+      if (snapshot.course) course?.restore(snapshot.course)
       continue
     }
     if (!drawn) break

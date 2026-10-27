@@ -3,6 +3,14 @@ import { cardOf, endsStatic } from './rules'
 import { planSideChanges } from './side-plan'
 import type { DealOptions, Side } from './types'
 
+/** What the course has dealt so far, to go back to (`save` / `restore`). */
+export type CourseState = {
+  counts: Map<string, number>
+  filled: boolean[]
+  statics: number
+  dynamics: number
+}
+
 /** One required exercise: a card from `codes`, filled by the first card dealt for it. */
 type Slot = {
   codes: Set<string>
@@ -22,7 +30,7 @@ type Slot = {
  * re-checks the result on its own.
  */
 export class NationalCourse {
-  private readonly counts = new Map<string, number>()
+  private counts = new Map<string, number>()
   private readonly slots: Slot[]
   private readonly sideChanges: Set<number> | undefined
   private readonly maxStatic: number
@@ -139,6 +147,18 @@ export class NationalCourse {
     else this.dynamics++
     const slot = this.slots.find((s) => !s.filled && s.codes.has(card.code))
     if (slot) slot.filled = true
+  }
+
+  save(): CourseState {
+    const { counts, slots, statics, dynamics } = this
+    return { counts: new Map(counts), filled: slots.map((s) => s.filled), statics, dynamics }
+  }
+
+  restore(state: CourseState): void {
+    this.counts = new Map(state.counts)
+    this.slots.forEach((s, i) => (s.filled = state.filled[i] ?? false))
+    this.statics = state.statics
+    this.dynamics = state.dynamics
   }
 
   private balanced(static_: boolean): boolean {

@@ -58,23 +58,34 @@ export const sequencingSchema = z
   .strict()
 export type CardSequencing = z.infer<typeof sequencingSchema>
 
-/** FCI: a piece of equipment an exercise sets out, placed relative to its card. */
+/** A piece of equipment an exercise sets out, placed relative to where it is done. */
 export const propSchema = z
   .object({
     kind: z.enum(['cone', 'bowl', 'jump']),
     /** Metres ahead of the card, along the direction the team arrives in. */
     ahead: z.number(),
-    /** Metres to the side: positive towards the dog's side, negative away from it. */
+    /**
+     * Metres to the side: positive towards the dog's side, negative away from it. National
+     * cards are drawn for the dog on the left and keep their layout with the dog on the
+     * right (their turns and paths are the card's): positive is always to the left.
+     */
     side: z.number(),
+    /**
+     * Nothing else stands within this many metres of it (Směrnice §1.1.2, 3-324: "v okruhu
+     * 3 m kolem kuželu"); other equipment keeps the usual distance.
+     */
+    clear: z.number().positive().optional(),
   })
   .strict()
 export type Prop = z.infer<typeof propSchema>
 
 /**
- * FCI: how much room an exercise takes and where it leaves the team, so the dealer can lay
- * a dealt deck out on a real field (§3.3, §3.5). All distances are in metres and, like in
- * the regulation ("Všechny vzdálenosti a úhly jsou přibližné"), approximate. A card
- * without geometry is done on the spot and the team carries on straight.
+ * How much room an exercise takes and where it leaves the team, so the dealer can lay a
+ * dealt deck out on a real field (FCI §3.3, §3.5; national: Směrnice §1.1.2–1.1.4). All
+ * distances are in metres and, like in the regulation ("Všechny vzdálenosti a úhly jsou
+ * přibližné"), approximate. A card without geometry is done on the spot and the team
+ * carries on straight. National cards: read off their animation scripts where they have
+ * one (a test keeps the two in step), by hand from the regulation otherwise.
  */
 export const geometrySchema = z
   .object({
@@ -88,6 +99,19 @@ export const geometrySchema = z
      * that far; the team then walks on forward past the card.
      */
     exit: z.number().optional(),
+    /**
+     * Where the team leaves, metres to the side of the way in — signed like `Prop.side`
+     * (a side step, a slalom that ends beside its cones).
+     */
+    exitSide: z.number().optional(),
+    /** Where the card stands when not where `placement` puts it (beside a line of cones). */
+    card: z.object({ ahead: z.number(), side: z.number() }).strict().optional(),
+    /**
+     * The next exercise is done at least this many metres from this one (Směrnice §1.1.2:
+     * "Cviky 107, 227, 308, 320 a 321 potřebují minimální vzdálenost 6 m"; after a jump
+     * 5 m past it).
+     */
+    gap: z.number().positive().optional(),
     props: z.array(propSchema).min(1).optional(),
     /**
      * The recall at a cone 5 m ahead of the card is part of the exercise, and the next
@@ -97,6 +121,23 @@ export const geometrySchema = z
     recallCone: z.boolean().optional(),
     /** Recall cards: placed this far straight ahead of the leave card before them. */
     fromPrevious: z.number().positive().optional(),
+    /**
+     * …and to the side by one of these, signed like `Prop.side` (3-302: "posunutá přibližně
+     * 180 cm stranou vlevo nebo vpravo").
+     */
+    fromPreviousSides: z.array(z.number()).min(1).optional(),
+    /**
+     * Leave cards: where their follow-up stands — this far straight ahead when further
+     * than its own `fromPrevious`, and to the side by one of `sides` (3-314: "minimálně 5
+     * metrů od překážky a jsou posunuty o 180 cm vpravo či vlevo").
+     */
+    followUp: z
+      .object({
+        ahead: z.number().positive(),
+        sides: z.array(z.number()).min(1).optional(),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
 export type CardGeometry = z.infer<typeof geometrySchema>
@@ -121,8 +162,10 @@ export const cardSchema = z
      */
     exerciseType: z.enum(['A', 'B', 'AB']).optional(),
     /**
-     * FCI only: where the exercise is done (§4.3) — A left of the card, B in front of it,
-     * C at the recall cone, D jumps. Not a static/dynamic type, despite the same letters.
+     * Where the exercise is done — A left of the card, B in front of it (FCI §4.3; national
+     * §5.3.1: "vlevo před kartou", a change of direction or a side step "přímo před
+     * kartou"), C at the recall cone, D jumps (FCI only). Not a static/dynamic type, despite
+     * the same letters.
      */
     placement: z.enum(['A', 'B', 'C', 'D']).optional(),
     /** FCI only. */
@@ -135,7 +178,7 @@ export const cardSchema = z
     description: z.array(z.string().min(1)).min(1),
     subParts: z.array(subPartSchema).min(1).optional(),
     sequencing: sequencingSchema,
-    /** FCI only: room the exercise needs on the field (course layout). */
+    /** Room the exercise needs on the field (course layout). */
     geometry: geometrySchema.optional(),
     /** Image file stem under `/cards/<ruleset>/`, e.g. `z-001`. */
     image: z.string().min(1),
@@ -240,9 +283,11 @@ export const roClassSchema = z
         /**
          * The fields a dealt deck can be laid out on, in metres — the first by default, the
          * others on request (`DealOptions.field`). Classes without any are dealt without a
-         * layout (national: several exercises can share one station).
+         * layout.
          */
         fields: z.array(fieldSchema).min(1).optional(),
+        /** Jumps on one field at most (FCI §3.5: "celkem dvě překážky"). */
+        maxJumps: z.number().int().positive().optional(),
       })
       .strict(),
     /** Every exercise card of the class, lower classes included where cumulative. */
