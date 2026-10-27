@@ -2,7 +2,9 @@ import type { Card } from '../schema'
 
 /**
  * Proofread from Zkušební řád Rally Obedience v ČR 2026, příloha 1 (`sourcePage` = page
- * of the regulation). Sequencing rules cite the regulation; see plan §5.
+ * of the regulation). Sequencing rules cite the regulation; see plan §5. `placement` and
+ * `geometry` (the course plan) are read off the cards' animations where they have one, by
+ * hand from the regulation and the judges' guidelines otherwise.
  */
 export const RO3_CARDS: Card[] = [
   {
@@ -24,6 +26,8 @@ export const RO3_CARDS: Card[] = [
       // p. 51: "Další cvik v parkuru musí být vybrán z těchto karet: …"
       nextOneOf: ['3-302', '3-319', '2-215', '2-216'],
     },
+    // "Další cviky jsou posunuty o 180 cm vpravo nebo vlevo od konce místa cviku."
+    geometry: { followUp: { ahead: 4, sides: [1.8, -1.8] } },
     image: '3-301',
     sourcePage: 51,
   },
@@ -31,6 +35,7 @@ export const RO3_CARDS: Card[] = [
     code: '3-302',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'AB',
     name: 'Otočení – přivolání z úhlu do předsednutí',
     description: [
@@ -49,6 +54,8 @@ export const RO3_CARDS: Card[] = [
       // Listed as the follow-up of a leave card — never dealt on its own.
       onlyAfterLeave: true,
     },
+    // "posunutá přibližně 180 cm stranou vlevo nebo vpravo … tak, že pes musí přijít do předsednutí z úhlu"
+    geometry: { fromPrevious: 4, fromPreviousSides: [1.8, -1.8], turn: [180, -180] },
     image: '3-302',
     sourcePage: 51,
   },
@@ -122,6 +129,7 @@ export const RO3_CARDS: Card[] = [
       { text: 'psovod vzad, pes vzad u nohy psovoda, aniž by se posadil', main: true },
     ],
     sequencing: {},
+    geometry: { exit: -1 },
     image: '3-306',
     sourcePage: 53,
   },
@@ -162,6 +170,7 @@ export const RO3_CARDS: Card[] = [
     code: '3-308',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'AB',
     name: 'Otočení – přivolání s položením – přivolání do předsednutí',
     description: [
@@ -180,6 +189,8 @@ export const RO3_CARDS: Card[] = [
       // Listed as the follow-up of a leave card — never dealt on its own.
       onlyAfterLeave: true,
     },
+    // Směrnice §1.1.2 (p. 2): 6 m at least.
+    geometry: { fromPrevious: 6, turn: [180, -180] },
     image: '3-308',
     sourcePage: 53,
   },
@@ -187,6 +198,7 @@ export const RO3_CARDS: Card[] = [
     code: '3-309',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'AB',
     name: 'Otočení – polohy lehni, sedni na dálku – přivolání do předsednutí',
     description: [
@@ -204,6 +216,7 @@ export const RO3_CARDS: Card[] = [
       // Listed as the follow-up of a leave card — never dealt on its own.
       onlyAfterLeave: true,
     },
+    geometry: { fromPrevious: 4, turn: [180, -180] },
     image: '3-309',
     sourcePage: 54,
   },
@@ -317,6 +330,8 @@ export const RO3_CARDS: Card[] = [
     sequencing: {
       equipment: ['jump'],
     },
+    // The card 5 m before the jump, the next ones 5 m past it; the handler passes it "ve vzdálenosti cca 1,8 m".
+    geometry: { exit: 5, gap: 10, props: [{ kind: 'jump', ahead: 5, side: 2.4 }] },
     image: '3-313',
     sourcePage: 56,
   },
@@ -343,6 +358,11 @@ export const RO3_CARDS: Card[] = [
       afterStatic: true,
       equipment: ['jump'],
     },
+    // The jump "přibližně 180 cm vpravo nebo vlevo", the next card "minimálně 5 metrů od překážky … posunuty o 180 cm" (3-302: "minimálně 10 metrů").
+    geometry: {
+      props: [{ kind: 'jump', ahead: 5, side: 1.8 }],
+      followUp: { ahead: 10, sides: [1.8] },
+    },
     image: '3-314',
     sourcePage: 56,
   },
@@ -367,6 +387,7 @@ export const RO3_CARDS: Card[] = [
     code: '3-316',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'A',
     name: 'Stůj – obrat vpravo o 180° – stůj',
     description: [
@@ -378,6 +399,7 @@ export const RO3_CARDS: Card[] = [
       { text: 'pes zůstává u nohy', main: false },
     ],
     sequencing: {},
+    geometry: { turn: 180 },
     image: '3-316',
     sourcePage: 57,
   },
@@ -385,6 +407,7 @@ export const RO3_CARDS: Card[] = [
     code: '3-317',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'A',
     name: 'Stůj – obrat vlevo o 180° – stůj',
     description: [
@@ -396,6 +419,7 @@ export const RO3_CARDS: Card[] = [
       { text: 'pes zůstává u nohy', main: false },
     ],
     sequencing: {},
+    geometry: { turn: -180 },
     image: '3-317',
     sourcePage: 57,
   },
@@ -440,6 +464,7 @@ export const RO3_CARDS: Card[] = [
       // Listed as the follow-up of a leave card — never dealt on its own.
       onlyAfterLeave: true,
     },
+    geometry: { fromPrevious: 4 },
     image: '3-319',
     sourcePage: 58,
   },
@@ -465,6 +490,8 @@ export const RO3_CARDS: Card[] = [
       // Listed as the follow-up of a leave card — never dealt on its own.
       onlyAfterLeave: true,
     },
+    // Směrnice §1.1.2: 6 m at least; back to the dog lying on the way, then on past this card.
+    geometry: { fromPrevious: 6, exit: -3 },
     image: '3-320',
     sourcePage: 59,
   },
@@ -472,6 +499,7 @@ export const RO3_CARDS: Card[] = [
     code: '3-321',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'B',
     name: 'Otočení – přivolání s položením – přivolání k noze',
     description: [
@@ -487,6 +515,8 @@ export const RO3_CARDS: Card[] = [
       // Listed as the follow-up of a leave card — never dealt on its own.
       onlyAfterLeave: true,
     },
+    // Směrnice §1.1.2 (p. 2): 6 m at least.
+    geometry: { fromPrevious: 6, turn: [180, -180] },
     image: '3-321',
     sourcePage: 59,
   },
@@ -511,6 +541,8 @@ export const RO3_CARDS: Card[] = [
       // Listed as the follow-up of a leave card — never dealt on its own.
       onlyAfterLeave: true,
     },
+    // Back to the dog, then on past this card.
+    geometry: { fromPrevious: 4, exit: -4 },
     image: '3-322',
     sourcePage: 60,
   },
@@ -537,6 +569,8 @@ export const RO3_CARDS: Card[] = [
       // p. 60: "K tomuto cviku je třeba přidat doplňkovou kartu D0a–d."
       requiresSupplementary: true,
     },
+    // "Cvik vyžaduje minimální vzdálenost 8 m k dalšímu cviku."
+    geometry: { exit: 3, gap: 8 },
     image: '3-323',
     sourcePage: 60,
   },
@@ -560,6 +594,10 @@ export const RO3_CARDS: Card[] = [
       nextOneOf: ['3-302', '3-319', '2-216', '2-215'],
       equipment: ['cones'],
     },
+    // The cone "5 m na stranu od konce místa pro vykonání cviku", "pod úhlem přibližně 45°
+    // až 90° k dráze chodu psovoda" and nothing within 3 m of it (Směrnice §1.1.3, p. 3) —
+    // at 60°, so the follow-up card's stand 4 m on stays clear of it.
+    geometry: { props: [{ kind: 'cone', ahead: 3.1, side: -4.3, clear: 3 }] },
     image: '3-324',
     sourcePage: 61,
   },
@@ -567,6 +605,7 @@ export const RO3_CARDS: Card[] = [
     code: '3-325',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'B',
     name: 'Výměna při obratu o 180° vpravo',
     description: [
@@ -580,6 +619,7 @@ export const RO3_CARDS: Card[] = [
       // p. 61: the dog changes the heeling side.
       sideChange: true,
     },
+    geometry: { turn: 180 },
     image: '3-325',
     sourcePage: 61,
   },
@@ -587,6 +627,7 @@ export const RO3_CARDS: Card[] = [
     code: '3-326',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'B',
     name: 'Výměna při obratu o 180° vlevo',
     description: [
@@ -600,6 +641,7 @@ export const RO3_CARDS: Card[] = [
       // p. 61: the dog changes the heeling side.
       sideChange: true,
     },
+    geometry: { turn: -180 },
     image: '3-326',
     sourcePage: 61,
   },
@@ -620,6 +662,7 @@ export const RO3_CARDS: Card[] = [
       // p. 61: the dog changes the heeling side.
       sideChange: true,
     },
+    geometry: { exit: 3 },
     image: '3-327',
     sourcePage: 61,
   },

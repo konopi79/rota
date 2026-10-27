@@ -2,7 +2,9 @@ import type { Card } from '../schema'
 
 /**
  * Proofread from Zkušební řád Rally Obedience v ČR 2026, příloha 1 (`sourcePage` = page
- * of the regulation). Sequencing rules cite the regulation; see plan §5.
+ * of the regulation). Sequencing rules cite the regulation; see plan §5. `placement` and
+ * `geometry` (the course plan) are read off the cards' animations where they have one, by
+ * hand from the regulation and the judges' guidelines otherwise.
  */
 export const RO1_CARDS: Card[] = [
   {
@@ -26,6 +28,7 @@ export const RO1_CARDS: Card[] = [
     code: '1-102',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'B',
     name: 'Za pohybu – úkrok vpravo',
     description: [
@@ -37,6 +40,7 @@ export const RO1_CARDS: Card[] = [
       { text: 'psovod zůstává v pohybu', main: false },
     ],
     sequencing: {},
+    geometry: { exitSide: -0.5 },
     image: '1-102',
     sourcePage: 30,
   },
@@ -44,6 +48,7 @@ export const RO1_CARDS: Card[] = [
     code: '1-103',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'B',
     name: 'Stop – obrat vpravo o 90° – vpřed',
     description: [
@@ -56,6 +61,7 @@ export const RO1_CARDS: Card[] = [
       { text: 'dodržení pozice psa u nohy psovoda', main: false },
     ],
     sequencing: {},
+    geometry: { turn: 90 },
     image: '1-103',
     sourcePage: 30,
   },
@@ -63,6 +69,7 @@ export const RO1_CARDS: Card[] = [
     code: '1-104',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'B',
     name: 'Stop – obrat vlevo o 90° – vpřed',
     description: [
@@ -75,6 +82,7 @@ export const RO1_CARDS: Card[] = [
       { text: 'dodržení pozice psa u nohy psovoda', main: false },
     ],
     sequencing: {},
+    geometry: { turn: -90 },
     image: '1-104',
     sourcePage: 31,
   },
@@ -82,6 +90,7 @@ export const RO1_CARDS: Card[] = [
     code: '1-105',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'A',
     name: 'Stop – obrat vpravo o 90° – stop',
     description: [
@@ -95,6 +104,7 @@ export const RO1_CARDS: Card[] = [
       { text: 'dodržení psa pozice u nohy', main: false },
     ],
     sequencing: {},
+    geometry: { turn: 90 },
     image: '1-105',
     sourcePage: 31,
   },
@@ -102,6 +112,7 @@ export const RO1_CARDS: Card[] = [
     code: '1-106',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'A',
     name: 'Stop – obrat vlevo o 90° – stop',
     description: [
@@ -115,6 +126,7 @@ export const RO1_CARDS: Card[] = [
       { text: 'dodržení psa pozice u nohy', main: false },
     ],
     sequencing: {},
+    geometry: { turn: -90 },
     image: '1-106',
     sourcePage: 31,
   },
@@ -132,6 +144,8 @@ export const RO1_CARDS: Card[] = [
       { text: '1, 2, 3, kroky (pohyb nohou)', main: false },
     ],
     sequencing: {},
+    // Směrnice §1.1.2 (p. 2): "Cviky 107, 227, 308, 320 a 321 potřebují minimální vzdálenost 6 m".
+    geometry: { exit: 2.5, gap: 6 },
     image: '1-107',
     sourcePage: 32,
   },
@@ -156,6 +170,7 @@ export const RO1_CARDS: Card[] = [
       // p. 32: "K tomuto cviku je třeba přidat doplňkovou kartu D0a–d."
       requiresSupplementary: true,
     },
+    geometry: { exit: -2.2 },
     image: '1-108',
     sourcePage: 32,
   },
@@ -221,6 +236,17 @@ export const RO1_CARDS: Card[] = [
     sequencing: {
       equipment: ['cones', 'bowls'],
     },
+    geometry: {
+      exit: 8,
+      exitSide: 1.6,
+      card: { ahead: 0.5, side: 1 },
+      props: [
+        { kind: 'cone', ahead: 2.5, side: 1 },
+        { kind: 'cone', ahead: 7, side: 1 },
+        { kind: 'bowl', ahead: 4, side: 1 },
+        { kind: 'bowl', ahead: 5.5, side: 1 },
+      ],
+    },
     image: '1-111',
     sourcePage: 33,
   },
@@ -228,6 +254,7 @@ export const RO1_CARDS: Card[] = [
     code: '1-112',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'B',
     name: '180° obrat vpravo',
     description: [
@@ -238,6 +265,7 @@ export const RO1_CARDS: Card[] = [
       { text: 'pes v pozici u nohy', main: true },
     ],
     sequencing: {},
+    geometry: { turn: 180 },
     image: '1-112',
     sourcePage: 34,
   },
@@ -245,6 +273,7 @@ export const RO1_CARDS: Card[] = [
     code: '1-113',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'B',
     name: '180° obrat vlevo',
     description: [
@@ -255,6 +284,7 @@ export const RO1_CARDS: Card[] = [
       { text: 'pes v pozici u nohy', main: true },
     ],
     sequencing: {},
+    geometry: { turn: -180 },
     image: '1-113',
     sourcePage: 34,
   },
@@ -262,6 +292,7 @@ export const RO1_CARDS: Card[] = [
     code: '1-114',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'AB',
     name: 'Předsednutí – úkrok stranou – vpravo',
     description: [
@@ -277,6 +308,7 @@ export const RO1_CARDS: Card[] = [
       // p. 34: "K tomuto cviku je třeba přidat doplňkovou kartu D0a–d."
       requiresSupplementary: true,
     },
+    geometry: { exitSide: -0.5 },
     image: '1-114',
     sourcePage: 34,
   },
@@ -284,6 +316,7 @@ export const RO1_CARDS: Card[] = [
     code: '1-115',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'AB',
     name: 'Předsednutí – úkrok stranou – vlevo',
     description: [
@@ -299,6 +332,7 @@ export const RO1_CARDS: Card[] = [
       // p. 35: "K tomuto cviku je třeba přidat doplňkovou kartu D0a–d."
       requiresSupplementary: true,
     },
+    geometry: { exitSide: 0.5 },
     image: '1-115',
     sourcePage: 35,
   },
@@ -341,6 +375,17 @@ export const RO1_CARDS: Card[] = [
     sequencing: {
       equipment: ['bowls'],
     },
+    geometry: {
+      exit: 7.2,
+      exitSide: 2.7,
+      card: { ahead: 1, side: 0.95 },
+      props: [
+        { kind: 'bowl', ahead: 2.9, side: 2.45 },
+        { kind: 'bowl', ahead: 2.9, side: -0.55 },
+        { kind: 'bowl', ahead: 2.2, side: 0.95 },
+        { kind: 'bowl', ahead: 3.7, side: 0.95 },
+      ],
+    },
     image: '1-117',
     sourcePage: 35,
   },
@@ -365,6 +410,7 @@ export const RO1_CARDS: Card[] = [
     code: '1-119',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'B',
     name: 'Stůj – obrat vpravo o 90° – vpřed',
     description: [
@@ -377,6 +423,7 @@ export const RO1_CARDS: Card[] = [
       { text: 'Pes zůstane v pozici u nohy', main: false },
     ],
     sequencing: {},
+    geometry: { turn: 90 },
     image: '1-119',
     sourcePage: 36,
   },
@@ -384,6 +431,7 @@ export const RO1_CARDS: Card[] = [
     code: '1-120',
     ruleset: 'CZ',
     kind: 'exercise',
+    placement: 'B',
     exerciseType: 'B',
     name: 'Stůj – obrat vlevo o 90° – vpřed',
     description: [
@@ -396,6 +444,7 @@ export const RO1_CARDS: Card[] = [
       { text: 'Pes zůstane v pozici u nohy', main: false },
     ],
     sequencing: {},
+    geometry: { turn: -90 },
     image: '1-120',
     sourcePage: 37,
   },
@@ -414,6 +463,7 @@ export const RO1_CARDS: Card[] = [
       { text: 'Pes zůstane v pozici u nohy', main: false },
     ],
     sequencing: {},
+    geometry: { exit: -0.5 },
     image: '1-121',
     sourcePage: 37,
   },
@@ -432,6 +482,7 @@ export const RO1_CARDS: Card[] = [
       { text: 'Pes zůstane v pozici u nohy', main: false },
     ],
     sequencing: {},
+    geometry: { exit: -0.5 },
     image: '1-122',
     sourcePage: 37,
   },
@@ -453,6 +504,7 @@ export const RO1_CARDS: Card[] = [
       // p. 38: the dog changes the heeling side.
       sideChange: true,
     },
+    geometry: { exit: 3 },
     image: '1-123',
     sourcePage: 38,
   },

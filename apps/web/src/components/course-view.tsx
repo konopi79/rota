@@ -203,7 +203,10 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
             />
           </button>
           <figcaption className="text-muted-foreground text-center text-xs">
-            {t('plan.caption', { width: layout.width, height: layout.height })}
+            {t(cls.ruleset === 'CZ' ? 'plan.captionCz' : 'plan.caption', {
+              width: layout.width,
+              height: layout.height,
+            })}
             <span className="print:hidden"> {t('course.zoomHint')}</span>
           </figcaption>
         </figure>

@@ -87,6 +87,27 @@ const RO_V_REQUIRED = [
 ]
 
 /**
+ * The fields a national deck is laid out on: "Doporučené rozměry soutěžního prostoru by
+ * měly být cca 20 x 30 m; po dohodě s rozhodčím mohou být upraveny" (p. 7) — and a
+ * smaller one on request, as for FCI. Upright, for a phone.
+ */
+const FIELDS = [
+  { width: 20, height: 30 },
+  { width: 20, height: 20 },
+]
+/**
+ * RO2 and RO3 only on the recommended field: their courses must have a jump (5 m clear
+ * before and after it, Směrnice §1.1.2), and on 20 × 20 m some came out without one — RO3
+ * one in twelve, RO2 one in forty, at a quarter to a whole second a course.
+ */
+const JUMP_FIELDS = FIELDS.slice(0, 1)
+/**
+ * Jumps on one field: "Skokové překážky musí být k dispozici v dostatečném počtu (min. 3x)"
+ * (§5.4, p. 10) — no more than an organiser must have.
+ */
+const MAX_JUMPS = 3
+
+/**
  * National classes — Zkušební řád Rally Obedience v ČR 2026, §5.4. RO-Z…RO3 are
  * cumulative: "Rozhodčí může vybírat cviky určené pro kategorii RO-Z a RO1 (karty číslo
  * 001–125)" etc.
@@ -101,6 +122,8 @@ export const CZ_CLASSES: RoClass[] = [
       maxCards: 18,
       leash: 'allowed',
       supplementary: D0_ALL,
+      fields: FIELDS,
+      maxJumps: MAX_JUMPS,
       repeats: { ...REPEATS, [card(14)]: 4 },
       required: RO_Z_REQUIRED,
       // §1.1.1 (p. 2): "ve třídě RO-Z by měly být cviky A a B zastoupeny v poměru 50/50".
@@ -119,6 +142,8 @@ export const CZ_CLASSES: RoClass[] = [
       maxCards: 20,
       leash: 'allowed',
       supplementary: D0_ALL,
+      fields: FIELDS,
+      maxJumps: MAX_JUMPS,
       repeats: REPEATS,
       required: RO1_REQUIRED,
       rightHand: RO1_RIGHT_HAND,
@@ -136,6 +161,8 @@ export const CZ_CLASSES: RoClass[] = [
       maxCards: 22,
       leash: 'off-leash',
       supplementary: D0_ALL,
+      fields: JUMP_FIELDS,
+      maxJumps: MAX_JUMPS,
       repeats: REPEATS,
       required: RO2_REQUIRED,
       rightHand: RO2_RIGHT_HAND,
@@ -153,6 +180,8 @@ export const CZ_CLASSES: RoClass[] = [
       maxCards: 24,
       leash: 'off-leash',
       supplementary: D0_ALL,
+      fields: JUMP_FIELDS,
+      maxJumps: MAX_JUMPS,
       repeats: REPEATS,
       required: RO3_REQUIRED,
       rightHand: RO3_RIGHT_HAND,
@@ -172,6 +201,8 @@ export const CZ_CLASSES: RoClass[] = [
       maxCards: 12,
       leash: 'allowed',
       supplementary: ['D0a', 'D0c'],
+      fields: FIELDS,
+      maxJumps: MAX_JUMPS,
       repeats: REPEATS,
       required: RO_V_REQUIRED,
     },

@@ -60,7 +60,8 @@ export function CardDetail({ card }: { card: Card }) {
         {card.exerciseType && (
           <p className="text-muted-foreground text-sm">{t(`card.type${card.exerciseType}`)}</p>
         )}
-        {card.placement && card.kind === 'exercise' && (
+        {/* FCI prints where an exercise is done on its card; national cards only lay it out. */}
+        {card.placement && card.kind === 'exercise' && card.ruleset === 'FCI' && (
           <p className="text-muted-foreground text-sm">{t(`card.placement${card.placement}`)}</p>
         )}
       </header>

@@ -59,7 +59,7 @@ const paramsSchema = z.object({
   karta: z.coerce.number().int().min(0).default(0),
   parkur: z.enum(['0', '1']).default('0'),
   hlas: z.enum(['0', '1']).default('0'),
-  /** A field other than the class's first, `20x30` (FCI). Missing: the first one. */
+  /** A field other than the class's first (FCI `20x30`, national `20x20`). Missing: the first one. */
   pole: z.string().optional(),
 })
 

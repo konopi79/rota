@@ -229,7 +229,10 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
       </Field>
 
       {fields.length > 1 && (
-        <Field label={t('setup.field')} hint={t('setup.fieldHint')}>
+        <Field
+          label={t('setup.field')}
+          hint={t(cls.ruleset === 'CZ' ? 'setup.fieldHintCz' : 'setup.fieldHint')}
+        >
           <ToggleGroup
             variant="outline"
             size="lg"

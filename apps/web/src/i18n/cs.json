@@ -48,6 +48,7 @@
     "custom": "Vlastní parkur",
     "field": "Plocha",
     "fieldHint": "Na plochu této velikosti se karty rozmístí v plánku parkuru. Řád žádá aspoň 20 × 20 m; na větší se častěji vejdou odložení, slalomy a skoky – jako na parkurech rozhodčích.",
+    "fieldHintCz": "Na plochu této velikosti se karty rozmístí v plánku parkuru. Řád doporučuje zhruba 20 × 30 m; na menší ploše je parkur stísněnější.",
     "fieldSize": "{{width}} × {{height}} m"
   },
   "custom": {
@@ -299,6 +300,7 @@
   "plan": {
     "title": "Plánek parkuru",
     "caption": "Plocha {{width}} × {{height}} m, karty 3–5 m od sebe. Vzdálenosti a úhly jsou přibližné.",
+    "captionCz": "Plocha {{width}} × {{height}} m, každý cvik na vlastním stanovišti, karty nejméně 3 m od sebe – u skoků, odložení a některých cviků dál. Vzdálenosti a úhly jsou přibližné.",
     "zoomIn": "Přiblížit",
     "zoomOut": "Oddálit",
     "close": "Zavřít"

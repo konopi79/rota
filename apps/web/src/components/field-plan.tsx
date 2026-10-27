@@ -29,11 +29,12 @@ const CARD_H = (CARD_W * 283) / 400
 const NUMBER_R = 0.5
 
 /**
- * The plan of one round of a deck laid out on a field (FCI), drawn the way judges draw
- * their course plans: a 1 m grid, each card turned to face the team coming to it and
- * standing where the regulation puts it (§4.3: A — the team works left of the card, B —
- * in front of it), numbered, with its cones, bowls and jumps, and the path walked between
- * the cards. 1 unit = 1 m. `current` highlights a card (index into `entries`).
+ * The plan of one round of a deck laid out on a field, drawn the way judges draw their
+ * course plans: a 1 m grid, each card turned to face the team coming to it and standing
+ * where the regulation puts it (A — the team works left of the card, B — in front of it),
+ * a national D0 card right beside it, numbered, with its cones, bowls and jumps, and the
+ * path walked between the cards. 1 unit = 1 m. `current` highlights a card (index into
+ * `entries`).
  */
 export function FieldPlan({
   layout,
@@ -63,19 +64,22 @@ export function FieldPlan({
     const recallFollows =
       r.first + i + 1 < end && !!next && !!card(next.code).sequencing.onlyAfterLeave
     const c = card(entry.code)
-    return [{ index: r.first + i, card: c, at, shape: shapeOf(c, at, entry.side, recallFollows) }]
+    const shape = shapeOf(c, at, entry.side, recallFollows)
+    const supplementary = entry.supplementary ? card(entry.supplementary) : undefined
+    return [{ index: r.first + i, card: c, supplementary, at, shape }]
   })
 
   // Walks between the cards, straight on from where an exercise ends: start → card → … →
   // finish. After a turn about the team walks back beside its way in — a hairpin from the
-  // card (drawn over the way in, the walk back looked like a turn before the card).
+  // card (drawn over the way in, the walk back looked like a turn before the card). A
+  // national recall card set to the side of its leave card is walked to straight.
   const walks: [Point, Point][] = []
   const hairpins: { from: Pose; beside: Point }[] = []
   const targets = [...items.map(({ at }) => at), r.finish]
   let from: Pose = r.start
   targets.forEach((to, i) => {
     const across = walkOf(from, to)?.across ?? 0
-    if (Math.abs(across) > 0.05) {
+    if (items[i - 1]?.shape.hairpin && Math.abs(across) > 0.05) {
       const beside = offset(from, from.heading, 0, across)
       hairpins.push({ from, beside })
       walks.push([beside, to])
@@ -149,8 +153,15 @@ export function FieldPlan({
 
       <PlacedCard card={startCard} at={r.start} />
       <PlacedCard card={finishCard} at={r.finish} />
-      {items.map(({ index, card: c, at }) => (
-        <PlacedCard key={index} card={c} at={at} number={index + 1} active={index === current} />
+      {items.map(({ index, card: c, supplementary, at }) => (
+        <PlacedCard
+          key={index}
+          card={c}
+          supplementary={supplementary}
+          at={at}
+          number={index + 1}
+          active={index === current}
+        />
       ))}
     </svg>
   )
@@ -210,27 +221,35 @@ function Grid({ width, height }: { width: number; height: number }) {
 
 /**
  * A card image turned to face the team coming to it. Exercises done in front of the card
- * (B) have it straight ahead, the others (A, D) to the team's right.
+ * (B) have it straight ahead, the others (A, D) to the team's right. A national D0 card
+ * stands "těsně vpravo vedle" the main card (řád §5.3, p. 8), drawn smaller.
  */
 function PlacedCard({
   card,
+  supplementary,
   at,
   number,
   active,
 }: {
+  /** Without one: the start or the finish. */
   card: Card
+  supplementary?: Card
   at: Point & { heading: number }
   number?: number
   active?: boolean
 }) {
   const ahead = card.placement === 'B'
-  const centre = signOf(card.placement, at)
+  const centre = signOf(card.kind === 'exercise' ? card : undefined, at)
+  const side = { w: CARD_W * 0.6, h: CARD_H * 0.6 }
+  // The number past the D0 card, if there is one.
+  const past = supplementary ? side.w + 0.05 : 0
   const tag = offset(
     centre,
     at.heading,
     -CARD_H / 2 - 0.15,
-    ahead ? CARD_W / 2 + 0.35 : CARD_W / 2 + 0.2,
+    (ahead ? CARD_W / 2 + 0.35 : CARD_W / 2 + 0.2) + past,
   )
+  const outline = active ? 'stroke-primary' : 'stroke-foreground'
   return (
     <g>
       <g transform={`rotate(${at.heading} ${centre.x} ${centre.y})`}>
@@ -248,9 +267,30 @@ function PlacedCard({
           width={CARD_W}
           height={CARD_H}
           fill="none"
-          className={active ? 'stroke-primary' : 'stroke-foreground'}
+          className={outline}
           strokeWidth={active ? 0.2 : 0.05}
         />
+        {supplementary && (
+          <g>
+            <image
+              href={cardImageUrl(supplementary, 'thumb')}
+              x={centre.x + CARD_W / 2 + 0.05}
+              y={centre.y + CARD_H / 2 - side.h}
+              width={side.w}
+              height={side.h}
+              preserveAspectRatio="xMidYMid meet"
+            />
+            <rect
+              x={centre.x + CARD_W / 2 + 0.05}
+              y={centre.y + CARD_H / 2 - side.h}
+              width={side.w}
+              height={side.h}
+              fill="none"
+              className={outline}
+              strokeWidth={0.05}
+            />
+          </g>
+        )}
       </g>
       {number !== undefined && (
         <g>

@@ -1,10 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 
 import { CZ_CARDS } from '../cz'
+import { CZ_CLASSES } from '../cz/classes'
 import { dealDeck, validateDeck, type Deck, type DealOptions, type DeckEntry } from '../deal'
-import { shapeOf } from '../deal/geometry'
+import { approachOf, shapeOf, signOf, turnsOf } from '../deal/geometry'
 import { FCI_CARDS } from '../fci'
-import { EQUIPMENT, type Equipment } from '../schema'
+import { getCard } from '../registry'
+import { EQUIPMENT, type Card, type Equipment } from '../schema'
 
 const base: DealOptions = {
   classId: 'FCI-ROB',
@@ -15,6 +17,8 @@ const base: DealOptions = {
   seed: 1,
 }
 const exercises = FCI_CARDS.filter((c) => c.kind === 'exercise')
+const czExercises = CZ_CARDS.filter((c) => c.kind === 'exercise')
+const cz = (code: string) => getCard('CZ', code) as Card
 
 /**
  * A hand-built course on the 20 × 20 m field: the start at the bottom edge facing up,
@@ -56,15 +60,13 @@ describe('field layout — validator', () => {
     expect(validateDeck(straight(['101', '102', '103']))).toEqual([])
   })
 
-  test('FCI decks up to a course may be laid out, national ones never', () => {
+  test('decks up to a course may be laid out', () => {
     const { layout: _, ...bare } = straight(['101'])
     expect(validateDeck(bare)).toContain('cards placed without a field layout')
     const unplaced = { ...bare, entries: bare.entries.map(({ at: _at, ...e }) => e) }
     expect(validateDeck(unplaced)).toEqual([])
     const long = straight(Array.from({ length: 21 }, () => '101'))
     expect(validateDeck(long)).toContain('21 cards laid out on one field, at most 20')
-    const national = { ...straight(['Z-001']), options: { ...base, classId: 'RO1' as const } }
-    expect(validateDeck(national)).toContain('RO1 is not laid out')
   })
 
   test('the start sits on the edge facing in', () => {
@@ -318,21 +320,109 @@ describe('field layout — dealer', () => {
       expect(deck.layout?.rounds).toHaveLength(1)
     }
   }, 30_000)
+})
 
-  test('national decks are not laid out', () => {
-    const deck = dealDeck({ ...base, classId: 'RO3', count: 20 })
-    expect(deck.layout).toBeUndefined()
-    expect(deck.entries.some((e) => e.at)).toBe(false)
+describe('national field layout (R14)', () => {
+  test('every national deck and course fits its field (property test)', () => {
+    for (const cls of CZ_CLASSES) {
+      for (const field of cls.course.fields ?? []) {
+        for (const competition of [false, true]) {
+          for (let seed = 0; seed < 12; seed++) {
+            const deck = dealDeck({
+              ...base,
+              classId: cls.id,
+              count: cls.course.maxCards,
+              seed,
+              competition,
+              field,
+              startSide: seed % 3 ? 'left' : 'right',
+            })
+            const errors = validateDeck(deck)
+            if (errors.length) throw new Error(`${cls.id}/${competition}/seed ${seed}: ${errors}`)
+            expect(deck.entries).toHaveLength(cls.course.maxCards)
+            expect([deck.layout?.width, deck.layout?.height]).toEqual([field.width, field.height])
+          }
+        }
+      }
+    }
+    // ~40 ms an RO3 course: a dead end on the field takes cards back, as for FCI.
+  }, 60_000)
+
+  test('20 × 30 m by default (řád p. 7); RO2 and RO3 only there — their jumps need room', () => {
+    for (const cls of CZ_CLASSES) {
+      expect(cls.course.fields?.[0]).toEqual({ width: 20, height: 30 })
+      expect(cls.course.fields).toHaveLength(cls.id === 'RO2' || cls.id === 'RO3' ? 1 : 2)
+    }
+  })
+
+  test('a follow-up stands where its leave card says, or where it says itself', () => {
+    const at = { x: 10, y: 20, heading: 0, turn: 0 }
+    const after = (leave: string, follow: string) =>
+      approachOf(shapeOf(cz(leave), at, 'left', true), cz(follow))
+    expect(after('2-211', '2-215')).toEqual({ min: 4, max: 4, shifts: [0] })
+    // Směrnice §1.1.2: "Cviky … 308, 320 a 321 potřebují minimální vzdálenost 6 m".
+    expect(after('2-211', '3-321')).toEqual({ min: 6, max: 6, shifts: [0] })
+    // 3-301 and 3-302: 180 cm to either side; 3-314: 5 m past its jump, to the jump's side.
+    expect(after('3-301', '2-215').shifts).toEqual([-1.8, 1.8])
+    expect(after('2-211', '3-302').shifts).toEqual([-1.8, 1.8])
+    expect(after('3-314', '3-302')).toEqual({ min: 10, max: 10, shifts: [-1.8] })
+    expect(after('2-218', '2-215')).toEqual({ min: 10, max: 10, shifts: [0] })
+  })
+
+  test('jumps 5 m from the card before and after them; 8 m after 3-323', () => {
+    const at = { x: 10, y: 25, heading: 0, turn: 0 }
+    const jump = shapeOf(cz('2-217'), at, 'left', false)
+    expect(jump.props.map((p) => [p.kind, 25 - p.y])).toEqual([['jump', 5]])
+    expect(approachOf(jump, undefined).min).toBe(5)
+    const run = shapeOf(cz('3-323'), at, 'left', false)
+    expect(25 - run.exit.y + approachOf(run, undefined).min).toBe(8)
+  })
+
+  test('national cards keep their layout with the dog on the right', () => {
+    const at = { x: 10, y: 20, heading: 0, turn: 90 }
+    for (const card of czExercises) {
+      expect([card.code, shapeOf(card, at, 'right', false)]).toEqual([
+        card.code,
+        shapeOf(card, at, 'left', false),
+      ])
+    }
+  })
+
+  test('the card left before the team, or before it for a change of direction (§5.3.1)', () => {
+    const at = { x: 10, y: 20, heading: 0, turn: 0 }
+    expect(signOf(cz('Z-001'), at)).toEqual({ x: 10.75, y: 19.55 })
+    expect(signOf(cz('Z-006'), at)).toEqual({ x: 10, y: 18.8 })
+    // Beside a line of cones, where its animation has it.
+    expect(signOf(cz('Z-020'), at)).toEqual({ x: 9, y: 19.5 })
+    for (const card of czExercises) {
+      const turns = turnsOf(card).some((t) => t % 360 !== 0)
+      if (turns && !card.geometry?.props)
+        expect([card.code, card.placement]).toEqual([card.code, 'B'])
+    }
+  })
+
+  test('the way between two cards passes clear of the others (Směrnice §1.1.3)', () => {
+    const deck = dealDeck({ ...base, classId: 'RO-Z', count: 18, seed: 1, competition: true })
+    expect(validateDeck(deck)).toEqual([])
+    const [first, second, third] = deck.entries
+    if (!first?.at || !second?.at || !third?.at) throw new Error('not laid out')
+    // The third exercise moved onto the way from the first card to the second.
+    const exit = shapeOf(cz(first.code), first.at, first.side, false).exit
+    third.at = { ...third.at, x: (exit.x + second.at.x) / 2, y: (exit.y + second.at.y) / 2 }
+    expect(validateDeck(deck)).toContain(
+      `#2 ${second.code}: the way to it passes too close to #3 ${third.code}`,
+    )
+  })
+
+  test('nothing within 3 m of the 3-324 cone (Směrnice §1.1.3)', () => {
+    const cone = shapeOf(cz('3-324'), { x: 10, y: 20, heading: 0, turn: 0 }, 'left', false)
+    expect(cone.props.map((p) => p.clear)).toEqual([3])
   })
 })
 
 describe('card geometry', () => {
-  test('only FCI cards have it', () => {
-    expect(CZ_CARDS.filter((c) => c.geometry).map((c) => c.code)).toEqual([])
-  })
-
   test('equipment on the field matches the equipment filter', () => {
-    for (const card of exercises) {
+    for (const card of [...exercises, ...czExercises]) {
       const kinds = new Set(card.geometry?.props?.map((p) => p.kind))
       const equipment = card.sequencing.equipment ?? []
       expect([card.code, kinds.has('jump')]).toEqual([card.code, equipment.includes('jump')])
@@ -342,7 +432,7 @@ describe('card geometry', () => {
   })
 
   test('leave cards bring a recall cone, recall cards their distance', () => {
-    for (const card of exercises) {
+    for (const card of [...exercises, ...czExercises]) {
       if (card.sequencing.mayBeFollowedBy) expect(card.geometry?.recallCone).toBe(true)
       expect([card.code, !!card.sequencing.onlyAfterLeave]).toEqual([
         card.code,

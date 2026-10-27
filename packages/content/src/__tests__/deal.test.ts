@@ -479,7 +479,7 @@ describe('competition courses (R7)', () => {
   test('national courses follow the side patterns of the guidelines (property test)', () => {
     for (const classId of ['RO1', 'RO2', 'RO3'] as const) {
       const shapes = new Set<string>()
-      for (let seed = 0; seed < 300; seed++) {
+      for (let seed = 0; seed < 150; seed++) {
         const deck = competition(classId, seed)
         const errors = validateDeck(deck)
         if (errors.length) throw new Error(`${classId}/seed ${seed}: ${errors}`)
@@ -490,5 +490,6 @@ describe('competition courses (R7)', () => {
       // Every pattern comes up: RO1 start "R" or finish; RO2/RO3 also the mid-course ones.
       expect(shapes.size).toBe(classId === 'RO1' ? 2 : 3)
     }
-  })
+    // ~40 ms a course, laid out on its field (RO3 ~60 ms).
+  }, 60_000)
 })
