@@ -13,7 +13,15 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { DOG } from '@/lib/figures/dog'
-import { ExercisePlayer, cardPlace, stationOf, type Exercise } from '@/lib/figures/exercise'
+import {
+  ExercisePlayer,
+  cardPlace,
+  exerciseSpace,
+  SPACE_SIDE,
+  stationOf,
+  supplementaryPlace,
+  type Exercise,
+} from '@/lib/figures/exercise'
 import { EXERCISES } from '@/lib/figures/exercises'
 import { HANDLER } from '@/lib/figures/handler'
 import { cn } from '@/lib/utils'
@@ -80,17 +88,6 @@ function CardStand({ code, x, z }: { code: string; x: number; z: number }) {
   )
 }
 
-/**
- * The place where the exercise starts (regulation §5.3.1, p. 8), as a square on the ground in
- * the station's frame: "ve čtverci o délce strany maximálně 120 cm, který se nachází vlevo
- * před kartou" — the team stops in it, the card at its front right corner; for a change
- * of direction "cca 120 cm přímo před příslušnou kartou", the square round that point.
- */
-const SPACE = {
-  side: { x: 0.15, z: -0.15 },
-  ahead: { x: 0, z: 0 },
-}
-const SPACE_SIDE = 1.2
 const SPACE_LINE = 0.025
 
 function ExerciseSpace({ x, z }: { x: number; z: number }) {
@@ -154,8 +151,6 @@ function Bowl({ x, z }: { x: number; z: number }) {
 /** Where the camera looks: the team's place on the field. */
 type Focus = { x: number; z: number }
 
-/** How far right of the main card its supplementary card stands, metres. */
-const SUPPLEMENTARY_GAP = 0.55
 /** The cards the page can play, once each (Z-014 has a variant per supplementary card). */
 const CODES = [...new Set(EXERCISES.map((e) => e.code))]
 /** The card series, by the code's prefix — the class whose cards they are new in. */
@@ -208,8 +203,8 @@ function ExerciseTeam({
   })
 
   const card = cardPlace(exercise)
-  const stop = exercise.stopAt ?? { x: 0, z: 0 }
-  const space = SPACE[exercise.card ?? 'side']
+  const d0Card = supplementaryPlace(exercise)
+  const space = exerciseSpace(exercise)
   const supplementary = exercise.supplementary
   return (
     <>
@@ -218,11 +213,11 @@ function ExerciseTeam({
         <Figure rig={HANDLER} ref={handler} />
       </group>
       <CardStand code={exercise.code} x={card.x} z={card.z} />
-      {supplementary && (
+      {supplementary && d0Card && (
         // As on a course: the supplementary card stands right next to the main one.
-        <CardStand code={supplementary} x={card.x - SUPPLEMENTARY_GAP} z={card.z} />
+        <CardStand code={supplementary} x={d0Card.x} z={d0Card.z} />
       )}
-      {showSpace && <ExerciseSpace x={space.x - stop.x} z={space.z - stop.z} />}
+      {showSpace && <ExerciseSpace x={space.x} z={space.z} />}
       {exercise.cones?.map((cone, i) => (
         <Cone key={i} x={cone.x} z={cone.z} colour={CONE_COLOURS[i % 2]!} />
       ))}
@@ -303,7 +298,7 @@ export function AnimationPlayer({
   const [slowMotion, setSlowMotion] = useState<keyof typeof SLOW_MOTION>('full')
   const [paused, setPaused] = useState(false)
   const [shadows, setShadows] = useState(true)
-  const [showSpace, setShowSpace] = useState(false)
+  const [showSpace, setShowSpace] = useState(true)
   const [caption, setCaption] = useState<string | null>(null)
   const focusRef = useRef<Focus>({ x: 0, z: 0 })
   const press = useRef<{ x: number; y: number; time: number } | null>(null)

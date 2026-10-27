@@ -202,3 +202,111 @@ export const DOG_TO_HEEL: Path = drift(
   Math.PI,
   2 * Math.PI,
 )
+
+/** The dog turning on the spot at `at` from heading `from` to `to` (as far as its paws go). */
+const spin = (at: { x: number; z: number }, from: number, to: number): Path => {
+  const length = Math.abs(to - from) * SHOULDERS
+  return {
+    length,
+    at: (s) => ({
+      ...at,
+      heading: from + (to - from) * ease(Math.min(1, Math.max(0, s / length))),
+    }),
+  }
+}
+
+/** The dog going straight from `from` to `to`, facing `heading` all the way (backing up). */
+const straight = (
+  from: { x: number; z: number },
+  to: { x: number; z: number },
+  heading: number,
+): Path => {
+  const length = Math.hypot(to.x - from.x, to.z - from.z)
+  return {
+    length,
+    at(s) {
+      const k = Math.min(1, Math.max(0, s / length))
+      return { x: from.x + (to.x - from.x) * k, z: from.z + (to.z - from.z) * k, heading }
+    },
+  }
+}
+
+/** Paths one after another. */
+const joined = (...paths: Path[]): Path => ({
+  length: paths.reduce((sum, p) => sum + p.length, 0),
+  at(s) {
+    let left = s
+    for (const p of paths.slice(0, -1)) {
+      if (left <= p.length) return p.at(left)
+      left -= p.length
+    }
+    return paths.at(-1)!.at(left)
+  },
+})
+
+/**
+ * 1-124 Stop – změna za psovodem – stop (p. 38): "pes za zády psovoda změní stranu a
+ * následně se posadí vedle druhé nohy psovoda." Straight behind the handler's back, as in
+ * the video (the author): the dog backs a step out of heel, turns right towards the
+ * handler's back — its head passing behind their legs, its rear swinging out — crosses
+ * close behind them and turns into the right leg, facing on.
+ */
+const BACKED = { x: 0.42, z: -0.5 }
+const BEHIND_TO = -0.52
+export const DOG_BEHIND_TO_RIGHT: Path = joined(
+  straight({ x: 0.42, z: -0.2 }, BACKED, 0),
+  spin(BACKED, 0, -Math.PI / 2),
+  pathFromCurve(bezier([BACKED.x, BACKED.z], [0.1, -0.5], [-0.27, -0.46], [-0.42, -0.2])),
+  spin({ x: -0.42, z: -0.2 }, BEHIND_TO, 0),
+)
+
+/**
+ * 1-125 Stop – změna před psovodem – stop (p. 38): "pes jej zepředu obejde a přiřadí se k
+ * druhé noze psovoda, kde usedá." Ahead from the left leg, across in front of the handler,
+ * down past their right side and round, turning in behind them, up into the right leg —
+ * its rear swinging out, never in at the handler. The turn in is an even half circle, so the
+ * dog can go the whole way at one pace (the author).
+ */
+const TURN_IN = 0.25
+export const DOG_FRONT_TO_RIGHT: Path = joined(
+  pathFromCurve(
+    bezier([0.42, -0.2], [0.42, 0.85], [-0.42 - 2 * TURN_IN, 0.85], [-0.42 - 2 * TURN_IN, -0.3]),
+  ),
+  pathFromCurve((u) => {
+    const angle = Math.PI * (1 + u)
+    return { x: -0.42 - TURN_IN + TURN_IN * Math.cos(angle), z: -0.3 + TURN_IN * Math.sin(angle) }
+  }),
+  pathFromCurve((u) => ({ x: -0.42, z: -0.3 + 0.1 * u })),
+)
+
+/**
+ * Changing sides while the team walks on, in the team's frame (it moves with the handler):
+ * 1-123 "Pes … provede za psovodem výměnu strany … Pes nesmí při výměně udělat velký
+ * oblouk" (p. 38) — dropping back close behind the handler; 3-327 "běží diagonálně před
+ * psovodem a zaujme novou pozici nohy na druhé straně. Nesmí běhat v kruhu" (p. 61) —
+ * ahead across in front. The dog faces the way it goes over the ground (`exercise.ts`).
+ */
+export const DOG_WALKING_BEHIND: Path = pathFromCurve(
+  bezier([0.42, -0.2], [0.42, -1.0], [-0.42, -1.0], [-0.42, -0.2]),
+)
+export const DOG_WALKING_IN_FRONT: Path = joined(
+  // Across a little ahead of the handler — not so far it has to wait for them (the author) —
+  // then straight back down into the right leg, square to it by then.
+  pathFromCurve(bezier([0.42, -0.2], [0.3, 0.75], [-0.42, 0.85], [-0.42, 0.4])),
+  pathFromCurve((u) => ({ x: -0.42, z: 0.4 - 0.6 * u })),
+)
+
+/**
+ * 2-208 Pes okolo psovoda v pohybu (p. 41): "velí psovi, aby jej za pohybu zepředu oběhl."
+ * Round the walking handler, in the team's frame: ahead and across in front, down the right
+ * side, behind and up into the left leg — wider than round a standing handler (Z-023), clear
+ * of legs that keep walking.
+ */
+/** Where the left leg's place lies on that ellipse (radians). */
+const AROUND_FROM = Math.atan2((0.42 + 0.15) / 0.6, (-0.2 - 0.15) / 0.85)
+export const DOG_WALKING_AROUND: Path = pathFromCurve((u) => {
+  // An ellipse round the handler through the left leg — no corners, so the dog turns evenly
+  // all the way: up the left side, across 1 m ahead, down the right side 0.75 m off, behind.
+  const angle = AROUND_FROM - 2 * Math.PI * u
+  return { x: -0.15 + 0.6 * Math.sin(angle), z: 0.15 + 0.85 * Math.cos(angle) }
+})

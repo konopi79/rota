@@ -146,6 +146,21 @@ export const circleSpiral = (left: boolean): Course => {
   )
 }
 
+/**
+ * Walking on round something ahead: straight on a little, a smooth bend over to the side
+ * by `aside` metres (+ left, − right) within `over` metres, then straight on past it.
+ * Parts: 0 on, 1 the bend, 2 past.
+ */
+export const swerve = (aside: number, over = 1.2): Course =>
+  course(
+    [
+      line(0, 0, 0, 0.3),
+      (u) => ({ x: aside * u * u * (3 - 2 * u), z: 0.3 + over * u }),
+      line(aside, 0.3 + over, aside, 0.3 + over + 2.5),
+    ],
+    [],
+  )
+
 /** Slalom: how far the middle of the team swings off the cones' line, metres. */
 const WEAVE = 0.78
 /** From the handler to the middle of the team (the dog at heel on the left), metres. */
