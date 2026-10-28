@@ -146,7 +146,13 @@ export const Z010: Exercise = {
   card: 'ahead',
   steps: [
     { walk: 3.5, caption: 'approachTurn' },
-    { turn: -180, radius: ARC[180], dogRound: 'aroundFromHeel', caption: 'aboutTurnDogBehind' },
+    {
+      turn: -180,
+      radius: ARC[180],
+      dogRound: 'aroundFromHeel',
+      bySide: true,
+      caption: 'aboutTurnDogBehind',
+    },
     { walk: 3, caption: 'leaveTurn' },
   ],
 }
@@ -343,10 +349,11 @@ export const cardBeforeCones = (course: Course) => ({ x: course.cones[0]!.x, z: 
  * obejde jen první kužel dokola. Směr postupu ze spirály určuje poloha další karty." To the
  * right the dog walks outside the bends, to the left inside them, between handler and cones.
  */
-const spiralExercise = (code: string, left: boolean): Exercise => {
-  const course = spiral(left)
+export const spiralExercise = (code: string, left: boolean, dogRight = false): Exercise => {
+  const course = spiral(left, dogRight)
   return {
     code,
+    ...(dogRight && { dogStarts: 'right' }),
     cones: course.cones,
     cardAt: cardBeforeCones(course),
     steps: [
@@ -369,11 +376,17 @@ export const Z019 = spiralExercise('Z-019', true)
  * i zpět" — round the last cone and back through. `bowls` (1-111, 2-220): "Dva kužely a dvě
  * misky … tak, že misky jsou v řadě umístěny mezi kužely."
  */
-export const slalomExercise = (code: string, back: boolean, bowls = false): Exercise => {
-  const course = slalom(back)
+export const slalomExercise = (
+  code: string,
+  back: boolean,
+  bowls = false,
+  dogRight = false,
+): Exercise => {
+  const course = slalom(back, dogRight)
   const [first, second, third, fourth] = course.cones as [Point, Point, Point, Point]
   return {
     code,
+    ...(dogRight && { dogStarts: 'right' }),
     cones: bowls ? [first, fourth] : course.cones,
     ...(bowls && { bowls: [second, third] }),
     cardAt: cardBeforeCones(course),
@@ -403,33 +416,38 @@ export const Z021 = slalomExercise('Z-021', true)
  * bowls: "Vstup do figury určuje karta, kterou tým vždy míjí po své levé straně (karta vždy
  * vlevo od psa)." The figure itself in `figureEight`.
  */
-const eight = figureEight()
-export const eightExercise = (code: string): Exercise => ({
-  code,
-  bowls: eight.bowls,
-  cardAt: eight.card,
-  steps: [
-    { walk: 1.5, caption: 'approachBowls' },
-    { course: eight, parts: [0, 1], caption: 'approachBowls' },
-    { course: eight, parts: [1, 3], caption: 'eightIn' },
-    { course: eight, parts: [3, 4], caption: 'eightLeftBowl' },
-    { course: eight, parts: [4, 5], caption: 'eightSecondTime' },
-    { course: eight, parts: [5, 6], caption: 'eightRightBowl' },
-    { course: eight, parts: [6, 7], caption: 'eightThirdTime' },
-    { course: eight, parts: [7, 9], caption: 'eightOut' },
-    { walk: 2, caption: 'eightOut' },
-  ],
-})
+const EIGHTS = { left: figureEight(), right: figureEight(true) }
+export const eightExercise = (code: string, dogRight = false): Exercise => {
+  const eight = EIGHTS[dogRight ? 'right' : 'left']
+  return {
+    code,
+    ...(dogRight && { dogStarts: 'right' }),
+    bowls: eight.bowls,
+    cardAt: eight.card,
+    steps: [
+      { walk: 1.5, caption: 'approachBowls' },
+      { course: eight, parts: [0, 1], caption: 'approachBowls' },
+      { course: eight, parts: [1, 3], caption: 'eightIn' },
+      { course: eight, parts: [3, 4], caption: 'eightLeftBowl' },
+      { course: eight, parts: [4, 5], caption: 'eightSecondTime' },
+      { course: eight, parts: [5, 6], caption: 'eightRightBowl' },
+      { course: eight, parts: [6, 7], caption: 'eightThirdTime' },
+      { course: eight, parts: [7, 9], caption: 'eightOut' },
+      { walk: 2, caption: 'eightOut' },
+    ],
+  }
+}
 export const Z022 = eightExercise('Z-022')
 
 /**
  * Z-026 Kruhová spirála – pes vně doprava, Z-027 – pes uvnitř doleva (p. 27): "Tým obejde
  * první kužel, pokračuje ke druhému, který též obejde, a jako poslední obejde třetí kužel."
  */
-const circleSpiralExercise = (code: string, left: boolean): Exercise => {
-  const course = circleSpiral(left)
+export const circleSpiralExercise = (code: string, left: boolean, dogRight = false): Exercise => {
+  const course = circleSpiral(left, dogRight)
   return {
     code,
+    ...(dogRight && { dogStarts: 'right' }),
     cones: course.cones,
     cardAt: cardBeforeCones(course),
     steps: [

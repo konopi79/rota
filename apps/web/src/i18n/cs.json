@@ -348,11 +348,14 @@
     "exercise": { "label": "Cvik" },
     "supplementary": { "label": "Doplňková karta" },
     "fromPace": { "label": "Předchozí tempo", "slow": "Z pomalého", "fast": "Z rychlého" },
+    "dogSide": { "label": "Pes jde u nohy", "left": "Levé", "right": "Pravé" },
     "shadows": "Stíny",
     "space": {
       "label": "Místo pro provedení cviku",
       "side": "Cvik začíná ve čtverci o straně nejvýš 120 cm vlevo před kartou. Za ukončený se považuje, když noha psovoda překročí zadní linii stojanu karty (řád, 5.3.1).",
-      "ahead": "Cvik se změnou směru začíná asi 120 cm přímo před kartou (řád, 5.3.1)."
+      "ahead": "Cvik se změnou směru začíná asi 120 cm přímo před kartou (řád, 5.3.1).",
+      "right": "Kartu tým podle popisu cviku míjí po své pravé straně: cvik začíná ve čtverci vlevo před kartou, jako obvykle (řád, 5.3.1).",
+      "left": "Kartu tým podle popisu cviku míjí po své levé straně: cvik začíná ve čtverci vpravo před kartou, stejně daleko od ní jako obvykle (řád, 5.3.1 – „není-li v popisu cviku uvedeno jinak“)."
     },
     "view": {
       "label": "Kamera",
@@ -363,6 +366,26 @@
       "front": "Zepředu"
     },
     "speed": { "label": "Rychlost", "quarter": "¼×", "half": "½×", "full": "1×" },
+    "captionRight": {
+      "basePosition": "Základní pozice: pes sedí u pravé nohy",
+      "turnRight90": "Obrat vpravo o 90° bez zastavení, pes se otáčí uvnitř",
+      "turnLeft90": "Obrat vlevo o 90° bez zastavení, pes jde po vnější straně",
+      "turnRight180": "Obrat zpět vpravo v malém oblouku, pes se otáčí uvnitř",
+      "turnLeft180": "Obrat zpět vlevo v malém oblouku, pes jde po vnější straně",
+      "aboutTurnDogBehind": "Psovod se otočí vpravo, pes vlevo – oběhne psovoda zezadu zpět k pravé noze",
+      "turnRight270": "Psovod se otočí na místě o 270° vpravo, pes couvá a otáčí se u nohy",
+      "turnLeft270": "Psovod se otočí na místě o 270° vlevo, pes obíhá u nohy",
+      "turnRight360": "Psovod se otočí na místě o 360° vpravo, pes couvá a otáčí se u nohy",
+      "turnRight225": "Psovod se otočí na místě o 225° vpravo, pes couvá a otáčí se u nohy",
+      "turnLeft225": "Psovod se otočí na místě o 225° vlevo, pes obíhá u nohy",
+      "eightLeftBowl": "Kolem levé misky",
+      "eightRightBowl": "Kolem pravé misky, pes jde blíž k misce",
+      "leaveRight": "Tým pokračuje dál, pes jde u levé nohy",
+      "leaveTurnRight": "Tým pokračuje novým směrem, pes jde u levé nohy",
+      "finishSitRight": "Pes se posadí vedle druhé (levé) nohy psovoda",
+      "basePositionRight": "Strana vedení je změněna: pes sedí u levé nohy",
+      "turnTowardsEachOther": "Obrat o 180° směrem k sobě – psovod vpravo, pes vlevo"
+    },
     "caption": {
       "approach": "Tým jde ke kartě",
       "approachSlow": "Tým jde ke kartě pomalým tempem (z předchozí karty)",

@@ -15,7 +15,7 @@ import {
 import { HANDLER, HANDLER_STAND } from '../figures/handler'
 import { apply } from '../figures/math'
 import { jointFrames, jointNames, lowestPoint, type Joint, type Pose } from '../figures/rig'
-import { EXERCISES } from '../figures/exercises'
+import { EXERCISES, RIGHT_EXERCISES } from '../figures/exercises'
 import {
   Z001,
   Z002,
@@ -35,6 +35,12 @@ import {
   Z017,
 } from '../figures/roz-exercises'
 import { TeamAnimator, onField } from '../figures/team'
+
+/** Every exercise as played: from the left leg, and those played from the right one (R15). */
+const PLAYED = [
+  ...EXERCISES.map((e) => [e.code, e] as const),
+  ...RIGHT_EXERCISES.map((e) => [`${e.code} (pes vpravo)`, e] as const),
+]
 
 /** The figure with only the named top-level limbs (and no root boxes). */
 const only = (rig: Joint, names: string[]): Joint => ({
@@ -254,7 +260,7 @@ describe('dog postures', () => {
  * where it is, the body moves and turns by stepping. Checked on every frame of every
  * exercise, as drawn.
  */
-describe.each(EXERCISES.map((e) => [e.code, e] as const))('%s: feet', (_, exercise) => {
+describe.each(PLAYED)('%s: feet', (_, exercise) => {
   const frames = playAll(exercise)
 
   test('a planted foot or paw never slides: the legs reach it where it stands', () => {
@@ -359,7 +365,7 @@ describe('walking', () => {
     expect(together / swinging.length).toBeGreaterThan(0.9)
   })
 
-  test.each(EXERCISES.map((e) => [e.code, e] as const))(
+  test.each(PLAYED)(
     '%s: standing, the handler has both feet down and the dog all four paws',
     (_, exercise) => {
       // From the moment the team stands in a position until it walks on (the first frames
@@ -500,13 +506,13 @@ describe('every exercise', () => {
     z: team.z - x * Math.sin(team.heading) + z * Math.cos(team.heading),
   })
 
-  test.each(EXERCISES.map((e) => [e.code, e] as const))('%s plays to the end', (_, exercise) => {
+  test.each(PLAYED)('%s plays to the end', (_, exercise) => {
     const frames = playAll(exercise)
     expect(frames.at(-1)!.finished).toBe(true)
     expect(frames.length / 60).toBeLessThan(40)
   })
 
-  test.each(EXERCISES.map((e) => [e.code, e] as const))(
+  test.each(PLAYED)(
     '%s: standing to begin, the handler has both shoes in the exercise space',
     (_, exercise) => {
       // §5.3.1: the exercise starts in its space, "rozhodující zde jsou nohy psovoda" (2-222's
@@ -534,56 +540,53 @@ describe('every exercise', () => {
     },
   )
 
-  test.each(EXERCISES.map((e) => [e.code, e] as const))(
-    '%s: nobody walks through the card',
-    (_, exercise) => {
-      const station = stationOf(exercise)
-      // The card and its supplementary card next to it (1-114's dog walked through the D0).
-      const cards = [cardPlace(exercise), supplementaryPlace(exercise)]
-        .filter((p) => p !== null)
-        .map((p) => ({ x: p.x, z: station + p.z }))
-      for (const f of playAll(exercise)) {
-        const handler = onField(f.team, f.handler.x, f.handler.z)
-        const dog = onField(f.team, f.dog.x, f.dog.z)
-        const frames = jointFrames(DOG, f.dog.pose)
-        const heading = f.team.heading + f.dog.heading
-        for (const card of cards) {
-          expect(Math.hypot(handler.x - card.x, handler.z - card.z)).toBeGreaterThan(0.4)
-          expect(Math.hypot(dog.x - card.x, dog.z - card.z)).toBeGreaterThan(0.35)
-          // The dog's head and paws stay off the stand: 0.5 m wide facing the team, its tent
-          // reaching about 0.3 m back (1-116's dog ran through it going round the handler).
-          for (const joint of DOG_REACH) {
-            const [x, , z] = frames.get(joint)!.position
-            const at = {
-              x: dog.x + x * Math.cos(heading) + z * Math.sin(heading),
-              z: dog.z - x * Math.sin(heading) + z * Math.cos(heading),
-            }
-            const dx = Math.max(0, Math.abs(at.x - card.x) - 0.25)
-            const dz = Math.max(0, card.z - at.z, at.z - card.z - 0.3)
-            expect(Math.hypot(dx, dz)).toBeGreaterThan(0.02)
+  test.each(PLAYED)('%s: nobody walks through the card', (_, exercise) => {
+    const station = stationOf(exercise)
+    // The card and its supplementary card next to it (1-114's dog walked through the D0).
+    const cards = [cardPlace(exercise), supplementaryPlace(exercise)]
+      .filter((p) => p !== null)
+      .map((p) => ({ x: p.x, z: station + p.z }))
+    for (const f of playAll(exercise)) {
+      const handler = onField(f.team, f.handler.x, f.handler.z)
+      const dog = onField(f.team, f.dog.x, f.dog.z)
+      const frames = jointFrames(DOG, f.dog.pose)
+      const heading = f.team.heading + f.dog.heading
+      for (const card of cards) {
+        expect(Math.hypot(handler.x - card.x, handler.z - card.z)).toBeGreaterThan(0.4)
+        expect(Math.hypot(dog.x - card.x, dog.z - card.z)).toBeGreaterThan(0.35)
+        // The dog's head and paws stay off the stand: 0.5 m wide facing the team, its tent
+        // reaching about 0.3 m back (1-116's dog ran through it going round the handler).
+        for (const joint of DOG_REACH) {
+          const [x, , z] = frames.get(joint)!.position
+          const at = {
+            x: dog.x + x * Math.cos(heading) + z * Math.sin(heading),
+            z: dog.z - x * Math.sin(heading) + z * Math.cos(heading),
           }
-        }
-        // …nor knocks over a cone (the bodies' middles, a body's half width off it).
-        for (const cone of [...(exercise.cones ?? []), ...(exercise.bowls ?? [])]) {
-          const at = { x: cone.x, z: station + cone.z }
-          expect(Math.hypot(handler.x - at.x, handler.z - at.z)).toBeGreaterThan(0.3)
-          expect(Math.hypot(dog.x - at.x, dog.z - at.z)).toBeGreaterThan(0.25)
-          // Nor does a shoe or a paw step on one (2-220: a shoe went through a bowl). A
-          // cone stands on a 24 cm plate, a bowl is 22 cm across; a shoe is 26 cm heel to
-          // toe and 11 cm wide.
-          for (const foot of f.feet.handler) {
-            const toe = {
-              x: foot.x + 0.26 * Math.sin(foot.yaw),
-              z: foot.z + 0.26 * Math.cos(foot.yaw),
-            }
-            expect(toSegment(at, foot, toe)).toBeGreaterThan(0.12 + 0.055)
-          }
-          for (const paw of f.feet.dog)
-            expect(Math.hypot(paw.x - at.x, paw.z - at.z)).toBeGreaterThan(0.12 + 0.035)
+          const dx = Math.max(0, Math.abs(at.x - card.x) - 0.25)
+          const dz = Math.max(0, card.z - at.z, at.z - card.z - 0.3)
+          expect(Math.hypot(dx, dz)).toBeGreaterThan(0.02)
         }
       }
-    },
-  )
+      // …nor knocks over a cone (the bodies' middles, a body's half width off it).
+      for (const cone of [...(exercise.cones ?? []), ...(exercise.bowls ?? [])]) {
+        const at = { x: cone.x, z: station + cone.z }
+        expect(Math.hypot(handler.x - at.x, handler.z - at.z)).toBeGreaterThan(0.3)
+        expect(Math.hypot(dog.x - at.x, dog.z - at.z)).toBeGreaterThan(0.25)
+        // Nor does a shoe or a paw step on one (2-220: a shoe went through a bowl). A
+        // cone stands on a 24 cm plate, a bowl is 22 cm across; a shoe is 26 cm heel to
+        // toe and 11 cm wide.
+        for (const foot of f.feet.handler) {
+          const toe = {
+            x: foot.x + 0.26 * Math.sin(foot.yaw),
+            z: foot.z + 0.26 * Math.cos(foot.yaw),
+          }
+          expect(toSegment(at, foot, toe)).toBeGreaterThan(0.12 + 0.055)
+        }
+        for (const paw of f.feet.dog)
+          expect(Math.hypot(paw.x - at.x, paw.z - at.z)).toBeGreaterThan(0.12 + 0.035)
+      }
+    }
+  })
 
   test.each([
     [Z006, 90],

@@ -57,8 +57,8 @@ const HEEL_SIDE = 0.42
 const ROOM_AROUND = { x: 0.15, z: -0.45 }
 
 /** The right turn is `-1` (the heading falls), the left one `1`. */
-const RIGHT = -1
-const LEFT = 1
+export const RIGHT = -1 as const
+export const LEFT = 1 as const
 const turnCaption = (sign: number, degrees: number) =>
   `turn${sign === RIGHT ? 'Right' : 'Left'}${degrees}OnSpot`
 
@@ -476,6 +476,7 @@ export const R2_232: Exercise = {
       radius: 0,
       // Round its front paws, giving a little room to the handler turning towards it.
       dogTurns: { way: RIGHT, pivot: { x: 0, z: 0.2 }, out: 0.15 },
+      bySide: true,
       caption: 'turnTowardsEachOther',
     },
     leaveRight('ahead'),
@@ -709,6 +710,7 @@ export const R3_315: Exercise = {
       turn: 360,
       radius: 0.25,
       dogTurns: { way: LEFT, pivot: { x: 0, z: 0 }, degrees: 360, seconds: 4 },
+      bySide: true,
       caption: 'bothSpinOut',
     },
     leave(),
@@ -719,28 +721,35 @@ export const R3_315: Exercise = {
  * 3-325 / 3-326 Výměna při obratu o 180° vpravo / vlevo (p. 61): "Tým se před kartou otočí o
  * 180° doprava a poté pokračují v opačném směru. Pes změní pozici vedení." Both turn the
  * same way, the handler on the spot, the dog round its front paws — so it ends at the
- * handler's other leg.
+ * handler's other leg. `dogRight`: from the right leg the card's turn stays, and the dog turns
+ * the way the card says — now on the other side of the handler (the mirror image of the
+ * other card from the left).
  */
-const turnAboutChange = (code: string, sign: 1 | -1): Exercise => ({
-  code,
-  card: 'ahead',
-  steps: [
-    { walk: 3.5, caption: 'approachTurn' },
-    {
-      turn: sign === RIGHT ? 180 : -180,
-      radius: 0,
-      // Turning right, towards the handler, round its front paws, its rear swinging out;
-      // turning left, away from them, round its middle while it moves out sideways, so its
-      // rear keeps off the handler turning towards it — never stepping back.
-      dogTurns:
-        sign === RIGHT
-          ? { way: sign, pivot: { x: 0, z: 0.2 } }
-          : { way: sign, pivot: { x: 0, z: 0 }, out: 0.35 },
-      caption: sign === RIGHT ? 'turnAboutChangeRight' : 'turnAboutChangeLeft',
-    },
-    leaveRight('ahead'),
-  ],
-})
+export const turnAboutChange = (code: string, sign: 1 | -1, dogRight = false): Exercise => {
+  // Turning towards the handler (away from the dog's side), round its front paws, its rear
+  // swinging out; away from them, round its middle while it moves out sideways, so its rear
+  // keeps off the handler turning towards it — never stepping back. From the right leg the
+  // dog's way is given as from the left (`ExercisePlayer` turns it round).
+  const towardsHandler = (sign === RIGHT) !== dogRight
+  const way = (dogRight ? -sign : sign) as 1 | -1
+  return {
+    code,
+    card: 'ahead',
+    ...(dogRight && { dogStarts: 'right' }),
+    steps: [
+      { walk: 3.5, caption: 'approachTurn' },
+      {
+        turn: sign === RIGHT ? 180 : -180,
+        radius: 0,
+        dogTurns: towardsHandler
+          ? { way, pivot: { x: 0, z: 0.2 } }
+          : { way, pivot: { x: 0, z: 0 }, out: 0.35 },
+        caption: sign === RIGHT ? 'turnAboutChangeRight' : 'turnAboutChangeLeft',
+      },
+      leaveRight('ahead'),
+    ],
+  }
+}
 export const R3_325 = turnAboutChange('3-325', RIGHT)
 export const R3_326 = turnAboutChange('3-326', LEFT)
 

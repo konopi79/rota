@@ -75,6 +75,12 @@ export type ExerciseStep = { caption: string } & (
        */
       dogRound?: DogPath
       /**
+       * The card turns the team by the dog's side, not by left and right (Z-010 "do té strany,
+       * na které se nachází pes", 2-232 "směrem k sobě", 3-315 "od psa"): with the dog on the
+       * right the handler turns the other way.
+       */
+      bySide?: true
+      /**
        * Meanwhile the dog turns about on its own, `way` (1 left, −1 right), round a point
        * `pivot` off its middle (`x` out away from the handler, `z` ahead — its front paws
        * 0.2 ahead), and so ends at the handler's other leg (a turn of 180° on the spot).
@@ -97,6 +103,26 @@ export type ExerciseStep = { caption: string } & (
 )
 
 const PATHS: Record<'dog', Path> = { dog: AROUND_DOG }
+
+/** A path round the handler the other way round: left and right swapped (+x is left). */
+const mirroredPaths = new WeakMap<Path, Path>()
+export const mirrored = (path: Path): Path => {
+  const known = mirroredPaths.get(path)
+  if (known) return known
+  const flipped: Path = {
+    length: path.length,
+    at: (s) => {
+      const p = path.at(s)
+      return { x: -p.x, z: p.z, heading: -p.heading }
+    },
+  }
+  mirroredPaths.set(path, flipped)
+  return flipped
+}
+
+/** The other leg; in front stays in front. */
+const otherSide = (place: TeamControls['place']): TeamControls['place'] =>
+  place === 'left' ? 'right' : place === 'right' ? 'left' : place
 
 /**
  * The dog's paths round the handler (`paths.ts`) and where each one leaves the dog: in front
@@ -188,6 +214,12 @@ export type Exercise = {
   /** The pace the team comes in, from the card before (Z-017 after slow or fast). */
   fromPace?: 'slow' | 'fast'
   /**
+   * The dog starts at the handler's right leg (a start "R", or after a change of side). Its
+   * own ways round the handler, and its own turns, go the other way round (`mirrored`); the
+   * handler's turns stay as the card says, unless they go by the dog's side (`bySide`).
+   */
+  dogStarts?: 'right'
+  /**
    * Where in the exercise space the handler stops, from the usual place (metres, +x to the
    * left, +z towards the card): an exercise that needs room in front stops further back.
    */
@@ -223,8 +255,32 @@ export const cardPlace = (exercise: Exercise) => {
 const SPACE = { side: { x: 0.15, z: -0.15 }, ahead: { x: 0, z: 0 } }
 export const SPACE_SIDE = 1.2
 
-/** The middle of the exercise's space, in the station's frame. */
+/**
+ * Which side of the team the card stands on, where the exercise's description says so — "Není-li
+ * v popisu cviku uvedeno jinak" (§5.3.1): round cones and bowls the card stands before the
+ * equipment and the team passes it on its right (Z-018, Z-026) or on its left (Z-019, Z-027,
+ * the slaloms "první kužel po své levé straně", the figure eight "karta vždy vlevo od psa").
+ * `null`: the usual places.
+ */
+export const passesCard = (exercise: Exercise): 'left' | 'right' | null =>
+  exercise.cardAt ? (exercise.cardAt.x > 0 ? 'left' : 'right') : null
+
+/**
+ * The middle of the exercise's space, in the station's frame: always as far from the card —
+ * before it, on the side the team passes it (`passesCard`; the usual "vlevo před kartou"
+ * passing it on the right).
+ */
 export const exerciseSpace = (exercise: Exercise) => {
+  const card = cardPlace(exercise)
+  const passes = passesCard(exercise)
+  if (passes) {
+    const usual = CARD_PLACE.side
+    const side = SPACE.side.x - usual.x
+    return {
+      x: card.x + (passes === 'right' ? side : -side),
+      z: card.z + SPACE.side.z - usual.z,
+    }
+  }
   const space = SPACE[exercise.card ?? 'side']
   const stop = exercise.stopAt ?? { x: 0, z: 0 }
   return { x: space.x - stop.x, z: space.z - stop.z }
@@ -335,6 +391,11 @@ export type ExerciseFrame = TeamFrame & {
   /** The handler's base place and the team's direction, from where the exercise starts. */
   team: Pose
   caption: string | null
+  /**
+   * The dog is at the other leg than its script was written for: the caption reads with left
+   * and right swapped (`figures.captionRight`).
+   */
+  flipped: boolean
   /** The step that runs next (after this frame). */
   stepIndex: number
   finished: boolean
@@ -470,7 +531,7 @@ class Follower {
  * the spot follows, so the team comes to rest where the script says.
  */
 export class ExercisePlayer {
-  private animator = new TeamAnimator()
+  private animator: TeamAnimator
   private index = 0
   private stepTime = 0
   private stepStart = 0
@@ -534,14 +595,40 @@ export class ExercisePlayer {
   private courseBase: Pose = { x: 0, z: 0, heading: 0 }
   private courseWalked = 0
   /** Where the dog keeps to when it is not on a path of its own. */
-  private dogPlace: TeamControls['place'] = 'left'
+  private dogPlace: TeamControls['place']
   /** Metres the dog has gone along its current path, and how fast it goes. */
   private dogWalked = 0
   private dogPathSpeed = 0
   private dogPathShift = { x: 0, z: 0 }
   private dogBody = new Follower()
+  /** The ways the current step goes, as from the leg the dog set off from (`side`). */
+  private dogWay: { path: Path; ends: TeamControls['place']; even?: boolean } | null = null
+  private walkingWay: (typeof WALKING_PATHS)[keyof typeof WALKING_PATHS] | null = null
+  private aroundPath: Path | null = null
+  /** −1 while a turn step goes the other way round, the dog having set off on the right. */
+  private turnBy: 1 | -1 = 1
 
-  constructor(private readonly exercise: Exercise) {}
+  constructor(private readonly exercise: Exercise) {
+    this.flipped = exercise.dogStarts === 'right'
+    this.dogPlace = this.flipped ? 'right' : 'left'
+    this.animator = new TeamAnimator(this.dogPlace)
+  }
+
+  /**
+   * The dog is at the other leg than its script was written for (`dogStarts`): the scripts
+   * have it start at the left leg, so from the right one its ways round the handler, its own
+   * turns, and the handler's ways round it go the other way round, and leave it at the other
+   * leg than the script says. Until it comes into heel from in front: the D0 cards bring it
+   * to the left leg wherever it came from (p. 17), as in the script.
+   */
+  private flipped: boolean
+
+  /** A way of the dog's own, or the handler's round the dog, as it goes now (`flipped`). */
+  private side<T extends { path: Path; ends?: TeamControls['place'] }>(way: T): T {
+    if (this.dogPlace === 'front') this.flipped = false
+    if (!this.flipped) return way
+    return { ...way, path: mirrored(way.path), ...(way.ends && { ends: otherSide(way.ends) }) }
+  }
 
   step(dt: number): ExerciseFrame {
     const steps = this.exercise.steps
@@ -686,7 +773,8 @@ export class ExercisePlayer {
         }
         done = t >= SPIN_AHEAD_TIME + loop + SPIN_INTO_HEEL
       } else if (current.dogChanges) {
-        const { path, ends, facesAsPath, ramps = 0 } = WALKING_PATHS[current.dogChanges]
+        if (starting) this.walkingWay = this.side(WALKING_PATHS[current.dogChanges])
+        const { path, ends, facesAsPath, ramps = 0 } = this.walkingWay!
         const walked = Math.min(1, (travelled - this.stepStart) / current.walk)
         const u = ramped(walked, ramps)
         const here = path.at(path.length * u)
@@ -714,7 +802,8 @@ export class ExercisePlayer {
     } else if (current && 'wait' in current) {
       done = this.stepTime >= current.wait
     } else if (current && 'around' in current) {
-      const path = PATHS[current.around]
+      if (starting) this.aroundPath = this.side({ path: PATHS[current.around] }).path
+      const path = this.aroundPath!
       const left = path.length - (walked - this.walkedAtStart)
       const walking = left > speed / SETTLE_RATE + 0.002
       const bend = bendAhead(path, walked - this.walkedAtStart)
@@ -729,7 +818,8 @@ export class ExercisePlayer {
       // Done once the handler stands in the base place on both feet.
       done = !walking && speed < 0.01 && (this.last?.feet.handlerStill ?? true)
     } else if (current && 'dogPath' in current) {
-      const { path, ends } = DOG_PATHS[current.dogPath]
+      if (starting) this.dogWay = this.side(DOG_PATHS[current.dogPath])
+      const { path, ends, even } = this.dogWay!
       if (starting) {
         this.dogWalked = 0
         // The path starts where the dog usually is; from wherever it really is, the difference
@@ -744,7 +834,6 @@ export class ExercisePlayer {
       const onLegs = this.last?.feet.dogOnLegs ?? true
       // Its body follows only as fast as its paws can carry it: as it falls behind, the path
       // eases off and waits for it.
-      const { even } = DOG_PATHS[current.dogPath]
       const keepingUp = Math.min(
         1,
         Math.max(0, (DOG_FALLS_BEHIND - this.dogBody.lag) / (DOG_FALLS_BEHIND / 2)),
@@ -992,6 +1081,10 @@ export class ExercisePlayer {
         this.turnLeft = (Math.abs(current.turn) * Math.PI) / 180
         this.turnDogFrom = null
         this.braking = current.radius === 0
+        // From the right leg the dog's own ways go the other way round, and so does a turn
+        // that goes by the dog's side.
+        this.turnBy = this.flipped ? -1 : 1
+        if (current.dogRound) this.dogWay = this.side(DOG_PATHS[current.dogRound])
       }
       this.posture = 'stand'
       // A turn on the spot starts from a stand: the team first comes to rest.
@@ -1009,7 +1102,7 @@ export class ExercisePlayer {
             maxSpeed: MAX_SPIN * (current.radius || PIVOT_RADIUS),
           }
       if (current.dogRound && !this.braking) {
-        const { path } = DOG_PATHS[current.dogRound]
+        const { path } = this.dogWay!
         const total = (Math.abs(current.turn) * Math.PI) / 180
         controls.dogAt = path.at(path.length * (1 - this.turnLeft / total))
       }
@@ -1025,7 +1118,8 @@ export class ExercisePlayer {
           ? ramped(Math.min(1, this.stepTime / current.dogTurns.seconds), 0.3)
           : ease(1 - this.turnLeft / total)
         const side = this.dogPlace === 'right' ? -1 : 1
-        const own = (current.dogTurns.way * Math.PI * (current.dogTurns.degrees ?? 180) * u) / 180
+        const way = current.dogTurns.way * this.turnBy
+        const own = (way * Math.PI * (current.dogTurns.degrees ?? 180) * u) / 180
         const { pivot } = current.dogTurns
         const q = onField(from, { x: side * pivot.x, z: pivot.z, heading: 0 })
         const v = { x: from.x - q.x, z: from.z - q.z }
@@ -1057,7 +1151,8 @@ export class ExercisePlayer {
     const frameWalked = advanced.walked
 
     if (current && 'turn' in current) {
-      const sign = current.turn > 0 ? -1 : 1 // right = towards −x = heading decreasing
+      const turn = current.bySide ? current.turn * this.turnBy : current.turn
+      const sign = turn > 0 ? -1 : 1 // right = towards −x = heading decreasing
       if (current.radius === 0 && this.braking) {
         this.team = forward(this.team, moved)
       } else if (current.radius === 0) {
@@ -1094,7 +1189,7 @@ export class ExercisePlayer {
     }
 
     if (current && 'around' in current) {
-      this.offset = PATHS[current.around].at(frameWalked - this.walkedAtStart)
+      this.offset = this.aroundPath!.at(frameWalked - this.walkedAtStart)
     } else {
       // Back on the base place: whatever the path left over settles away.
       const k = 1 - Math.exp(-SETTLE_RATE * dt)
@@ -1137,6 +1232,7 @@ export class ExercisePlayer {
       handler: { ...frame.handler, ...this.offset },
       team: this.team,
       caption: current?.caption ?? null,
+      flipped: this.flipped,
       stepIndex: this.index,
       finished: this.index > steps.length,
     }

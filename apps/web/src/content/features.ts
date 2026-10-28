@@ -20,7 +20,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'national-field-plan'
+export const LATEST_FEATURE_ID = 'animations-right'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -50,6 +50,11 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
         id: 'animations',
         title: 'Animace cviků',
         desc: 'U všech karet RO-Z a RO1, doplňkových karet D0 a 33 karet RO2 a RO3 si v detailu karty pustíš 3D animaci, jak psovod a pes cvik podle zkušebního řádu provedou – s popisky, zpomalením, otáčením pohledu a vyznačeným místem pro provedení cviku. V katalogu takové karty poznáš podle štítku „animace“.',
+      },
+      {
+        id: 'animations-right',
+        title: 'Animace se psem vpravo',
+        desc: 'Všechny karty RO-Z a výměny strany (1-123 až 1-125, 2-232, 3-325 až 3-327) si v animaci pustíš i se psem u pravé nohy – jako po startu „R“. Obraty zůstávají, jak je karta říká, takže pes je najednou uvnitř oblouku; doplňková karta D0 ho vrátí k levé noze.',
       },
     ],
   },
