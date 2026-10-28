@@ -18,11 +18,12 @@ import {
   cardPlace,
   exerciseSpace,
   SPACE_SIDE,
+  passesCard,
   stationOf,
   supplementaryPlace,
   type Exercise,
 } from '@/lib/figures/exercise'
-import { EXERCISES } from '@/lib/figures/exercises'
+import { EXERCISES, RIGHT_EXERCISES, RIGHT_SIDE_CARDS } from '@/lib/figures/exercises'
 import { HANDLER } from '@/lib/figures/handler'
 import { cn } from '@/lib/utils'
 
@@ -158,6 +159,12 @@ const SERIES = ['Z', '1', '2', '3'] as const
 type Series = (typeof SERIES)[number]
 const SERIES_CLASS: Record<Series, string> = { Z: 'RO-Z', 1: 'RO1', 2: 'RO2', 3: 'RO3' }
 const seriesOf = (code: string) => code.split('-')[0] as Series
+/**
+ * A caption as the frame says it: its key, and whether the dog is at the other leg than the
+ * script was written for — then it reads with left and right swapped, where it names a side.
+ */
+type Caption = { key: string; flipped: boolean }
+
 /** Which variant of a card an exercise plays: its supplementary card or the pace before. */
 const variantOf = (e: Exercise) => e.supplementary ?? e.fromPace
 
@@ -176,7 +183,7 @@ function ExerciseTeam({
   slowMotion: number
   showSpace: boolean
   focusRef: RefObject<Focus>
-  onCaption: (caption: string | null) => void
+  onCaption: (caption: Caption | null) => void
 }) {
   const station = stationOf(exercise)
   const player = useRef<ExercisePlayer>(null)
@@ -184,6 +191,7 @@ function ExerciseTeam({
   const dog = useRef<FigureHandle>(null)
   const handler = useRef<FigureHandle>(null)
   const caption = useRef<string | null>(null)
+  const flipped = useRef(false)
 
   useFrame((_, delta) => {
     player.current ??= new ExercisePlayer(exercise)
@@ -196,9 +204,10 @@ function ExerciseTeam({
     team.current?.position.set(place.x, 0, place.z)
     team.current?.rotation.set(0, frame.team.heading, 0)
     focusRef.current = place
-    if (frame.caption !== caption.current) {
+    if (frame.caption !== caption.current || frame.flipped !== flipped.current) {
       caption.current = frame.caption
-      onCaption(frame.caption)
+      flipped.current = frame.flipped
+      onCaption(frame.caption ? { key: frame.caption, flipped: frame.flipped } : null)
     }
   })
 
@@ -276,8 +285,9 @@ function CameraRig({ view, focusRef }: { view: CameraView; focusRef: RefObject<F
 const cardName = (code: string) => CZ_CARDS.find((c) => c.code === code)?.name ?? ''
 
 /**
- * One card's animation: the scene, its caption, and the controls — the variant (D0 card,
- * pace before) where the card has more than one, camera, speed, shadows, exercise space.
+ * One card's animation: the scene, its caption, and the controls — the dog's side and the
+ * variant (D0 card, pace before) where the card has more, camera, speed, shadows, exercise
+ * space.
  * `keyboard`: space pauses too (on the page of its own; in a card detail space scrolls).
  * `inline`: laid out inside a page column (a card detail) rather than full width.
  */
@@ -292,17 +302,21 @@ export function AnimationPlayer({
   keyboard?: boolean
   inline?: boolean
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [variant, setVariant] = useState<string | undefined>(initialVariant)
+  const [dogSide, setDogSide] = useState<'left' | 'right'>('left')
   const [view, setView] = useState<CameraView>('behind')
   const [slowMotion, setSlowMotion] = useState<keyof typeof SLOW_MOTION>('full')
   const [paused, setPaused] = useState(false)
   const [shadows, setShadows] = useState(true)
   const [showSpace, setShowSpace] = useState(true)
-  const [caption, setCaption] = useState<string | null>(null)
+  const [caption, setCaption] = useState<Caption | null>(null)
   const focusRef = useRef<Focus>({ x: 0, z: 0 })
   const press = useRef<{ x: number; y: number; time: number } | null>(null)
-  const variants = EXERCISES.filter((e) => e.code === code)
+  // The dog on the right: after a start "R" (every RO-Z card) or a change of side (R15).
+  const bothSides = RIGHT_SIDE_CARDS.includes(code)
+  const side = bothSides ? dogSide : 'left'
+  const variants = (side === 'right' ? RIGHT_EXERCISES : EXERCISES).filter((e) => e.code === code)
   const exercise = variants.find((e) => variantOf(e) === variant) ?? variants[0]!
   const variantGroup = variants[0]!.supplementary ? 'supplementary' : 'fromPace'
 
@@ -319,17 +333,32 @@ export function AnimationPlayer({
   }, [keyboard])
 
   const controls = cn('grid w-full gap-3', inline ? 'py-3' : 'mx-auto max-w-md px-4 py-4')
+  const captionKey =
+    caption &&
+    (caption.flipped && i18n.exists(`figures.captionRight.${caption.key}`)
+      ? `figures.captionRight.${caption.key}`
+      : `figures.caption.${caption.key}`)
   return (
     <div className="flex flex-col">
-      {variants.length > 1 && (
-        <div className={cn('w-full', inline ? 'pb-3' : 'mx-auto max-w-md px-4 pb-3')}>
-          <Choice
-            group={variantGroup}
-            value={variantOf(exercise)!}
-            options={variants.map((e) => variantOf(e)!)}
-            onChange={setVariant}
-            label={variantGroup === 'supplementary' ? (o) => `${o} ${cardName(o)}` : undefined}
-          />
+      {(bothSides || variants.length > 1) && (
+        <div className={cn('grid w-full gap-3', inline ? 'pb-3' : 'mx-auto max-w-md px-4 pb-3')}>
+          {bothSides && (
+            <Choice
+              group="dogSide"
+              value={side}
+              options={['left', 'right'] as const}
+              onChange={setDogSide}
+            />
+          )}
+          {variants.length > 1 && (
+            <Choice
+              group={variantGroup}
+              value={variantOf(exercise)!}
+              options={variants.map((e) => variantOf(e)!)}
+              onChange={setVariant}
+              label={variantGroup === 'supplementary' ? (o) => `${o} ${cardName(o)}` : undefined}
+            />
+          )}
         </div>
       )}
       <div
@@ -366,7 +395,7 @@ export function AnimationPlayer({
             <meshStandardMaterial color="#86b86b" />
           </mesh>
           <ExerciseTeam
-            key={`${code} ${variantOf(exercise) ?? ''}`}
+            key={`${code} ${variantOf(exercise) ?? ''} ${side}`}
             exercise={exercise}
             slowMotion={paused ? 0 : SLOW_MOTION[slowMotion]}
             showSpace={showSpace}
@@ -384,10 +413,10 @@ export function AnimationPlayer({
             </div>
           </div>
         )}
-        {caption && (
+        {captionKey && (
           <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center px-4">
             <div className="bg-background/85 rounded-lg px-3 py-1.5 text-center font-medium shadow">
-              {t(`figures.caption.${caption}`)}
+              {t(captionKey)}
             </div>
           </div>
         )}
@@ -423,7 +452,7 @@ export function AnimationPlayer({
           </div>
           {showSpace && (
             <p className="text-muted-foreground text-sm">
-              {t(`figures.space.${exercise.card ?? 'side'}`)}
+              {t(`figures.space.${passesCard(exercise) ?? exercise.card ?? 'side'}`)}
             </p>
           )}
         </div>

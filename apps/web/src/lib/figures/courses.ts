@@ -4,7 +4,9 @@ import { smoothHeadings, type Path } from './paths'
  * Courses the whole team walks round equipment — spirals and slaloms round cones (regulation
  * p. 24–28). Coordinates are those of the place where the course begins: the handler there
  * at the origin facing +z, +x to the handler's left (the dog's side). The path is the
- * handler's; the dog keeps to its place at heel, outside or inside the bends.
+ * handler's; the dog keeps to its place at heel, outside or inside the bends. `dogRight`:
+ * the dog at the handler's right leg — the same figure round the same equipment, the handler
+ * keeping the distance the dog's side of each bend needs.
  */
 
 type Point = { x: number; z: number }
@@ -102,8 +104,8 @@ export const CONE_CLEARANCE = { dogOutside: 0.65, dogInside: 0.95 }
  * author). Built turning right, cones on the handler's right; `left` mirrors it. Parts: 0
  * to the third cone and back, 4 to the second and back, 7 round the first, 8 away.
  */
-export const spiral = (left: boolean): Course => {
-  const r = left ? CONE_CLEARANCE.dogInside : CONE_CLEARANCE.dogOutside
+export const spiral = (left: boolean, dogRight = false): Course => {
+  const r = left !== dogRight ? CONE_CLEARANCE.dogInside : CONE_CLEARANCE.dogOutside
   const [z1, z2, z3] = conesAt(0).map((c) => c.z) as [number, number, number]
   const round = (z: number): Piece[] => [
     line(0, z === z3 ? 0 : z1, 0, z),
@@ -128,8 +130,8 @@ export const spiral = (left: boolean): Course => {
  * then round the third; on past it. Turning right, cones on the handler's right; `left`
  * mirrors it. Parts: 1, 3, 5 round the first, second, third cone.
  */
-export const circleSpiral = (left: boolean): Course => {
-  const r = left ? CONE_CLEARANCE.dogInside : CONE_CLEARANCE.dogOutside
+export const circleSpiral = (left: boolean, dogRight = false): Course => {
+  const r = left !== dogRight ? CONE_CLEARANCE.dogInside : CONE_CLEARANCE.dogOutside
   const zs = conesAt(0).map((c) => c.z) as [number, number, number]
   return course(
     [
@@ -163,18 +165,21 @@ export const swerve = (aside: number, over = 1.2): Course =>
 
 /** Slalom: how far the middle of the team swings off the cones' line, metres. */
 const WEAVE = 0.78
-/** From the handler to the middle of the team (the dog at heel on the left), metres. */
+/** From the handler to the middle of the team (to the dog's side), metres. */
 const TEAM_MIDDLE = 0.21
 
 /**
  * Z-020 / Z-021 Slalom (p. 25): four cones; "Tým vstupuje do slalomu vždy zprava (tj. první
  * kužel po své levé straně)" and weaves through, the team's middle swinging `WEAVE` to
  * either side of each cone — the dog passes between handler and cone where the cone is on
- * the left. `back`: round the last cone and through again the other way. Parts: 0 to the
- * slalom, 1 through it, 2 round the last cone, 3 back through.
+ * its side. `back`: round the last cone and through again the other way. Parts: 0 to the
+ * slalom, 1 through it, 2 round the last cone, 3 back through. With the dog on the right the
+ * team's middle is right of the handler: the first cone, still on the handler's left, comes
+ * nearer.
  */
-export const slalom = (back: boolean): Course => {
-  const cone = TEAM_MIDDLE + WEAVE
+export const slalom = (back: boolean, dogRight = false): Course => {
+  const middle = dogRight ? -TEAM_MIDDLE : TEAM_MIDDLE
+  const cone = middle + WEAVE
   const zs = [0, 1, 2, 3].map((i) => FIRST_CONE + i * CONE_GAP)
   const first = zs[0]!
   const last = zs[3]!
@@ -191,8 +196,8 @@ export const slalom = (back: boolean): Course => {
         there,
         // Round the last cone (on the right) to its far side, then back through.
         arc(cone, last, 2 * WEAVE - cone, 0, Math.PI),
-        weave(cone + TEAM_MIDDLE, last, first),
-        line(cone + TEAM_MIDDLE + WEAVE, first, cone + TEAM_MIDDLE + WEAVE, first - 1),
+        weave(cone + middle, last, first),
+        line(cone + middle + WEAVE, first, cone + middle + WEAVE, first - 1),
       ]
     : [line(0, 0, 0, first), there, line(2 * WEAVE, last, 2 * WEAVE, last + 1)]
   return course(
@@ -214,12 +219,14 @@ export const slalom = (back: boolean): Course => {
  * upwards, on the far side. Round the left bowl the dog is inside, so the handler keeps
  * `dogInside` off it; through the middle the team's middle passes the figure's. Parts: 0 to
  * the figure, 1 in through the middle, 2 round the left bowl, 3 back through, 4 round the
- * right bowl, 5 through again, 6 out.
+ * right bowl, 5 through again, 6 out. With the dog on the right the same way (the card still
+ * "vlevo od psa"), the dog now inside round the right bowl.
  */
-export const figureEight = (): Course => {
+export const figureEight = (dogRight = false): Course => {
   const half = 1.5
-  const outer = CONE_CLEARANCE.dogInside
-  const inner = CONE_CLEARANCE.dogOutside
+  const { dogInside, dogOutside } = CONE_CLEARANCE
+  const outer = dogRight ? dogOutside : dogInside
+  const inner = dogRight ? dogInside : dogOutside
   // Through the middle the handler goes at a slant to the long diagonal, from round one bowl
   // straight on round the other; one way it heads `through`, back the other way.
   const slant = Math.asin((outer + inner) / (2 * half))

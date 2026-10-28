@@ -38,7 +38,7 @@ committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 | R12 | Exercise animations                                            | ✅ 2026-10-22 |
 | R13 | Animations: dog on the right, side steps, …                    | ✅ 2026-10-27 |
 | R14 | National course plan on the field                              | ✅ 2026-10-27 |
-| R15 | Animations: the dog on the right                               | ⏳            |
+| R15 | Animations: the dog on the right                               | ✅ 2026-10-28 |
 | R16 | Course walked through in animation (RO-Z, RO1)                 | ⏳            |
 | R17 | Animations: leave, recall, jumps + walkthroughs RO2, RO3, RO-V | ⏳            |
 | R18 | CNDC (several cards at one station)                            | ⏳ answers    |
@@ -673,10 +673,20 @@ after a start "R". Not a mirror image: a turn to the right stays one, with the d
 inside instead of the outside — each card needs its own script, mostly from the existing
 building blocks (the author, 2026-10-27).
 
-- [ ] The side-change cards the other way too, right to left: 1-123–1-125, 2-232, 3-325–3-327
-- [ ] Every RO-Z card with the dog on the right (not the D0 cards — they bring it to the left)
-- [ ] "Pes vpravo" switch in the card detail and on `/animace`; tests as for the left
-- [ ] RO1–RO3 cards on the right where courses need them (RO3's one exercise), the rest with R17
+How it is built: an exercise may start with the dog at the right leg (`dogStarts`); the
+player then runs the same script with the dog's own ways round the handler mirrored — its
+paths, its turns about, the handler's way round it — until the dog comes into heel from in
+front (a D0 card brings it to the left leg, as in the script). The handler's turns stay as the
+card says, except where the card turns by the dog's side (`bySide`: Z-010 "do té strany, na
+které se nachází pes", 2-232 "směrem k sobě", 3-315 "od psa"). Captions that name a side read
+mirrored while the dog is (`figures.captionRight`).
+
+- [x] The side-change cards the other way too, right to left: 1-123–1-125, 2-232, 3-325–3-327 — 3-325 / 3-326 keep the card's direction, so from the right each is the mirror image of the other from the left (`turnAboutChange(…, dogRight)`)
+- [x] Every RO-Z card with the dog on the right — Z-014, Z-025, Z-032 too: the dog comes into the front from the right, the D0 card takes it to the left leg. Round cones and bowls the handler keeps the distance the dog's side of each bend needs (`spiral`, `circleSpiral`, `slalom`, `figureEight` with `dogRight`); the slalom still entered "zprava", the figure eight with the card "vlevo od psa"
+- [x] Room by the card: with a card right of the team the dog stands between it and the handler, so the handler stops 25 cm further left in the square (Z-004 / Z-005, walking round the dog: 55 cm left, 40 cm back); a card ahead 5 cm further off. The handler always steps off with the same foot, so from the right the feet fall differently: 1-123, 3-327 (7 cm into a foot) and Z-018, Z-026 walk up a step longer (`exercises.ts`, `RIGHT_EXERCISES`)
+- [x] "Pes jde u nohy: levé / pravé" in the card detail and on `/animace` (`RIGHT_SIDE_CARDS`); every frame test runs on both sides. Reviewed card by card by the author (2026-10-28)
+- [x] The exercise space always as far from the card (author, 2026-10-28): round cones and bowls it was drawn where the handler starts, not by the card — now before the card on the side the team passes it ("Není-li v popisu cviku uvedeno jinak", §5.3.1: Z-019, Z-027, the slaloms and the figure eights pass it on the left), left and right, RO-Z to RO3 (`passesCard`)
+- [x] ~~RO1–RO3 cards on the right where courses need them (RO3's one exercise)~~ ⏭️ moved to R17: the RO-Z and RO1 walkthroughs (R16) need none — an RO1 course from a start "R" changes the side on its first card
 
 ### R16 — Course walked through in animation (RO-Z, RO1)
 
@@ -688,6 +698,7 @@ building blocks (the author, 2026-10-27).
 
 - [ ] Leave and recall: 2-211–2-216, 2-230, 2-231, 3-301, 3-302, 3-307–3-312, 3-319–3-322
 - [ ] Jumps (a jump to build): 2-217, 2-218, 3-313, 3-314; sending to a cone 3-324; running off 3-323
+- [ ] RO1–RO3 cards with the dog on the right where courses need them (RO2/RO3 mid-course, RO3's one exercise there) — from R15
 - [ ] Walkthroughs for RO2, RO3, RO-V
 
 ### R18 — CNDC

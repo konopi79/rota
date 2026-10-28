@@ -227,7 +227,7 @@ export class TeamAnimator {
   private lastPace: HandlerPace = 'normal'
   /** How the handler's pace looks right now (blending into a new pace). */
   private style: PaceStyle = paceStyle('normal')
-  private place = { ...PLACES.left }
+  private place: { x: number; z: number; heading: number }
   private dogPosture: Pose = DOG_POSTURES.stand
   /** 1 while the legs carry the dog (standing, moving), 0 sitting or lying. */
   private dogStanding = 1
@@ -256,6 +256,11 @@ export class TeamAnimator {
     return this.fold
   }
   private fold = 0
+
+  /** `dogPlace`: where the dog starts, at the handler's left (as a rule) or right leg. */
+  constructor(dogPlace: TeamControls['place'] = 'left') {
+    this.place = { ...PLACES[dogPlace] }
+  }
 
   /** How near the dog's planted paws are to the edge of their reach (`PawStepper.strain`). */
   get dogStrain() {
