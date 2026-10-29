@@ -45,6 +45,11 @@ export type TeamControls = {
   rest?: Body
   /** A tight bend ahead: the handler slows down to this, m/s. */
   maxSpeed?: number
+  /**
+   * The handler walks this much faster or slower than the pace: lining the steps up with
+   * where an exercise starts (a course walked through, `walkTo`).
+   */
+  paceScale?: number
   /** A step the handler takes as set by hand (field coordinates). */
   footstep?: FootTarget
   /** Where the dog will come to a stand, the team stopping (field coordinates). */
@@ -279,7 +284,9 @@ export class TeamAnimator {
     const pace = HANDLER_PACE[this.lastPace]
     // A person sets off over about a step and stops more firmly; walking on, a change of
     // pace takes about a second either way.
-    const wanted = walking ? Math.min(pace.speed, controls.maxSpeed ?? Infinity) : 0
+    const wanted = walking
+      ? Math.min(pace.speed * (controls.paceScale ?? 1), controls.maxSpeed ?? Infinity)
+      : 0
     this.speed =
       wanted > this.speed || walking
         ? this.speed + (wanted - this.speed) * (1 - Math.exp(-SET_OFF_RATE * dt))

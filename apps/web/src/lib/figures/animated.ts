@@ -1,3 +1,5 @@
+import type { Deck } from '@rota/content'
+
 /**
  * Which cards have an exercise animation — kept light on purpose (no three.js, no scripts)
  * for the card detail and the catalogue. A test keeps the list in step with the scripts in
@@ -95,6 +97,35 @@ export const ANIMATED_CARDS: readonly string[] = [
   '3-326',
   '3-327',
 ]
+
+/**
+ * The cards played with the dog at the handler's right leg as well (plan R15): every RO-Z
+ * card — after a start "R" the dog stays on the right until a D0 card brings it to the left
+ * leg — and the cards that change the side, the other way round.
+ */
+export const RIGHT_SIDE_CARDS: readonly string[] = [
+  ...ANIMATED_CARDS.filter((code) => code.startsWith('Z-')),
+  '1-123',
+  '1-124',
+  '1-125',
+  '2-232',
+  '3-325',
+  '3-326',
+  '3-327',
+]
+
+/**
+ * Whether a deck can be walked through in animation (plan R16): laid out on one field, every
+ * card animated — on the side the course has the dog there.
+ */
+export const canWalkThrough = (deck: Deck): boolean =>
+  deck.layout?.rounds.length === 1 &&
+  deck.entries.every(
+    (e) =>
+      e.at &&
+      ANIMATED_CARDS.includes(e.code) &&
+      (e.side === 'left' || RIGHT_SIDE_CARDS.includes(e.code)),
+  )
 
 /** The supplementary cards: shown finishing Z-014 Předsednutí, never on their own. */
 const SUPPLEMENTARY = ['D0a', 'D0b', 'D0c', 'D0d']

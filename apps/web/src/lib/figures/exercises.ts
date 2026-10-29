@@ -1,3 +1,4 @@
+import { RIGHT_SIDE_CARDS } from './animated'
 import type { Exercise } from './exercise'
 import { HIGHER_EXERCISES, LEFT, RIGHT, turnAboutChange } from './ro123-exercises'
 import {
@@ -11,21 +12,7 @@ import {
 /** Every exercise the animations can play, in card order. */
 export const EXERCISES: Exercise[] = [...ROZ_EXERCISES, ...HIGHER_EXERCISES]
 
-/**
- * The cards played with the dog at the handler's right leg as well (plan R15): every RO-Z
- * card — after a start "R" the dog stays on the right until a D0 card brings it to the left
- * leg — and the cards that change the side, the other way round.
- */
-export const RIGHT_SIDE_CARDS: readonly string[] = [
-  ...new Set(ROZ_EXERCISES.map((e) => e.code)),
-  '1-123',
-  '1-124',
-  '1-125',
-  '2-232',
-  '3-325',
-  '3-326',
-  '3-327',
-]
+export { RIGHT_SIDE_CARDS } from './animated'
 
 /**
  * Where the dog on the right changes more than the way it goes round the handler: round

@@ -38,6 +38,12 @@ export const PROP_SPACING = 1.5
  */
 export const WALK_SPACING = 0.75
 /**
+ * …and the cards' stands and the equipment further: a stand is half a metre wide, and the
+ * dog walks a little aside of the handler — at 0.75 m a dog passing on that side brushed a
+ * stand or a cone (walked through in animation, R16).
+ */
+export const STAND_SPACING = 1
+/**
  * The direction changes only on the cards (author, 2026-10-21; §3.5: "Cviky musí být
  * umístěny přirozeně ve směru postupu týmu"): between two cards the team walks straight on
  * the way the exercise ends. After a turn about on the spot it walks back beside its way in
@@ -64,9 +70,10 @@ export type Shape = {
   back?: Point
   /**
    * National exercises that take the team on (a slalom, a figure eight, steps forward):
-   * from where they start to where they end, kept clear like the way between two cards.
+   * the way from where they start to where they end (`CardGeometry.via` between), kept
+   * clear like the way between two cards.
    */
-  walk?: [Point, Point]
+  walk?: Point[]
   /**
    * The exercise turns the team about on the spot: the walk on goes back beside the way in,
    * to this side of the exit heading (1 = right, −1 = left).
@@ -114,6 +121,12 @@ export const distance = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y)
 export const bearing = (a: Point, b: Point) =>
   normalize((Math.atan2(b.x - a.x, -(b.y - a.y)) * 180) / Math.PI)
 
+/**
+ * The D0 card stands "těsně vpravo vedle … hlavní karty" (řád §5.3, p. 8): its stand this far
+ * to the right of the main card's, as the team faces them, metres (as in the animations).
+ */
+export const D0_BESIDE = 0.55
+
 /** How far the card stands from where its exercise is done (FCI). */
 const SIGN_OFFSET = 1.1
 /**
@@ -149,6 +162,12 @@ export function signOf(card: Placed | undefined, at: Pose): Point {
       : offset(at, at.heading, NATIONAL_SIGN.ahead, NATIONAL_SIGN.right)
   }
   return before ? offset(at, at.heading, SIGN_OFFSET) : offset(at, at.heading, 0.2, SIGN_OFFSET)
+}
+
+/** The stand of the D0 card dealt with a national card that needs one, beside the card. */
+export function d0StandOf(card: Placed & Pick<Card, 'sequencing'>, at: Pose): Point | undefined {
+  if (card.ruleset !== 'CZ' || !card.sequencing.requiresSupplementary) return undefined
+  return offset(signOf(card, at), at.heading, 0, D0_BESIDE)
 }
 
 /** The turns a card allows (0 for cards done without turning). */
@@ -193,8 +212,11 @@ export function shapeOf(card: Card, at: Placement, side: Side, recallFollows: bo
     heading: normalize(at.heading + at.turn),
   }
   const minNext = geometry.gap && Math.max(0, geometry.gap - distance(at, exit))
-  const walk: [Point, Point] | undefined =
-    card.ruleset === 'CZ' && distance(at, exit) >= 1 ? [at, exit] : undefined
+  const via = (geometry.via ?? []).map(([a, s]) => offset(at, at.heading, a, s * toDog))
+  const walk =
+    card.ruleset === 'CZ' && (via.length || distance(at, exit) >= 1)
+      ? [at, ...via, exit]
+      : undefined
   const followUp = geometry.followUp && {
     ahead: geometry.followUp.ahead,
     ...(geometry.followUp.sides && { shifts: geometry.followUp.sides.map((s) => s * toDog) }),
@@ -235,12 +257,21 @@ export function approachOf(previous: Shape | undefined, next: Card | undefined):
 }
 
 /**
- * Where the walk to the next card starts: where the exercise ends, or beside it after a
- * turn about (the walk back beside the way in) — `to` is where it arrives.
+ * After a turn about the team gets over beside its way in within this far, and as far again
+ * as it goes aside, metres — as it is walked through in animation (R16).
  */
-export function walkStart(previous: Shape | undefined, from: Pose, to: Point): Point {
-  const across = walkOf(from, { ...to, heading: from.heading })?.across ?? 0
-  return previous?.hairpin ? offset(from, from.heading, 0, across) : from
+export const HAIRPIN_JOIN = 1.2
+
+/**
+ * The way to the next card, from where the exercise ends to where `to` is: straight on — or
+ * after a turn about over beside the way in first (`HAIRPIN_JOIN`), then straight on.
+ */
+export function wayTo(previous: Shape | undefined, from: Pose, to: Point): Point[] {
+  if (!previous?.hairpin) return [from, to]
+  const walk = walkOf(from, { ...to, heading: from.heading })
+  if (!walk) return [from, to]
+  const join = Math.min(HAIRPIN_JOIN + Math.abs(walk.across), Math.max(0, walk.ahead - 0.5))
+  return [from, offset(from, from.heading, join, walk.across), to]
 }
 
 /** Where the team comes walking `ahead` m straight on from `from`, `across` m to the side. */
@@ -262,6 +293,16 @@ export function walkOf(from: Pose, to: Pose): { ahead: number; across: number } 
     ahead: dx * Math.sin(h) - dy * Math.cos(h),
     across: dx * Math.cos(h) + dy * Math.sin(h),
   }
+}
+
+/** Shortest distance from `p` to a way of straight pieces through `points`. */
+export function distanceToWay(p: Point, points: Point[]): number {
+  if (points.length === 1) return distance(p, points[0] as Point)
+  let least = Infinity
+  for (let i = 1; i < points.length; i++) {
+    least = Math.min(least, distanceToSegment(p, points[i - 1] as Point, points[i] as Point))
+  }
+  return least
 }
 
 /** Shortest distance from `p` to the segment `a`–`b`. */

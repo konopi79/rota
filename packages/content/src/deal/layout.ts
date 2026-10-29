@@ -7,16 +7,20 @@ import {
   CARD_SPACING,
   distance,
   distanceToSegment,
+  distanceToWay,
   EDGE,
   GAP_MAX,
   GAP_MIN,
   normalize,
   PROP_SPACING,
   shapeOf,
+  D0_BESIDE,
+  d0StandOf,
   signOf,
+  STAND_SPACING,
   turnsOf,
   WALK_SPACING,
-  walkStart,
+  wayTo,
   walkTo,
   type Approach,
   type PlacedProp,
@@ -39,23 +43,26 @@ function walksFrom(approach: Approach): WalkOption[] {
   return aheads.flatMap((ahead) => approach.shifts.map((across) => ({ ahead, across })))
 }
 
-/** The way `a`–`b` passes `WALK_SPACING` clear of every one of `others`. */
-const clearOf = (others: Point[], [a, b]: [Point, Point]) =>
-  others.every((p) => distanceToSegment(p, a, b) >= WALK_SPACING)
+/** The way passes clear of every one of `others`: `WALK_SPACING`, or `by`. */
+const clearOf = (others: Point[], way: Point[], by = WALK_SPACING) =>
+  others.every((p) => distanceToWay(p, way) >= by)
 
 /** How far equipment keeps from `q`: its own clearance, or `q`'s if that is a prop. */
 const spacing = (prop: PlacedProp, q: Point) =>
   Math.max(prop.clear ?? PROP_SPACING, ('clear' in q && (q as PlacedProp).clear) || 0)
 
 type Previous = { card: Card; at: Placement; side: Side }
+/** A D0 card's stand, and the station (index into `stations`) whose card it goes with. */
+type D0Stand = { p: Point; of: number }
 
 /** What the planner has laid out so far, to go back to (`save` / `restore`). */
 export type PlannerState = {
   stations: Point[]
   signs: Point[]
+  d0s: D0Stand[]
   props: PlacedProp[]
   backs: [Point, Point][]
-  aisles: [Point, Point][]
+  aisles: Point[][]
   previous: Previous | undefined
   room: Float64Array
 }
@@ -75,12 +82,14 @@ export class FieldPlanner {
   private stations: Point[]
   /** Where their cards stand. */
   private signs: Point[]
+  /** …and the D0 cards beside them (national). */
+  private d0s: D0Stand[] = []
   /** Equipment of every card but the last one (a leave card's recall cone is still open). */
   private props: PlacedProp[] = []
   /** Where the team steps back (from the card to `back`): kept clear like equipment. */
   private backs: [Point, Point][] = []
   /** National courses: the ways walked between the cards, kept clear (`WALK_SPACING`). */
-  private aisles: [Point, Point][] = []
+  private aisles: Point[][] = []
   private previous: Previous | undefined
   /** Every metre of the field inside its edge (`emptiest`)… */
   private readonly grid: Point[] = []
@@ -118,7 +127,7 @@ export class FieldPlanner {
    */
   runway(): number {
     // The card just done and its sign stand right at the start of the way.
-    const others = [...this.stations.slice(0, -1), ...this.signs.slice(0, -1)]
+    const others = [...this.stations.slice(0, -1), ...this.signs.slice(0, -1), ...this.d0sBut(1)]
     return this.roomAfter(this.shapeOfPrevious(false), others)
   }
 
@@ -166,10 +175,11 @@ export class FieldPlanner {
   }
 
   save(): PlannerState {
-    const { stations, signs, props, backs, aisles, previous, room } = this
+    const { stations, signs, d0s, props, backs, aisles, previous, room } = this
     return {
       stations: [...stations],
       signs: [...signs],
+      d0s: [...d0s],
       props: [...props],
       backs: [...backs],
       aisles: [...aisles],
@@ -181,6 +191,7 @@ export class FieldPlanner {
   restore(state: PlannerState) {
     this.stations = [...state.stations]
     this.signs = [...state.signs]
+    this.d0s = [...state.d0s]
     this.props = [...state.props]
     this.backs = [...state.backs]
     this.aisles = [...state.aisles]
@@ -207,8 +218,8 @@ export class FieldPlanner {
       })),
     )
     // Of the places that fit, the first with room to go on (see `runway`), else the roomiest.
-    let best: { at: Placement; shape: Shape; room: number; aisle: [Point, Point] } | undefined
-    const others = [...this.stations, ...this.signs]
+    let best: { at: Placement; shape: Shape; room: number; aisle: Point[] } | undefined
+    const others = [...this.stations, ...this.signs, ...this.d0sBut(0)]
     while (options.length) {
       const option = pickWeighted(options, (o) => o.weight, this.random)
       if (!option) break
@@ -216,7 +227,7 @@ export class FieldPlanner {
       const at: Placement = { ...walkTo(exit, option.ahead, option.across), turn: option.turn }
       // The cheap check first: most places are taken once the field fills up.
       if (!this.free(at, card, this.signs, props)) continue
-      const aisle: [Point, Point] = [walkStart(previousShape, exit, at), at]
+      const aisle = wayTo(previousShape, exit, at)
       if (card.ruleset === 'CZ' && !this.aisleClear(aisle)) continue
       const shape = shapeOf(card, at, side, false)
       if (!this.fits(card, at, shape, props)) continue
@@ -228,10 +239,15 @@ export class FieldPlanner {
     const { at, shape, aisle } = best
     this.props = props
     const sign = signOf(card, at)
+    const d0 = d0StandOf(card, at)
     this.stations.push(at)
     this.signs.push(sign)
     this.mark(at)
     this.mark(sign)
+    if (d0) {
+      this.d0s.push({ p: d0, of: this.stations.length - 1 })
+      this.mark(d0)
+    }
     if (shape.back) this.backs.push([at, shape.back])
     if (shape.walk) this.aisles.push(shape.walk)
     if (card.ruleset === 'CZ') this.aisles.push(aisle)
@@ -253,7 +269,7 @@ export class FieldPlanner {
       const finish = walkTo(exit, option.ahead, option.across)
       if (!this.free(finish, undefined, this.signs, props)) continue
       const national = this.previous?.card.ruleset === 'CZ'
-      if (!national || this.aisleClear([walkStart(shape, exit, finish), finish])) return finish
+      if (!national || this.aisleClear(wayTo(shape, exit, finish))) return finish
     }
     return undefined
   }
@@ -266,33 +282,51 @@ export class FieldPlanner {
   private inside = (p: Point) =>
     p.x >= EDGE && p.x <= this.width - EDGE && p.y >= EDGE && p.y <= this.height - EDGE
 
+  /** The D0 cards' stands but those of the last `last` stations. */
+  private d0sBut(last: number): Point[] {
+    const upTo = this.stations.length - last
+    return this.d0s.filter((d) => d.of < upTo).map((d) => d.p)
+  }
+
   /**
-   * An exercise could be done at `at`, with its card standing clear of the others — the
-   * card may stand over the edge of the field (`EDGE`).
+   * An exercise could be done at `at`, with its card (and its D0 card) standing clear of the
+   * others — a card may stand over the edge of the field (`EDGE`).
    */
-  private free(at: Pose, card: Card | undefined, signs: Point[], props: PlacedProp[]) {
+  private free(
+    at: Pose,
+    card: Card | undefined,
+    signs: Point[],
+    props: PlacedProp[],
+    d0s = this.d0sBut(0),
+  ) {
     const sign = signOf(card, at)
+    const d0 = card && d0StandOf(card, at)
+    const stands = d0 ? [sign, d0] : [sign]
+    // Beside its card, a D0 card may come as much nearer the others.
+    const apart = (p: Point, q: Point, by: number) => distance(p, q) >= by
     return (
       this.inside(at) &&
-      signs.every((s) => distance(s, sign) >= CARD_SPACING) &&
-      props.every(
-        (q) => distance(q, at) >= spacing(q, at) && distance(q, sign) >= spacing(q, sign),
-      ) &&
-      [at, sign].every(this.clearOfBacks)
+      signs.every((s) => apart(s, sign, CARD_SPACING)) &&
+      stands.every((p) => d0s.every((q) => apart(p, q, CARD_SPACING - D0_BESIDE))) &&
+      (!d0 || signs.every((s) => apart(s, d0, CARD_SPACING - D0_BESIDE))) &&
+      props.every((q) => [at, ...stands].every((p) => apart(q, p, spacing(q, p)))) &&
+      this.clearOfBacks(at) &&
+      stands.every((p) => this.clearOfBacks(p, STAND_SPACING))
     )
   }
 
-  private clearOfBacks = (p: Point) =>
+  /** Clear of the steps back and the ways walked so far (a card's stand: `STAND_SPACING`). */
+  private clearOfBacks = (p: Point, aside = WALK_SPACING) =>
     this.backs.every(([a, b]) => distanceToSegment(p, a, b) >= PROP_SPACING) &&
-    this.aisles.every(([a, b]) => distanceToSegment(p, a, b) >= WALK_SPACING - 1e-9)
+    this.aisles.every((way) => distanceToWay(p, way) >= aside - 1e-9)
 
   /**
    * The way to the next card passes clear of every exercise, card and piece of equipment
    * but the one it comes from (the last laid out, or the start).
    */
-  private aisleClear(aisle: [Point, Point]): boolean {
-    const others = [...this.stations.slice(0, -1), ...this.signs.slice(0, -1), ...this.props]
-    return clearOf(others, aisle)
+  private aisleClear(aisle: Point[]): boolean {
+    const stands = [...this.signs.slice(0, -1), ...this.d0sBut(1), ...this.props]
+    return clearOf(this.stations.slice(0, -1), aisle) && clearOf(stands, aisle, STAND_SPACING)
   }
 
   /** The rest of the exercise fits too (`at` itself is `free`). */
@@ -307,28 +341,39 @@ export class FieldPlanner {
       const toDog = card.sequencing.onlyAfterLeave ? 1 : 0
       const stations = this.stations.slice(0, this.stations.length - toDog)
       const signs = this.signs.slice(0, this.signs.length - toDog)
-      if (![...stations, ...signs, ...props].every(clear)) return false
+      if (![...stations, ...signs, ...this.d0sBut(toDog), ...props].every(clear)) return false
     }
     // The way walked inside a national exercise, like the way between two cards.
-    if (shape.walk && !clearOf([...this.stations, ...this.signs, ...props], shape.walk)) {
+    const stands = [...this.signs, ...this.d0sBut(0)]
+    const all = [...this.stations, ...stands]
+    if (
+      shape.walk &&
+      !(
+        clearOf(this.stations, shape.walk) &&
+        clearOf([...stands, ...props], shape.walk, STAND_SPACING)
+      )
+    ) {
       return false
     }
     for (const prop of shape.props) {
       const near = (q: Point) => distance(prop, q) < spacing(prop, q)
       if (!this.inside(prop)) return false
-      if (this.stations.some(near) || this.signs.some(near)) return false
-      if (props.some(near) || !this.clearOfBacks(prop)) return false
+      if (all.some(near)) return false
+      if (props.some(near) || !this.clearOfBacks(prop, STAND_SPACING)) return false
     }
     const jumps = [...props, ...shape.props].filter((p) => p.kind === 'jump').length
     if (jumps > this.maxJumps) return false
     // Room for one more card (or the finish) after this one, the way to it clear too.
     const signs = [...this.signs, signOf(card, at)]
+    const own = d0StandOf(card, at)
+    const d0s = [...this.d0sBut(0), ...(own ? [own] : [])]
     const allProps = [...props, ...shape.props]
-    const others = [...this.stations, ...this.signs, ...props]
     return walksFrom(approachOf(shape, undefined)).some(({ ahead, across }) => {
       const next = walkTo(shape.exit, ahead, across)
-      if (!this.free(next, undefined, signs, allProps)) return false
-      return card.ruleset !== 'CZ' || clearOf(others, [walkStart(shape, shape.exit, next), next])
+      if (!this.free(next, undefined, signs, allProps, d0s)) return false
+      if (card.ruleset !== 'CZ') return true
+      const way = wayTo(shape, shape.exit, next)
+      return clearOf(this.stations, way) && clearOf([...stands, ...props], way, STAND_SPACING)
     })
   }
 

@@ -6,15 +6,10 @@ import { ExercisePlayer, type Exercise } from '../figures/exercise'
 import { EXERCISES } from '../figures/exercises'
 
 /**
- * A change of pace goes on walking in the animation; on the course plan the next card is
- * measured from the card.
- */
-const PACE = new Set(['Z-015', 'Z-016', 'Z-017', '1-110'])
-
-/**
  * What an exercise does on the field, read off its script: where the team is when it walks
- * off (the last step) and how far it has turned, from where it stopped after the approach
- * (the first step) — metres ahead and to the left, degrees right.
+ * off (the last step) and how far it has turned, from the plan's station — where it stopped
+ * after the approach (the first step), less how far off the usual place the script stops it
+ * (`stopAt`) — metres ahead and to the left, degrees right.
  */
 function measure(exercise: Exercise) {
   const player = new ExercisePlayer(exercise)
@@ -27,9 +22,10 @@ function measure(exercise: Exercise) {
   // The station's frame: the team arrives along +z, +x is its left.
   const [dx, dz] = [end.x - stop.x, end.z - stop.z]
   const [c, s] = [Math.cos(stop.heading), Math.sin(stop.heading)]
+  const off = exercise.stopAt ?? { x: 0, z: 0 }
   return {
-    left: dx * c - dz * s,
-    ahead: dx * s + dz * c,
+    left: dx * c - dz * s + off.x,
+    ahead: dx * s + dz * c + off.z,
     turn: (-(end.heading - stop.heading) * 180) / Math.PI,
   }
 }
@@ -54,7 +50,6 @@ describe('course plan geometry matches the animations (R14)', () => {
       const { left, ahead, turn } = measure(e)
       const turns = layout.turnsOf(card)
       expect([e.code, mod360(turn)]).toEqual([e.code, mod360(turns[0] ?? 0)])
-      if (PACE.has(e.code)) continue
       // An arc or a step in the new direction moves a turning team a little.
       const near = turns.some((t) => t % 360) ? 0.7 : 0.3
       expect([e.code, Math.abs(ahead - (g.exit ?? 0)) < near]).toEqual([e.code, true])

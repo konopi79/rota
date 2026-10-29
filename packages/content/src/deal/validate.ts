@@ -6,15 +6,19 @@ import {
   CARD_SPACING,
   distance,
   distanceToSegment,
+  distanceToWay,
   EDGE,
   MAX_JUMPS,
   PROP_SPACING,
   shapeOf,
+  d0StandOf,
+  D0_BESIDE,
   signOf,
+  STAND_SPACING,
   turnsOf,
   WALK_SPACING,
   walkOf,
-  walkStart,
+  wayTo,
   type Shape,
 } from './geometry'
 import { endsStatic, fieldOf, followUpsOf, hasEquipment, paceAfter, sideAfter } from './rules'
@@ -523,6 +527,18 @@ function validateRound(
     ...entries.flatMap((e, i) => (e.at ? [{ label: label(i), p: signOf(cards[i], e.at) }] : [])),
     { label: 'finish', p: signOf(undefined, finish) },
   ]
+  // The D0 cards beside their cards (national): as much nearer the others as they stand aside.
+  const d0s = entries.flatMap((e, i) => {
+    const d0 = e.at && d0StandOf(cards[i] as Card, e.at)
+    return d0 ? [{ label: label(i), p: d0 }] : []
+  })
+  for (const a of d0s) {
+    for (const b of [...signs, ...d0s]) {
+      if (b.label !== a.label && b !== a && distance(a.p, b.p) < CARD_SPACING - D0_BESIDE - EPS) {
+        errors.push(`${a.label}: its D0 card too close to ${b.label}`)
+      }
+    }
+  }
   signs.forEach((a, i) => {
     for (const b of signs.slice(i + 1)) {
       if (distance(a.p, b.p) < CARD_SPACING - EPS) {
@@ -532,6 +548,7 @@ function validateRound(
   })
   const spots = [
     ...signs,
+    ...d0s,
     { label: 'start', p: start },
     ...entries.flatMap((e, i) => (e.at ? [{ label: label(i), p: e.at }] : [])),
     { label: 'finish', p: finish },
@@ -574,7 +591,9 @@ function validateRound(
   })
   // National courses: the way between two cards passes clear of the other exercises,
   // their cards and equipment (Směrnice §1.1.3: "Dráha v uličce s kartami musí být široká
-  // nejméně 1,5 m").
+  // nejméně 1,5 m") — the cards' stands a little further (`STAND_SPACING`).
+  const standsAt = new Set([...signs, ...d0s, ...props].map((s) => s.p))
+  const aside = (p: Point) => (standsAt.has(p) ? STAND_SPACING : WALK_SPACING)
   if (cls.ruleset === 'CZ') {
     const targets = [
       ...entries.map((e, i) => ({ label: label(i), to: e.at })),
@@ -584,8 +603,8 @@ function validateRound(
       if (!at) return
       const before = shapes[i - 1]
       const from = i ? label(i - 1) : 'start'
-      const aisle = [walkStart(before, before?.exit ?? start, at), at] as const
-      const near = (p: Point) => distanceToSegment(p, ...aisle) < WALK_SPACING - EPS
+      const aisle = wayTo(before, before?.exit ?? start, at)
+      const near = (p: Point) => distanceToWay(p, aisle) < aside(p) - EPS
       for (const o of [...spots, ...props.map((q) => ({ label: q.owner, p: q.p }))]) {
         if (o.label !== to && o.label !== from && near(o.p)) {
           errors.push(`${to}: the way to it passes too close to ${o.label}`)
@@ -603,7 +622,7 @@ function validateRound(
       ...props.filter((q) => q.owner !== label(i)),
     ]
     for (const o of others) {
-      if (distanceToSegment(o.p, ...walk) < WALK_SPACING - EPS) {
+      if (distanceToWay(o.p, walk) < aside(o.p) - EPS) {
         const what = 'label' in o ? o.label : `the ${o.p.kind} of ${o.owner}`
         errors.push(`${label(i)}: walks too close to ${what}`)
       }

@@ -20,7 +20,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'animations-right'
+export const LATEST_FEATURE_ID = 'course-walkthrough'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -85,6 +85,11 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
         id: 'national-field-plan',
         title: 'Plánek i pro národní třídy',
         desc: 'Karty RO-Z až RO3 a RO-V rozmístí aplikace na plochu 20 × 30 m, jak ji doporučuje řád (RO-Z, RO1 a RO-V i na 20 × 20 m): každý cvik na vlastním stanovišti, mezi kartami rovně a nejméně 3 m, u skoků, odložení s přivoláním a některých cviků dál podle směrnic pro rozhodčí, ulička mezi kartami volná. Plánek má tréninkový parkur i balíček do délky parkuru.',
+      },
+      {
+        id: 'course-walkthrough',
+        title: 'Parkur v animaci',
+        desc: 'Tréninkový parkur RO-Z a RO1 si projdeš celý v 3D animaci: tým jde po plánku od startu ke každé kartě, provede cvik a pokračuje do cíle – i se psem vpravo po startu „R“. Kamera za týmem (natočíš si ji) nebo nad celou plochou, pauza, rychlost a přeskakování po kartách.',
       },
       {
         id: 'plan-zoom-print',

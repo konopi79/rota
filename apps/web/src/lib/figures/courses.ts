@@ -163,6 +163,42 @@ export const swerve = (aside: number, over = 1.2): Course =>
     [],
   )
 
+/** A place and the way the team faces there; `tight`: the bend into it as short as it goes. */
+type Heading = { x: number; z: number; heading: number; tight?: boolean }
+
+/** From `from` to `to`, leaving the way `from` faces and arriving the way `to` does. */
+const bend = (from: Heading, to: Heading): Piece => {
+  const third = Math.hypot(to.x - from.x, to.z - from.z) / 3
+  const reach = Math.max(0.2, to.tight ? Math.min(third, TIGHT) : third)
+  const b = {
+    x: from.x + reach * Math.sin(from.heading),
+    z: from.z + reach * Math.cos(from.heading),
+  }
+  const c = { x: to.x - reach * Math.sin(to.heading), z: to.z - reach * Math.cos(to.heading) }
+  return (u) => {
+    const v = 1 - u
+    const [k0, k1, k2, k3] = [v * v * v, 3 * v * v * u, 3 * v * u * u, u * u * u]
+    return {
+      x: k0 * from.x + k1 * b.x + k2 * c.x + k3 * to.x,
+      z: k0 * from.z + k1 * b.z + k2 * c.z + k3 * to.z,
+    }
+  }
+}
+
+/** A tight bend keeps its ends' headings over no more than this, metres. */
+const TIGHT = 0.5
+
+/**
+ * From where the team is through `through` (in its frame: +x left, +z ahead, `heading` the
+ * way it faces there), smoothly — each piece a bend, or straight on where the next place is
+ * straight ahead: the way between two cards of a course walked through (`walkTo`). One part
+ * per place.
+ */
+export const towards = (...through: Heading[]): Course => {
+  const pieces = through.map((to, i) => bend(through[i - 1] ?? { x: 0, z: 0, heading: 0 }, to))
+  return course(pieces, [])
+}
+
 /** Slalom: how far the middle of the team swings off the cones' line, metres. */
 const WEAVE = 0.78
 /** From the handler to the middle of the team (to the dog's side), metres. */

@@ -27,10 +27,10 @@ import { EXERCISES, RIGHT_EXERCISES, RIGHT_SIDE_CARDS } from '@/lib/figures/exer
 import { HANDLER } from '@/lib/figures/handler'
 import { cn } from '@/lib/utils'
 
-type CameraView = 'behind' | 'angle' | 'side' | 'top' | 'front'
+export type CameraView = 'behind' | 'angle' | 'side' | 'top' | 'front'
 
 /** Camera offsets from the point it looks at, a little above the ground by the team. */
-const VIEWS: Record<CameraView, [number, number, number]> = {
+export const VIEWS: Record<CameraView, [number, number, number]> = {
   // Over the handler's left shoulder: the way the team sees the card.
   behind: [1.9, 1.75, -3.4],
   angle: [3.2, 1.85, 3.5],
@@ -40,7 +40,7 @@ const VIEWS: Record<CameraView, [number, number, number]> = {
 }
 const TARGET: [number, number, number] = [0.2, 0.75, 0.1]
 
-const SLOW_MOTION = { quarter: 0.25, half: 0.5, full: 1 }
+export const SLOW_MOTION = { quarter: 0.25, half: 0.5, full: 1 }
 
 /** A press that moves less than this (px) and lasts less than this (ms) is a tap, not a drag. */
 const TAP_MOVE = 8
@@ -55,7 +55,7 @@ const CARD_HALF = 0.18
  * most 120 cm "vlevo před kartou" (regulation §5.3.1, p. 14): the card stands right of the
  * team, a little ahead.
  */
-function CardStand({ code, x, z }: { code: string; x: number; z: number }) {
+export function CardStand({ code, x, z }: { code: string; x: number; z: number }) {
   const texture = useMemo(() => {
     const map = new TextureLoader().load(`/cards/cz/${code.toLowerCase()}.webp`)
     map.colorSpace = SRGBColorSpace
@@ -116,9 +116,9 @@ function ExerciseSpace({ x, z }: { x: number; z: number }) {
 }
 
 /** Training cones, orange and blue by turns as on the video's field. */
-const CONE_COLOURS = ['#f07a1a', '#2457c5']
+export const CONE_COLOURS = ['#f07a1a', '#2457c5']
 
-function Cone({ x, z, colour }: { x: number; z: number; colour: string }) {
+export function Cone({ x, z, colour }: { x: number; z: number; colour: string }) {
   return (
     <group position={[x, 0, z]}>
       <mesh position={[0, 0.17, 0]} castShadow>
@@ -134,7 +134,7 @@ function Cone({ x, z, colour }: { x: number; z: number; colour: string }) {
 }
 
 /** A bowl covered with a lid, as in Z-022 ("prázdné misky přikryté poklopem"). */
-function Bowl({ x, z }: { x: number; z: number }) {
+export function Bowl({ x, z }: { x: number; z: number }) {
   return (
     <group position={[x, 0, z]}>
       <mesh position={[0, 0.05, 0]} castShadow>
@@ -150,7 +150,7 @@ function Bowl({ x, z }: { x: number; z: number }) {
 }
 
 /** Where the camera looks: the team's place on the field. */
-type Focus = { x: number; z: number }
+export type Focus = { x: number; z: number }
 
 /** The cards the page can play, once each (Z-014 has a variant per supplementary card). */
 const CODES = [...new Set(EXERCISES.map((e) => e.code))]
@@ -239,7 +239,7 @@ function ExerciseTeam({
 }
 
 /** Orbit controls; the camera keeps its offset and follows the team (`focusRef`). */
-function CameraRig({ view, focusRef }: { view: CameraView; focusRef: RefObject<Focus> }) {
+export function CameraRig({ view, focusRef }: { view: CameraView; focusRef: RefObject<Focus> }) {
   const { camera, gl } = useThree()
   const controlsRef = useRef<OrbitControls>(null)
   const followed = useRef<Focus>({ x: 0, z: 0 })

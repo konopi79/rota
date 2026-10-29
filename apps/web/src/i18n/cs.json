@@ -297,6 +297,28 @@
     "zoomHint": "Klepnutím na plánek ho zvětšíš.",
     "shareTitle": "ROTA – tréninkový parkur {{cls}}"
   },
+  "walkthrough": {
+    "button": "Projít v animaci",
+    "title": "Průchod parkurem – {{cls}}",
+    "close": "Zavřít",
+    "start": "Start",
+    "card": "Karta {{number}} z {{total}}",
+    "finished": "Cíl – parkur je za tebou",
+    "previous": "Předchozí karta",
+    "next": "Další karta",
+    "play": "Pokračovat",
+    "pause": "Pozastavit",
+    "again": "Znovu od startu",
+    "speed": {
+      "half": "½×",
+      "full": "1×",
+      "double": "2×"
+    },
+    "view": {
+      "follow": "Za týmem",
+      "field": "Celá plocha"
+    }
+  },
   "plan": {
     "title": "Plánek parkuru",
     "caption": "Plocha {{width}} × {{height}} m, karty 3–5 m od sebe. Vzdálenosti a úhly jsou přibližné.",
@@ -387,6 +409,10 @@
       "turnTowardsEachOther": "Obrat o 180° směrem k sobě – psovod vpravo, pes vlevo"
     },
     "caption": {
+      "courseStart": "Start – tým projde startovní čarou normálním tempem",
+      "toCard": "Tým jde k další kartě",
+      "toFinish": "Tým jde do cíle",
+      "finishLine": "Cíl – posuzování končí překročením cílové čáry",
       "approach": "Tým jde ke kartě",
       "approachSlow": "Tým jde ke kartě pomalým tempem (z předchozí karty)",
       "approachFast": "Tým jde ke kartě rychlým tempem (z předchozí karty)",
