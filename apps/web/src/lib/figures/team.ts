@@ -2,7 +2,9 @@ import {
   DOG,
   DOG_FEET,
   DOG_POSTURES,
+  DOG_STANDING_HEIGHT,
   dogLegs,
+  type Carriage,
   dogPawsOnGround,
   dogStep,
   type DogGait,
@@ -28,6 +30,7 @@ import {
   type FootState,
   type FootTarget,
 } from './locomotion'
+import { Gallop } from './gallop'
 import { angleTo, apply } from './math'
 import { FRONT } from './paths'
 import { blendPoses, jointFrames, lowestPoint, type Pose } from './rig'
@@ -132,6 +135,9 @@ const TAIL_SWING_MOST = 0.9
 /** How fast the tail follows the turn, 1/s. */
 const TAIL_SETTLES = 8
 
+/** Out of a gallop the dog's head comes up: the gap shrinks by e every 1/RATE seconds. */
+const HEAD_UP_RATE = 12
+
 /** The dog's parts lower than this (metres) are in the way of the handler's feet. */
 const UNDERFOOT = 0.35
 
@@ -210,7 +216,8 @@ const STANDING_REACH = forepawReach(DOG_POSTURES.stand)
 const approach = (from: number, to: number, dt: number) =>
   from + (to - from) * (1 - Math.exp(-SETTLE_RATE * dt))
 
-const isGait = (dog: TeamControls['dog']): dog is DogGait => dog === 'walk' || dog === 'trot'
+const isGait = (dog: TeamControls['dog']): dog is DogGait =>
+  dog === 'walk' || dog === 'trot' || dog === 'gallop'
 
 /** A team-frame place on the field, for a team at `team`. */
 export const onField = (team: Body, p: { x: number; z: number; heading: number }): Body => ({
@@ -250,6 +257,15 @@ export class TeamAnimator {
   private tailYaw = 0
   /** How far a point on the ground is from the dog, as it was last frame. */
   private dogClearance: Clearance | undefined
+  /** Galloping: the stride's state (the trot's stepper waits meanwhile). */
+  private gallop: Gallop | null = null
+  /**
+   * How the dog carries its trunk: as the gallop left it, settling back to standing at the
+   * trot (`dogLegs`).
+   */
+  private carriage: Carriage = { height: DOG_STANDING_HEIGHT, pitch: 0, flex: 0 }
+  /** Out of a gallop: how far its neck, head and tail still are from the trot's, fading. */
+  private headOff: { neck: number; head: number; tail: number } | null = null
 
   /**
    * How far a dog lying down in front has moved its body back over its forelegs, metres. It
@@ -269,7 +285,7 @@ export class TeamAnimator {
 
   /** How near the dog's planted paws are to the edge of their reach (`PawStepper.strain`). */
   get dogStrain() {
-    return this.dogStanding < 0.98 ? 0 : (this.dogFeet?.strain ?? 0)
+    return this.dogStanding < 0.98 || this.gallop ? 0 : (this.dogFeet?.strain ?? 0)
   }
 
   /** Walking on from steps set by hand at the speed the body already had, m/s. */
@@ -388,17 +404,57 @@ export class TeamAnimator {
     this.dogFeet.setFeet(DOG_FEET[this.dogGait])
     const sitting = posture !== 'stand'
     let dogPose = this.dogPosture
-    if (!sitting || this.dogStanding > 0.02) {
+    let dogLift = 0
+    const galloping = moving && this.dogGait === 'gallop'
+    // Out of the gallop: the trot's stepper goes on from where it left the paws.
+    if (this.gallop && !galloping) {
+      this.carriage = this.gallop.carried()
+      this.dogFeet.takeOver(this.gallop.feet, dog)
+      const last = this.gallop.pose
+      const stand = DOG_POSTURES.stand
+      this.headOff = {
+        neck: (last.neck ?? 0) - (stand.neck ?? 0),
+        head: (last.head ?? 0) - (stand.head ?? 0),
+        tail: (last.tail ?? 0) - (stand.tail ?? 0),
+      }
+      this.gallop = null
+    }
+    if (galloping) {
+      this.gallop ??= new Gallop(dog, this.dogFeet.feet)
+      const g = this.gallop.update(dt, dog)
+      dogPose = g.pose
+      dogLift = g.lift
+    } else if (!sitting || this.dogStanding > 0.02) {
       // On its legs (or still settling out of them): paws planted, legs solved to them.
       const paws = sitting
         ? this.dogFeet.feet
         : this.dogFeet.update(dt, dog, dogStep(this.dogGait), controls.dogRest)
       const tail = -0.15 * Math.sin(4 * Math.PI * this.dogFeet.cycle) * motion
+      // Out of a gallop the trunk settles back to how it is carried standing.
+      const settle = 1 - Math.exp(-SETTLE_RATE * dt)
+      const c = this.carriage
+      this.carriage = {
+        height: c.height + (DOG_STANDING_HEIGHT - c.height) * settle,
+        pitch: c.pitch * (1 - settle),
+        flex: c.flex * (1 - settle),
+      }
       const carried: Pose = {
         ...DOG_POSTURES.stand,
-        head: (DOG_POSTURES.stand.head ?? 0) - (this.dogGait === 'trot' ? 0.15 * motion : 0),
+        head: (DOG_POSTURES.stand.head ?? 0) - (this.dogGait === 'walk' ? 0 : 0.15 * motion),
         tail: (DOG_POSTURES.stand.tail ?? 0) + tail,
-        ...dogLegs(paws, dog),
+        ...dogLegs(paws, dog, this.carriage),
+        ...(this.carriage.pitch !== 0 && { trunk: this.carriage.pitch, loin: this.carriage.flex }),
+      }
+      // …and so do its neck, head and tail.
+      if (this.headOff) {
+        const off = this.headOff
+        carried.neck = (carried.neck ?? 0) + off.neck
+        carried.head = (carried.head ?? 0) + off.head
+        carried.tail = (carried.tail ?? 0) + off.tail
+        // Braking, a dog throws its head up quickly.
+        const k = Math.exp(-HEAD_UP_RATE * dt)
+        this.headOff = { neck: off.neck * k, head: off.head * k, tail: off.tail * k }
+        if (Math.abs(off.neck) + Math.abs(off.head) + Math.abs(off.tail) < 1e-4) this.headOff = null
       }
       dogPose = blendPoses(this.dogPosture, carried, this.dogStanding)
     }
@@ -418,14 +474,14 @@ export class TeamAnimator {
     this.dogClearance = footprint(dogPose, dog)
 
     return {
-      dog: { pose: dogPose, ...this.place },
+      dog: { pose: dogPose, ...this.place, ...(dogLift > 0 && { lift: dogLift }) },
       handler: { pose: handlerPoseNow, x: 0, z: 0, heading: 0, lift: handlerLift },
       travelled: this.travelled,
       walked: this.walked,
       speed: this.speed,
       feet: {
         handler: feet,
-        dog: this.dogFeet.feet,
+        dog: this.gallop ? this.gallop.feet : this.dogFeet.feet,
         dogOnLegs: !sitting && this.dogStanding > 0.98,
         handlerStill: this.handlerFeet.still,
       },

@@ -20,7 +20,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'course-walkthrough'
+export const LATEST_FEATURE_ID = 'animations-leave'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -49,7 +49,12 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
       {
         id: 'animations',
         title: 'Animace cviků',
-        desc: 'U všech karet RO-Z a RO1, doplňkových karet D0 a 33 karet RO2 a RO3 si v detailu karty pustíš 3D animaci, jak psovod a pes cvik podle zkušebního řádu provedou – s popisky, zpomalením, otáčením pohledu a vyznačeným místem pro provedení cviku. V katalogu takové karty poznáš podle štítku „animace“.',
+        desc: 'U všech karet RO-Z a RO1, doplňkových karet D0 a 41 karet RO2 a RO3 si v detailu karty pustíš 3D animaci, jak psovod a pes cvik podle zkušebního řádu provedou – s popisky, zpomalením, otáčením pohledu a vyznačeným místem pro provedení cviku. V katalogu takové karty poznáš podle štítku „animace“.',
+      },
+      {
+        id: 'animations-leave',
+        title: 'Odložení a přivolání v animaci',
+        desc: 'Odkládací karty RO2 (2-211, 2-212) se v animaci přehrají s kartou, která po nich následuje – návratem ke psovi nebo přivoláním (2-213 až 2-216); kterou, si vybereš pod animací. Na přivolání pes vstane a přiběhne cvalem, u 2-230 a 2-231 dojde krokem.',
       },
       {
         id: 'animations-right',

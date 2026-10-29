@@ -4,9 +4,8 @@ import { ANIMATED_CARDS, animationFor } from '../figures/animated'
 import { DOG, DOG_POSTURES, type DogPosture } from '../figures/dog'
 import {
   ExercisePlayer,
-  cardPlace,
   stationOf,
-  supplementaryPlace,
+  standsOf,
   exerciseSpace,
   SPACE_SIDE,
   type Exercise,
@@ -42,12 +41,15 @@ const PLAYED = [
   ...RIGHT_EXERCISES.map((e) => [`${e.code} (pes vpravo)`, e] as const),
 ]
 
-/** The figure with only the named top-level limbs (and no root boxes). */
-const only = (rig: Joint, names: string[]): Joint => ({
-  ...rig,
-  boxes: [],
-  children: (rig.children ?? []).filter((c) => names.includes(c.name)),
-})
+/** The figure with only the named limbs: no other boxes, the joints they hang from kept. */
+const only = (rig: Joint, names: string[]): Joint => {
+  const keep = (joint: Joint): Joint | null => {
+    if (names.includes(joint.name)) return joint
+    const children = (joint.children ?? []).map(keep).filter((c) => c !== null)
+    return children.length ? { ...joint, boxes: [], children } : null
+  }
+  return { ...rig, boxes: [], children: (rig.children ?? []).map(keep).filter((c) => c !== null) }
+}
 
 /** Height above the ground of a part, with the whole figure standing on the ground. */
 const clearance = (rig: Joint, pose: Pose, part: Joint) =>
@@ -232,7 +234,13 @@ describe('rigs', () => {
 describe('dog postures', () => {
   const front = only(DOG, ['leftShoulder', 'rightShoulder'])
   const hind = only(DOG, ['leftHip', 'rightHip'])
-  const trunk = { ...DOG, children: [] }
+  // The trunk: chest, and the loin and rump that bend from it (no legs, head or tail).
+  const trunk = {
+    ...DOG,
+    children: (DOG.children ?? [])
+      .filter((c) => c.name === 'loin')
+      .map((loin) => ({ ...loin, children: [] })),
+  }
 
   test.each<DogPosture>(['stand', 'sit'])('%s: all four paws on the ground', (posture) => {
     const pose = DOG_POSTURES[posture]
@@ -542,10 +550,9 @@ describe('every exercise', () => {
 
   test.each(PLAYED)('%s: nobody walks through the card', (_, exercise) => {
     const station = stationOf(exercise)
-    // The card and its supplementary card next to it (1-114's dog walked through the D0).
-    const cards = [cardPlace(exercise), supplementaryPlace(exercise)]
-      .filter((p) => p !== null)
-      .map((p) => ({ x: p.x, z: station + p.z }))
+    // The card and its supplementary card next to it (1-114's dog walked through the D0) —
+    // both cards' of a pair (a leave card and its follow-up).
+    const cards = standsOf(exercise).map((p) => ({ x: p.x, z: station + p.z }))
     for (const f of playAll(exercise)) {
       const handler = onField(f.team, f.handler.x, f.handler.z)
       const dog = onField(f.team, f.dog.x, f.dog.z)
@@ -750,7 +757,7 @@ describe('animations in the card details', () => {
   test('a supplementary card plays Z-014 ending with it; others have none', () => {
     expect(animationFor('D0c')).toEqual({ code: 'Z-014', variant: 'D0c' })
     expect(animationFor('Z-022')).toEqual({ code: 'Z-022' })
-    expect(animationFor('2-211')).toBeNull()
+    expect(animationFor('2-217')).toBeNull()
     for (const d0 of ['D0a', 'D0b', 'D0c', 'D0d'])
       expect(EXERCISES.some((e) => e.code === 'Z-014' && e.supplementary === d0)).toBe(true)
   })

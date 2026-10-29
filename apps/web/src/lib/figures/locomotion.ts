@@ -113,6 +113,8 @@ type Swing = {
   duration: number
   /** How high and how (a runner's heel kick) the step lifts the foot — set as it lifts. */
   clearance?: number
+  /** Taken over in the air (from the gallop): how high it was then, coming down from there. */
+  fromLift?: number
   kick?: boolean
   /** How far it lands and swings off its way to keep clear of the dog (eased, never jumping). */
   dodgeLanding?: { x: number; z: number }
@@ -175,13 +177,14 @@ const swingStep = (
     // A runner kicks the heel up behind: the foot is highest before halfway through.
     lift:
       (swing.clearance ?? clearance) *
-      Math.sin(
-        Math.PI *
-          ((swing.kick ?? kick)
-            ? progress + (0.4 * Math.sin(Math.PI * progress)) / Math.PI
-            : progress),
-      ) *
-      Math.min(1, step / 0.15 + 0.2),
+        Math.sin(
+          Math.PI *
+            ((swing.kick ?? kick)
+              ? progress + (0.4 * Math.sin(Math.PI * progress)) / Math.PI
+              : progress),
+        ) *
+        Math.min(1, step / 0.15 + 0.2) +
+      (swing.fromLift ?? 0) * (1 - k),
     swing: progress,
     stance: 0,
     step,
@@ -620,6 +623,26 @@ export class PawStepper {
       step: 0,
     }))
     this.swings = specs.map(() => null)
+  }
+
+  /**
+   * Go on from where another gait (the gallop) left the paws: those down stay where they
+   * are, those in the air come down from where they are, as quick steps.
+   */
+  takeOver(feet: readonly FootState[], body: Body) {
+    this.state = feet.map((f) => ({ ...f, lift: f.swing === null ? 0 : f.lift }))
+    this.swings = feet.map((f) =>
+      f.swing === null
+        ? null
+        : {
+            from: { x: f.x, z: f.z, yaw: f.yaw },
+            aim: null,
+            time: 0,
+            duration: 0.15,
+            fromLift: f.lift,
+          },
+    )
+    this.last = { ...body }
   }
 
   /** Put every paw down where it is now (after the legs were posed some other way). */

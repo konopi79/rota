@@ -310,3 +310,77 @@ export const DOG_WALKING_AROUND: Path = pathFromCurve((u) => {
   const angle = AROUND_FROM - 2 * Math.PI * u
   return { x: -0.15 + 0.6 * Math.sin(angle), z: 0.15 + 0.85 * Math.cos(angle) }
 })
+
+/** The dog's place at the handler's left leg (`team.ts`), facing on. */
+const HEEL_PLACE = { x: 0.42, z: -0.2 }
+
+/** Further round than this from where it faces, a dog called first turns towards the handler. */
+const TURNS_FIRST = Math.PI / 3
+/** A dog called comes into its place along the way it then faces over this much at least, metres. */
+const INTO_PLACE = 0.6
+
+/**
+ * A dog called from where it was left: from `at` (the handler's frame) it runs in a smooth
+ * curve to `to`, arriving along `heading` — first turning on the spot towards the handler if
+ * it faces away from them (a dog left facing on, the handler having walked round it).
+ */
+const runTo = (at: PathPoint, to: { x: number; z: number }, heading: number): Path => {
+  const d = Math.hypot(to.x - at.x, to.z - at.z)
+  const towards = Math.atan2(to.x - at.x, to.z - at.z)
+  const turn = Math.atan2(Math.sin(towards - at.heading), Math.cos(towards - at.heading))
+  const first = Math.abs(turn) > TURNS_FIRST ? at.heading + turn : at.heading
+  // It comes in along `heading` from well behind its place — not turning into it at the end,
+  // its head swinging in at the handler.
+  const reach = Math.min(1.2, d / 3)
+  const into = Math.min(1.2, Math.max(INTO_PLACE, d / 3))
+  const run = pathFromCurve(
+    bezier(
+      [at.x, at.z],
+      [at.x + reach * Math.sin(first), at.z + reach * Math.cos(first)],
+      [to.x - into * Math.sin(heading), to.z - into * Math.cos(heading)],
+      [to.x, to.z],
+    ),
+  )
+  return first === at.heading ? run : joined(spin(at, at.heading, first), run)
+}
+
+/**
+ * The recalls (2-214 "přivolá do předsednutí", 2-216 "přivolá k levé noze", 3-321 …): the dog
+ * runs from where it was left into the front, facing the handler.
+ */
+export const recallToFront = (at: PathPoint): Path => runTo(at, { x: 0, z: FRONT }, Math.PI)
+
+/**
+ * Coming to the left leg of a handler facing it, the dog runs past their left side and turns
+ * about behind them, towards them, into heel: down the left side this far out (metres), round
+ * a half circle of this radius whose bottom is this far behind the handler.
+ */
+const PAST_LEFT = HEEL_PLACE.x + 2 * 0.165
+const ABOUT_RADIUS = 0.165
+const ABOUT_BEHIND = -0.5
+
+/**
+ * …or to the left leg: from in front of the handler (2-216, "způsob přiřazení není daný") it
+ * runs past their left side and turns about behind them into heel, never stopping; from
+ * behind or beside them (2-215 "bez otočení", 2-230) it comes up into heel, facing on.
+ */
+export const recallToHeel = (at: PathPoint): Path => {
+  if (at.z <= FRONT) return runTo(at, HEEL_PLACE, 0)
+  const centre = { x: PAST_LEFT - ABOUT_RADIUS, z: ABOUT_BEHIND }
+  return joined(
+    runTo(at, { x: PAST_LEFT, z: 0.2 }, Math.PI),
+    pathFromCurve((u) => ({ x: PAST_LEFT, z: 0.2 + (ABOUT_BEHIND - 0.2) * u })),
+    // Round towards the handler: from going back down their left side to going on into heel.
+    pathFromCurve((u) => {
+      const angle = Math.PI * u
+      return {
+        x: centre.x + ABOUT_RADIUS * Math.cos(angle),
+        z: centre.z - ABOUT_RADIUS * Math.sin(angle),
+      }
+    }),
+    pathFromCurve((u) => ({
+      x: HEEL_PLACE.x,
+      z: ABOUT_BEHIND + (HEEL_PLACE.z - ABOUT_BEHIND) * u,
+    })),
+  )
+}

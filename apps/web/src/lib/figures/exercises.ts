@@ -1,5 +1,6 @@
 import { RIGHT_SIDE_CARDS } from './animated'
 import type { Exercise } from './exercise'
+import { LEAVE_EXERCISES } from './leave-exercises'
 import { HIGHER_EXERCISES, LEFT, RIGHT, turnAboutChange } from './ro123-exercises'
 import {
   ROZ_EXERCISES,
@@ -9,8 +10,15 @@ import {
   spiralExercise,
 } from './roz-exercises'
 
+/** Card order: RO-Z first, then by number (a stable sort keeps each card's variants in order). */
+const cardOrder = (code: string) => code.replace('Z-', '0-')
+
 /** Every exercise the animations can play, in card order. */
-export const EXERCISES: Exercise[] = [...ROZ_EXERCISES, ...HIGHER_EXERCISES]
+export const EXERCISES: Exercise[] = [
+  ...ROZ_EXERCISES,
+  ...HIGHER_EXERCISES,
+  ...LEAVE_EXERCISES,
+].sort((a, b) => cardOrder(a.code).localeCompare(cardOrder(b.code)))
 
 export { RIGHT_SIDE_CARDS } from './animated'
 
