@@ -61,6 +61,11 @@ export type TeamControls = {
   dogAt?: { x: number; z: number; heading: number }
   /** The dog at heel this much further out to its side than its `place`, metres. */
   dogOut?: number
+  /**
+   * Lying down it keeps its front paws where they are, its body going back over them — as a
+   * dog in front always does (`dogFold`).
+   */
+  foldBack?: boolean
 }
 
 export type FigureFrame = {
@@ -397,7 +402,9 @@ export class TeamAnimator {
     const rate = posture === 'stand' ? RISE_RATE : SETTLE_RATE
     this.dogPosture = blendPoses(this.dogPosture, DOG_POSTURES[posture], 1 - Math.exp(-rate * dt))
     this.fold =
-      controls.place === 'front' ? Math.max(0, forepawReach(this.dogPosture) - STANDING_REACH) : 0
+      controls.place === 'front' || controls.foldBack
+        ? Math.max(0, forepawReach(this.dogPosture) - STANDING_REACH)
+        : 0
     const standing = posture === 'stand' ? 1 : 0
     this.dogStanding += (standing - this.dogStanding) * (1 - Math.exp(-rate * dt))
     this.dogFeet ??= new PawStepper(DOG_FEET[this.dogGait], dog)

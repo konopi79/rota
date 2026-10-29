@@ -93,14 +93,26 @@ export const ANIMATED_CARDS: readonly string[] = [
   '2-230',
   '2-231',
   '2-232',
+  '3-301',
+  '3-302',
   '3-303',
   '3-304',
   '3-305',
   '3-306',
+  '3-307',
+  '3-308',
+  '3-309',
+  '3-310',
+  '3-311',
+  '3-312',
   '3-315',
   '3-316',
   '3-317',
   '3-318',
+  '3-319',
+  '3-320',
+  '3-321',
+  '3-322',
   '3-325',
   '3-326',
   '3-327',
@@ -126,7 +138,26 @@ export const RIGHT_SIDE_CARDS: readonly string[] = [
  * Animated, but not walked through on a course yet (plan R17): the leave cards and their
  * follow-ups, whose dog stays behind from one card to the next.
  */
-const NOT_WALKED_YET = new Set(['2-211', '2-212', '2-213', '2-214', '2-215', '2-216'])
+const NOT_WALKED_YET = new Set([
+  '2-211',
+  '2-212',
+  '2-213',
+  '2-214',
+  '2-215',
+  '2-216',
+  '3-301',
+  '3-302',
+  '3-307',
+  '3-308',
+  '3-309',
+  '3-310',
+  '3-311',
+  '3-312',
+  '3-319',
+  '3-320',
+  '3-321',
+  '3-322',
+])
 
 /**
  * Whether a deck can be walked through in animation (plan R16): laid out on one field, every

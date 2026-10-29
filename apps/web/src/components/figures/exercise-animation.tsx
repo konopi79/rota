@@ -16,6 +16,7 @@ import { DOG } from '@/lib/figures/dog'
 import {
   ExercisePlayer,
   SPACE_SIDE,
+  marksOf,
   passesCard,
   spacesOf,
   standsOf,
@@ -85,6 +86,16 @@ export function CardStand({ code, x, z }: { code: string; x: number; z: number }
         <meshStandardMaterial color="#c9ccd1" />
       </mesh>
     </group>
+  )
+}
+
+/** A mark on the ground across the dog's way (the two thirds of a recall), white, 80 cm. */
+function GroundMark({ x, z }: { x: number; z: number }) {
+  return (
+    <mesh position={[x, 0.004, z]} rotation-x={-Math.PI / 2}>
+      <planeGeometry args={[0.8, 0.06]} />
+      <meshBasicMaterial color="#f4f4f0" />
+    </mesh>
   )
 }
 
@@ -227,6 +238,9 @@ function ExerciseTeam({
         <CardStand key={`${s.code} ${s.z}`} code={s.code} x={s.x} z={s.z} />
       ))}
       {showSpace && spacesOf(exercise).map((s) => <ExerciseSpace key={s.z} x={s.x} z={s.z} />)}
+      {marksOf(exercise).map((m) => (
+        <GroundMark key={`${m.x} ${m.z}`} x={m.x} z={m.z} />
+      ))}
       {exercise.cones?.map((cone, i) => (
         <Cone key={i} x={cone.x} z={cone.z} colour={CONE_COLOURS[i % 2]!} />
       ))}

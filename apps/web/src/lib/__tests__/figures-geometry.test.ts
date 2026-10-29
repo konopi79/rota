@@ -43,10 +43,12 @@ function measure(exercise: Exercise) {
 function ownPart(exercise: Exercise) {
   const all = { own: exercise, from: 1, to: exercise.steps.length - 1 }
   if (!exercise.parts) return all
-  const leaving = exercise.steps.findIndex((s) => 'dogStays' in s)
+  const leaving = exercise.steps.findIndex((s) => 'dogStays' in s || ('walk' in s && s.dropsDog))
+  // A way to the next card at a slant (after 3-301) is played as two steps.
+  const slant = 'walkTo' in exercise.steps[leaving + 1]! ? 1 : 0
   return exercise.parts[0]!.exercise.code === exercise.code
     ? { own: exercise.parts[0]!.exercise, from: 1, to: leaving + 1 }
-    : { ...all, own: exercise.parts[1]!.exercise, from: leaving + 2 }
+    : { ...all, own: exercise.parts[1]!.exercise, from: leaving + 2 + slant }
 }
 
 const mod360 = (deg: number) => ((Math.round(deg) % 360) + 360) % 360
@@ -78,9 +80,13 @@ describe('course plan geometry matches the animations (R14)', () => {
       const own =
         e.cardAt && g.card && Math.hypot(g.card.ahead - e.cardAt.z, g.card.side - e.cardAt.x)
       expect([e.code, !!g.card, (own ?? 0) < 0.1]).toEqual([e.code, !!e.cardAt, true])
-      // A follow-up as far on from its leave card as the plan has it.
-      if (e.parts && e.parts[1]!.exercise.code === e.code)
-        expect([e.code, e.parts[1]!.at]).toEqual([e.code, g.fromPrevious ?? NaN])
+      // A follow-up as far on from its leave card as the plan has it, and as far aside.
+      const next = e.parts?.[1]
+      if (next && next.exercise.code === e.code) {
+        expect([e.code, next.at]).toEqual([e.code, g.fromPrevious ?? NaN])
+        const asides = g.fromPreviousSides ?? [0]
+        expect([e.code, asides.includes(next.aside ?? 0)]).toEqual([e.code, true])
+      }
     }
   }, 120_000)
 
