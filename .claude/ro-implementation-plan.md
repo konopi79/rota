@@ -39,7 +39,7 @@ committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 | R13 | Animations: dog on the right, side steps, …                    | ✅ 2026-10-27 |
 | R14 | National course plan on the field                              | ✅ 2026-10-27 |
 | R15 | Animations: the dog on the right                               | ✅ 2026-10-28 |
-| R16 | Course walked through in animation (RO-Z, RO1)                 | ⏳            |
+| R16 | Course walked through in animation (RO-Z, RO1)                 | ✅ 2026-10-29 |
 | R17 | Animations: leave, recall, jumps + walkthroughs RO2, RO3, RO-V | ⏳            |
 | R18 | CNDC (several cards at one station)                            | ⏳ answers    |
 | R19 | FCI animations + walkthrough                                   | ⏳            |
@@ -388,8 +388,17 @@ up to a course laid out too.
   the emptiest point of the field is kept up to date instead of recomputed (2.7× faster
   for RO3, FCI unchanged). An RO3 course takes ~60 ms (one in ten over 0.2 s), RO1 ~5 ms.
 - Simplified: the spirals always leave turned the way animated (the regulation lets the
-  next card decide), a D0 card is drawn beside its main card but takes no room of its own,
-  the dog's way at a recall or a jump is not checked for obstacles.
+  next card decide), the dog's way at a recall or a jump is not checked for obstacles.
+- **Walked through (R16, 2026-10-29)**, the plan had to hold for a team that really walks it:
+  a D0 card now takes room of its own beside its main card (`d0StandOf`); the ways walked
+  keep 1 m from card stands, D0 stands and equipment (`STAND_SPACING`; 0.75 m stays between
+  stations) — at 0.75 m the dog brushed past them; exits are measured from where the
+  exercise starts (side steps, steps back, the pace cards, 90° turns ending ahead and
+  aside); spirals, slaloms and figure eights record their way round the equipment (`via`);
+  after a turn about the way on first joins the line beside the way in (`wayTo`,
+  `HAIRPIN_JOIN`), as the team walks it. FCI layouts unchanged (compared seed by seed with
+  `main`). The cost: RO3 courses ~1.6× slower to deal (median ~110 ms, one in ten over
+  0.4 s, the slowest ~0.9 s), RO2 ~20 ms, RO-Z and RO1 ~5 ms.
 
 **FCI courses like judges set them (2026-10-22).** The FCI Rally Obedience HUB's course
 catalogue (https://rallyobedience.online/courses/, a public Google Sheet) lists ~200 real
@@ -690,9 +699,10 @@ mirrored while the dog is (`figures.captionRight`).
 
 ### R16 — Course walked through in animation (RO-Z, RO1)
 
-- [ ] A course player chaining the exercise scripts along the plan: start → walk to each card → its exercise → finish, the dog's side and pace carried on
-- [ ] Whole-field view, camera following the team, pause, jump to a card; from the course page
-- [ ] Only for classes whose cards are all animated (RO-Z, RO1 after R13), on either side (R15)
+- [x] A course player chaining the exercise scripts along the plan: start → walk to each card → its exercise → finish, the dog's side and pace carried on (`lib/figures/walkthrough.ts`, the `walkTo` step of `ExercisePlayer`). Each card plays its own animation without its way up and its way on; between cards the team joins the plan's line in a short bend, walks straight and lines up with the card, its step adjusted (±18 % pace) to reach it on the foot the exercise starts with
+- [x] Whole-field view, camera following the team (turned and zoomed by hand, keeping its angle as the team turns; "Za týmem" again puts it back), pause, speed ½–2×, back and on by a card; card numbers over the stands, the start's mark "R", start and finish passed on the left; "Projít v animaci" on the course page (`components/figures/course-walkthrough.tsx`)
+- [x] Only for classes whose cards are all animated (RO-Z, RO1 after R13), on either side (R15) — `canWalkThrough`; test: courses walked to the finish, each station reached within 15 cm, nobody through a card, a cone or a bowl
+- [x] Reviewed on courses by the author (2026-10-28/29); feature item `course-walkthrough`
 
 ### R17 — Leave, recall, jumps + walkthroughs RO2, RO3, RO-V
 

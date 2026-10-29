@@ -1,5 +1,5 @@
 import type { DogPosture } from './dog'
-import { HEEL, type HandlerPace } from './handler'
+import { HANDLER_PACE, HEEL, type HandlerPace } from './handler'
 import { angleTo, ease } from './math'
 import {
   AROUND_DOG,
@@ -15,7 +15,9 @@ import {
   bendAhead,
   type Path,
 } from './paths'
-import type { Course } from './courses'
+import { geometry } from '@rota/content'
+
+import { towards, type Course } from './courses'
 import type { FootTarget } from './locomotion'
 import {
   FIRM_STOP,
@@ -35,6 +37,12 @@ export type ExerciseStep = { caption: string } & (
   | {
       walk: number // metres forward, the dog at heel
       pace?: HandlerPace
+      /**
+       * Into steps taken out of the walk (`fromFoot`) whatever foot comes down there: if the
+       * other one does, the right one closes up level with it first — a handler adjusting
+       * the step to the card (a course walked through, where the way up is not the script's).
+       */
+      closeUp?: true
       /** Meanwhile the dog changes sides, behind the handler or ahead across in front. */
       dogChanges?: WalkingDogPath
     }
@@ -62,6 +70,29 @@ export type ExerciseStep = { caption: string } & (
    * caption, on from where the last one ended.
    */
   | { course: Course; parts: [number, number]; pace?: HandlerPace }
+  /**
+   * The team walks to `walkTo` — a place on the field, the way it faces there — smoothly,
+   * however the exercise before left it: the way between two cards of a course walked
+   * through (plan R16). The last metres straight on, so it can stop there or walk on into
+   * what comes next. `flipped`: as it gets there, the dog is at the other leg than the next
+   * exercise's script was written for (`dogStarts`).
+   */
+  | {
+      walkTo: Pose
+      /**
+       * The way the course plan has the team walk there: straight on along this line, which
+       * ends where the exercise starts as the plan has it (`walkTo` may be a little off it,
+       * where the exercise's script stops the handler in its square).
+       */
+      along?: Pose
+      pace?: HandlerPace
+      flipped?: boolean
+      /**
+       * The steps lined up the way the next exercise's script has them as it begins (`Phase`):
+       * walking in, the handler walks a little faster or slower so that foot lands there.
+       */
+      phase?: Phase
+    }
   /**
    * The team turns by `turn` degrees, positive to the right, the handler walking an arc of
    * `radius` metres — 0 turns the handler on the spot, the dog going round at heel.
@@ -103,6 +134,15 @@ export type ExerciseStep = { caption: string } & (
 )
 
 const PATHS: Record<'dog', Path> = { dog: AROUND_DOG }
+
+/**
+ * Where the handler's steps are as an exercise begins walking: the foot that came down last
+ * (0 left, 1 right), and how far the team has walked since, metres.
+ */
+export type Phase = { foot: 0 | 1; since: number }
+
+/** Lining the steps up (`Phase`) the handler walks at most this much faster or slower. */
+const LINE_UP_PACE = 0.18
 
 /** A path round the handler the other way round: left and right swapped (+x is left). */
 const mirroredPaths = new WeakMap<Path, Path>()
@@ -608,7 +648,32 @@ export class ExercisePlayer {
   /** −1 while a turn step goes the other way round, the dog having set off on the right. */
   private turnBy: 1 | -1 = 1
 
+  /** The exercise's steps, a way to a place (`walkTo`) worked out as it comes. */
+  private readonly steps: ExerciseStep[]
+
+  /** The walk ended on the other foot than the steps out of it start from (`closeUp`). */
+  private closingUp = false
+  /**
+   * Lining the steps up on the way to a place (`walkTo.phase`): how far it is, from how far
+   * walked, and the steps that go there.
+   */
+  private lining: (Phase & { total: number; from: number; until: number }) | null = null
+  /** The handler's last footfalls: which foot, and how far the team had walked then. */
+  private footfalls: { foot: number; at: number }[] = []
+
+  /** The last metres of a way to a place, straight on into it (`walkTo`). */
+  private static readonly WALK_IN = 1.2
+  /**
+   * Onto the plan's line within this far and as far again as it is off it, metres; over to
+   * where the exercise starts within `LINE_UP` m before getting there.
+   */
+  private static readonly JOIN = geometry.HAIRPIN_JOIN
+  /** Further off the plan's line than this, metres (beside the way in), the team joins it first. */
+  private static readonly FAR_OFF = 0.6
+  private static readonly LINE_UP = 1.5
+
   constructor(private readonly exercise: Exercise) {
+    this.steps = [...exercise.steps]
     this.flipped = exercise.dogStarts === 'right'
     this.dogPlace = this.flipped ? 'right' : 'left'
     this.animator = new TeamAnimator(this.dogPlace)
@@ -623,6 +688,96 @@ export class ExercisePlayer {
    */
   private flipped: boolean
 
+  /**
+   * A way to a place (`walkTo`) as a bend from where the team is to a point the last metres
+   * short of it, then straight on into it: those metres a walk, so the team can stop there.
+   */
+  private expandWalkTo() {
+    const step = this.steps[this.index] as Extract<ExerciseStep, { walkTo: Pose }>
+    const to = inTeam(this.team, step.walkTo)
+    const heading = angleTo(0, to.heading)
+    const ahead = to.x * Math.sin(heading) + to.z * Math.cos(heading)
+    // Straight on into it at least as far as the team needs to come to a stop from its pace.
+    const braking = (this.last?.speed ?? 0) / SETTLE_RATE + 0.6
+    const last = Math.max(0.3, Math.min(Math.max(ExercisePlayer.WALK_IN, braking), ahead - 0.5))
+    const end = { x: to.x - last * Math.sin(heading), z: to.z - last * Math.cos(heading), heading }
+    // Onto the plan's line first (however the last exercise left the team: an arc's end, beside
+    // the way in), straight on along it, and over to where the exercise starts only just
+    // before the card — as a handler lines up at it.
+    const through: { x: number; z: number; heading: number; tight?: boolean }[] = [end]
+    if (step.along) {
+      const line = inTeam(this.team, step.along)
+      const h = angleTo(0, line.heading)
+      const [c, s] = [Math.cos(h), Math.sin(h)]
+      // Along the line: how far the team is from its end, and how far off it.
+      const back = -(-line.x * s - line.z * c)
+      const off = -line.x * c + line.z * s
+      const onLine = (fromEnd: number) => ({
+        x: line.x - fromEnd * s,
+        z: line.z - fromEnd * c,
+        heading: h,
+      })
+      const toEnd = Math.max(0, -(end.x - line.x) * s - (end.z - line.z) * c)
+      const lineUp = toEnd + ExercisePlayer.LINE_UP
+      // Onto the line the way the plan has it (`geometry.wayTo`): over in a short bend, at
+      // the latest just before the place — then straight on, and over to where the exercise
+      // starts only at the end, if there is room for that.
+      const joined = Math.max(back - (ExercisePlayer.JOIN + Math.abs(off)), toEnd + 0.3)
+      const farOff = Math.abs(off) > ExercisePlayer.FAR_OFF
+      if (joined > lineUp + 0.3)
+        through.unshift({ ...onLine(joined), tight: farOff }, onLine(lineUp))
+      else if (farOff && joined < back - 0.3) through.unshift({ ...onLine(joined), tight: true })
+    }
+    // A little off and no room to join first: straight on as the team faces, over to the place
+    // only at the end.
+    if (through.length === 1 && Math.abs(end.heading) < 0.2) {
+      const straight = end.z - ExercisePlayer.LINE_UP
+      if (straight > 0.3) through.unshift({ x: 0, z: straight, heading: 0 })
+    }
+    const { caption, pace } = step
+    if (step.flipped !== undefined) this.flipped = step.flipped
+    const next = this.steps[this.index + 1]
+    const intoSteps = next && 'footwork' in next && next.fromFoot !== undefined
+    const way = towards(...through)
+    this.lining = step.phase
+      ? {
+          ...step.phase,
+          total: way.path.length + last,
+          from: this.last?.travelled ?? 0,
+          until: this.index + 1,
+        }
+      : null
+    this.steps.splice(
+      this.index,
+      1,
+      { course: way, parts: [0, through.length], caption, ...(pace && { pace }) },
+      { walk: last, caption, ...(pace && { pace }), ...(intoSteps && { closeUp: true }) },
+    )
+  }
+
+  /**
+   * How much faster or slower than now to walk (a share: 1 as now; 0 nothing to line up) so
+   * that the foot `aim.foot` comes down last before the place, `aim.since` short of it: steps
+   * keep their time, so a step is as much longer as the walk is faster. Of the footfalls still
+   * to come, the one with that foot that asks the least change; worked out again every frame.
+   */
+  private lineUp(aim: NonNullable<typeof this.lining>, travelled: number, speed: number): number {
+    const [prev, last] = this.footfalls.slice(-2)
+    const toGo = aim.total - (travelled - aim.from)
+    if (!prev || !last || speed < 0.4 || toGo < 0.4) return 0
+    const step = last.at - prev.at
+    if (step < 0.1) return 0
+    // From the last footfall to the place, the steps to fit in, with the foot coming last.
+    const span = toGo + (travelled - last.at) - aim.since
+    let best = 1
+    for (let n = 1; n <= Math.ceil(span / step) + 2; n++) {
+      if ((n % 2 === 0 ? last.foot : 1 - last.foot) !== aim.foot) continue
+      const scale = span / n / step
+      if (Math.abs(scale - 1) < Math.abs(best - 1) || best === 1) best = scale
+    }
+    return best
+  }
+
   /** A way of the dog's own, or the handler's round the dog, as it goes now (`flipped`). */
   private side<T extends { path: Path; ends?: TeamControls['place'] }>(way: T): T {
     if (this.dogPlace === 'front') this.flipped = false
@@ -631,7 +786,20 @@ export class ExercisePlayer {
   }
 
   step(dt: number): ExerciseFrame {
-    const steps = this.exercise.steps
+    // The way to a place, worked out from where the team is as it sets off.
+    if (this.steps[this.index] && 'walkTo' in this.steps[this.index]!) this.expandWalkTo()
+    // Out of the walk on the other foot: that one closes up level first (`closeUp`).
+    const stepping = this.steps[this.index]
+    if (this.closingUp && stepping && 'footwork' in stepping && stepping.fromFoot !== undefined) {
+      const foot = stepping.fromFoot
+      this.steps[this.index] = {
+        ...stepping,
+        fromFoot: foot ? 0 : 1,
+        footwork: [{ foot, x: foot ? -0.1 : 0.1, z: -0.08, yaw: 0 }, ...stepping.footwork],
+      }
+      this.closingUp = false
+    }
+    const steps = this.steps
     const current = steps[this.index]
     const travelled = this.last?.travelled ?? 0
     const walked = this.last?.walked ?? 0
@@ -675,9 +843,15 @@ export class ExercisePlayer {
       // last step has landed with that foot.
       if (next && 'footwork' in next && next.fromFoot !== undefined) {
         if (toGo < SLOW_INTO_STEPS) controls.maxSpeed = INTO_STEPS_SPEED
-        const foot = this.last?.feet.handler[next.fromFoot]
-        const landed = foot !== undefined && foot.swing === null && foot.stance < 0.15
-        done = (toGo <= 0.3 && landed) || toGo < -1
+        const landedFoot = (i: number) => {
+          const foot = this.last?.feet.handler[i]
+          return foot !== undefined && foot.swing === null && foot.stance < 0.15
+        }
+        done = (toGo <= 0.3 && landedFoot(next.fromFoot)) || toGo < -1
+        if (!done && current.closeUp && toGo <= 0.1 && landedFoot(1 - next.fromFoot)) {
+          done = true
+          this.closingUp = true
+        }
       }
       // Slowing down into a turn in a small arc, to be at its pace as it begins.
       if (next && 'turn' in next && next.radius > 0) {
@@ -928,7 +1102,7 @@ export class ExercisePlayer {
         // Walking on from feet still apart, the team goes the way the leading foot points —
         // the full turn — not between that and the foot left behind.
         const then = steps[this.index + 1]
-        if (then !== undefined && 'walk' in then)
+        if (then !== undefined && ('walk' in then || 'walkTo' in then))
           this.footworkTo.heading = this.footworkBase.heading + current.footwork.at(-1)!.yaw
         this.footworkTo.heading =
           this.footworkFrom.heading + angleTo(this.footworkFrom.heading, this.footworkTo.heading)
@@ -942,7 +1116,7 @@ export class ExercisePlayer {
       // Walking on straight after the steps, the body does not slow down at their end: it
       // sets off smoothly and is already on its way when the walk takes over.
       const next = steps[this.index + 1]
-      const walksOn = next !== undefined && 'walk' in next
+      const walksOn = next !== undefined && ('walk' in next || 'walkTo' in next)
       const travel = walksOn ? time * time : glide
       // Turning, the whole body glides — the dog at heel swings round in one smooth go.
       // Stepping straight on or back, it stays over its feet: a body behind a foot stepping
@@ -1139,6 +1313,19 @@ export class ExercisePlayer {
       done = this.stepTime >= END_PAUSE
     }
 
+    if (this.lining && this.index > this.lining.until) this.lining = null
+    if (this.lining) {
+      // The speed that lines the steps up: as a share of the pace, and — slowing into what
+      // comes next (a bend, steps out of the walk) — of the speed it slows to.
+      const wanted = speed * this.lineUp(this.lining, travelled, speed)
+      if (wanted > 0) {
+        const within = (to: number) =>
+          Math.max(to * (1 - LINE_UP_PACE), Math.min(to * (1 + LINE_UP_PACE), wanted))
+        const pace = HANDLER_PACE[this.pace].speed
+        controls.paceScale = within(pace) / pace
+        if (controls.maxSpeed !== undefined) controls.maxSpeed = within(controls.maxSpeed)
+      }
+    }
     const advanced = this.animator.advance(dt, controls)
     const moved = advanced.travelled - travelled
     // The team coming to a stop: where the dog will stand, so its last steps land there.
@@ -1219,6 +1406,13 @@ export class ExercisePlayer {
     }
     const frame = this.animator.pose(dt, controls, onField(this.team, this.offset), dog)
     frame.dog = { ...frame.dog, ...inTeam(this.team, dog) }
+    // The handler's footfalls, as each foot comes down.
+    frame.feet.handler.forEach((foot, i) => {
+      const before = this.last?.feet.handler[i]
+      if (before?.swing && !foot.swing) {
+        this.footfalls = [...this.footfalls.slice(-2), { foot: i, at: frame.travelled }]
+      }
+    })
     this.last = frame
 
     if (done) {
@@ -1234,7 +1428,7 @@ export class ExercisePlayer {
       caption: current?.caption ?? null,
       flipped: this.flipped,
       stepIndex: this.index,
-      finished: this.index > steps.length,
+      finished: this.index > this.steps.length,
     }
   }
 }

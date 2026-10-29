@@ -104,6 +104,15 @@ export const geometrySchema = z
      * (a side step, a slalom that ends beside its cones).
      */
     exitSide: z.number().optional(),
+    /**
+     * Where the team's way inside the exercise goes, between where it starts and where it
+     * leaves: [ahead, side] points in order, side signed like `Prop.side` — round cones and
+     * bowls, so the course plan keeps the whole way clear (read off the animation).
+     */
+    via: z
+      .array(z.tuple([z.number(), z.number()]))
+      .min(1)
+      .optional(),
     /** Where the card stands when not where `placement` puts it (beside a line of cones). */
     card: z.object({ ahead: z.number(), side: z.number() }).strict().optional(),
     /**

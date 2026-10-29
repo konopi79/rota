@@ -18,10 +18,12 @@ import {
   LayoutGrid,
   Maximize2,
   PencilLine,
+  PersonStanding,
   Printer,
   Share2,
   Shuffle,
 } from 'lucide-react'
+import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -37,9 +39,16 @@ import { PlanViewer } from '@/components/plan-viewer'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cardHref, classSlug } from '@/lib/classes'
+import { canWalkThrough } from '@/lib/figures/animated'
 import { countedMessages, issueMessage } from '@/lib/course-issues'
 import { shareLink } from '@/lib/share'
 import { decodeDeckParams, deckOf, encodeDeckParams, type DeckParams } from '@/lib/deck-url'
+
+// WebGL needs a browser, and three.js loads only once someone asks for the walkthrough.
+const CourseWalkthrough = dynamic(
+  () => import('@/components/figures/course-walkthrough').then((m) => m.CourseWalkthrough),
+  { ssr: false },
+)
 
 /** Competition course (R7): the whole course as a numbered, printable list. */
 export function CourseView() {
@@ -54,6 +63,7 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   const [showGrid, setShowGrid] = useState(false)
+  const [walking, setWalking] = useState(false)
   /** The round whose plan is shown over the whole screen. */
   const [zoomedRound, setZoomedRound] = useState<number>()
   const deckKey = JSON.stringify([params.options, params.order])
@@ -153,6 +163,12 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
           <Footprints />
           {t('course.walk')}
         </Button>
+        {canWalkThrough(deck) && (
+          <Button variant="outline" onClick={() => setWalking(true)}>
+            <PersonStanding />
+            {t('walkthrough.button')}
+          </Button>
+        )}
         <Button variant="outline" onClick={() => window.print()}>
           <Printer />
           {t('course.print')}
@@ -170,6 +186,15 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
           card={card}
           onNew={custom ? undefined : newCourse}
           onClose={() => setShowGrid(false)}
+        />
+      )}
+
+      {walking && (
+        <CourseWalkthrough
+          deck={deck}
+          cls={cls}
+          title={t('walkthrough.title', { cls: t(`classes.${cls.id}`) })}
+          onClose={() => setWalking(false)}
         />
       )}
 

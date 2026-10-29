@@ -372,7 +372,12 @@ const stopForSideStep = (sign: 1 | -1, z = 0) => ({ x: sign === RIGHT ? -0.35 : 
 const roundTheCards = (steps: ExerciseStep[], aside: number): ExerciseStep[] => {
   const last = steps.at(-1)!
   if (!('walk' in last)) return steps
-  return [...steps.slice(0, -1), { course: swerve(aside), parts: [0, 3], caption: last.caption }]
+  // Round them, then straight on: a walk of its own, like any exercise's way on.
+  return [
+    ...steps.slice(0, -1),
+    { course: swerve(aside), parts: [0, 2], caption: last.caption },
+    { walk: 2.5, caption: last.caption },
+  ]
 }
 
 /**
