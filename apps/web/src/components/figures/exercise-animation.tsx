@@ -15,12 +15,11 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { DOG } from '@/lib/figures/dog'
 import {
   ExercisePlayer,
-  cardPlace,
-  exerciseSpace,
   SPACE_SIDE,
   passesCard,
+  spacesOf,
+  standsOf,
   stationOf,
-  supplementaryPlace,
   type Exercise,
 } from '@/lib/figures/exercise'
 import { EXERCISES, RIGHT_EXERCISES, RIGHT_SIDE_CARDS } from '@/lib/figures/exercises'
@@ -165,8 +164,14 @@ const seriesOf = (code: string) => code.split('-')[0] as Series
  */
 type Caption = { key: string; flipped: boolean }
 
-/** Which variant of a card an exercise plays: its supplementary card or the pace before. */
-const variantOf = (e: Exercise) => e.supplementary ?? e.fromPace
+/** A leave card played with one of its follow-ups (plan R17). */
+const isLeavePair = (e: Exercise) => e.parts?.[0]?.exercise.code === e.code
+
+/**
+ * Which variant of a card an exercise plays: its supplementary card, the pace before, or —
+ * for a leave card — the card that follows it.
+ */
+const variantOf = (e: Exercise) => (isLeavePair(e) ? e.pairedWith : (e.supplementary ?? e.fromPace))
 
 /**
  * The team walks over the field through the exercise; the station — where the exercise
@@ -211,22 +216,17 @@ function ExerciseTeam({
     }
   })
 
-  const card = cardPlace(exercise)
-  const d0Card = supplementaryPlace(exercise)
-  const space = exerciseSpace(exercise)
-  const supplementary = exercise.supplementary
   return (
     <>
       <group ref={team}>
         <Figure rig={DOG} ref={dog} />
         <Figure rig={HANDLER} ref={handler} />
       </group>
-      <CardStand code={exercise.code} x={card.x} z={card.z} />
-      {supplementary && d0Card && (
-        // As on a course: the supplementary card stands right next to the main one.
-        <CardStand code={supplementary} x={d0Card.x} z={d0Card.z} />
-      )}
-      {showSpace && <ExerciseSpace x={space.x} z={space.z} />}
+      {/* The card, and as on a course the supplementary card right next to it; a pair's both. */}
+      {standsOf(exercise).map((s) => (
+        <CardStand key={`${s.code} ${s.z}`} code={s.code} x={s.x} z={s.z} />
+      ))}
+      {showSpace && spacesOf(exercise).map((s) => <ExerciseSpace key={s.z} x={s.x} z={s.z} />)}
       {exercise.cones?.map((cone, i) => (
         <Cone key={i} x={cone.x} z={cone.z} colour={CONE_COLOURS[i % 2]!} />
       ))}
@@ -318,7 +318,13 @@ export function AnimationPlayer({
   const side = bothSides ? dogSide : 'left'
   const variants = (side === 'right' ? RIGHT_EXERCISES : EXERCISES).filter((e) => e.code === code)
   const exercise = variants.find((e) => variantOf(e) === variant) ?? variants[0]!
-  const variantGroup = variants[0]!.supplementary ? 'supplementary' : 'fromPace'
+  const variantGroup = isLeavePair(variants[0]!)
+    ? 'followUp'
+    : variants[0]!.supplementary
+      ? 'supplementary'
+      : 'fromPace'
+  // A pair's own card (the other one stands too): the one this animation is for.
+  const own = exercise.parts?.find((p) => p.exercise.code === code)?.exercise ?? exercise
 
   // Space pauses and resumes too, unless a control has the focus (space presses it).
   useEffect(() => {
@@ -356,7 +362,7 @@ export function AnimationPlayer({
               value={variantOf(exercise)!}
               options={variants.map((e) => variantOf(e)!)}
               onChange={setVariant}
-              label={variantGroup === 'supplementary' ? (o) => `${o} ${cardName(o)}` : undefined}
+              label={variantGroup === 'fromPace' ? undefined : (o) => `${o} ${cardName(o)}`}
             />
           )}
         </div>
@@ -452,7 +458,7 @@ export function AnimationPlayer({
           </div>
           {showSpace && (
             <p className="text-muted-foreground text-sm">
-              {t(`figures.space.${passesCard(exercise) ?? exercise.card ?? 'side'}`)}
+              {t(`figures.space.${passesCard(own) ?? own.card ?? 'side'}`)}
             </p>
           )}
         </div>

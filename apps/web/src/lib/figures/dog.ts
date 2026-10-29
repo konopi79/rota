@@ -1,7 +1,7 @@
 import { limitedLeg, type LegLimits } from './ik'
 import type { Body, FootSpec, FootState, StepGait } from './locomotion'
 import { angleTo } from './math'
-import { jointFrames, type Box, type Joint, type Pose, type Vec3 } from './rig'
+import { jointFrames, pitchPoint, type Box, type Joint, type Pose, type Vec3 } from './rig'
 
 /**
  * A medium dog (border collie size, ~53 cm at the withers) out of boxes. The root joint
@@ -39,9 +39,17 @@ const frontLeg = (side: 'left' | 'right', x: number): Joint => ({
   ],
 })
 
+/**
+ * Where the loin bends (the back arching and stretching in a gallop), from the trunk's
+ * middle; the hind quarters hang from it.
+ */
+export const LOIN: Vec3 = [0, 0, -0.06]
+/** The hips, from the trunk's middle (with the loin straight). */
+const HIP: Vec3 = [0, -0.04, -0.22]
+
 const hindLeg = (side: 'left' | 'right', x: number): Joint => ({
   name: `${side}Hip`,
-  pivot: [x, -0.04, -0.22],
+  pivot: [x, HIP[1] - LOIN[1], HIP[2] - LOIN[2]],
   boxes: [box([0.08, 0.2, 0.11], [0, -0.07, 0])],
   children: [
     {
@@ -65,10 +73,24 @@ export const DOG: Joint = {
   pivot: [0, 0, 0],
   boxes: [
     box([0.2, 0.22, 0.4], [0, 0, 0.08]), // chest
-    box([0.18, 0.19, 0.26], [0, 0.01, -0.18]), // loin and rump
     box([0.16, 0.17, 0.04], [0, -0.01, 0.27], 'coatDark'), // white chest
   ],
   children: [
+    {
+      // The back half, bending at the loin: rump, tail and hind legs.
+      name: 'loin',
+      pivot: LOIN,
+      boxes: [box([0.18, 0.19, 0.26], [0, 0.01, -0.18 - LOIN[2]])], // loin and rump
+      children: [
+        {
+          name: 'tail',
+          pivot: [0, 0.07, -0.31 - LOIN[2]],
+          boxes: [box([0.05, 0.05, 0.28], [0, 0, -0.13])],
+        },
+        hindLeg('left', 0.065),
+        hindLeg('right', -0.065),
+      ],
+    },
     {
       name: 'neck',
       pivot: [0, 0.08, 0.27],
@@ -87,15 +109,8 @@ export const DOG: Joint = {
         },
       ],
     },
-    {
-      name: 'tail',
-      pivot: [0, 0.07, -0.31],
-      boxes: [box([0.05, 0.05, 0.28], [0, 0, -0.13])],
-    },
     frontLeg('left', 0.065),
     frontLeg('right', -0.065),
-    hindLeg('left', 0.065),
-    hindLeg('right', -0.065),
   ],
 }
 
@@ -142,7 +157,7 @@ export const DOG_POSTURES: Record<DogPosture, Pose> = {
   },
 }
 
-export type DogGait = 'walk' | 'trot'
+export type DogGait = 'walk' | 'trot' | 'gallop'
 
 /**
  * The trunk's height when the legs carry it (standing, walking, trotting): low enough for
@@ -176,6 +191,13 @@ export const DOG_FEET: Record<DogGait, FootSpec[]> = {
     { name: 'leftHindPaw', neutral: [PAW_X, HIND_Z], pair: 1 },
     { name: 'rightHindPaw', neutral: [-PAW_X, HIND_Z], pair: 0 },
   ],
+  // Galloping each paw goes its own way through the stride (`gallop.ts`).
+  gallop: [
+    { name: 'leftFrontPaw', neutral: [PAW_X, FRONT_Z] },
+    { name: 'rightFrontPaw', neutral: [-PAW_X, FRONT_Z] },
+    { name: 'leftHindPaw', neutral: [PAW_X, HIND_Z] },
+    { name: 'rightHindPaw', neutral: [-PAW_X, HIND_Z] },
+  ],
 }
 
 /**
@@ -184,26 +206,35 @@ export const DOG_FEET: Record<DogGait, FootSpec[]> = {
  * others step out; a planted paw turns a little on its pads.
  */
 export const dogStep = (gait: DogGait): StepGait => ({
-  ...(gait === 'trot'
-    ? { stance: 0.5, cycleLength: 0.56, clearance: 0.07 }
-    : { stance: 0.6, cycleLength: 0.48, clearance: 0.05 }),
-  swingTime: gait === 'trot' ? 0.18 : 0.22,
+  // (The gallop has a stride of its own, `gallop.ts`; going into and out of it, a trot.)
+  ...(gait === 'walk'
+    ? { stance: 0.6, cycleLength: 0.48, clearance: 0.05 }
+    : { stance: 0.5, cycleLength: 0.56, clearance: 0.07 }),
+  swingTime: gait === 'walk' ? 0.22 : 0.18,
   pivot: 0.3,
   // A dog's leg reaches little sideways (it swings out some 15°).
   reachAside: 0.3,
   // A trotting dog never has more than two paws in the air, a walking one mostly one.
-  support: gait === 'trot' ? 2 : 3,
+  support: gait === 'walk' ? 3 : 2,
 })
 
 /** A dog's legs hardly turn or swing sideways: about 20°, 20° out and 17° in (under the body). */
 const DOG_LIMITS: LegLimits = { yaw: 0.35, out: 0.35, in: 0.3 }
 
+/** How the trunk is carried: its middle's height, its pitch (nose down positive), the loin's bend. */
+export type Carriage = { height: number; pitch: number; flex: number }
+const STANDING: Carriage = { height: DOG_STANDING_HEIGHT, pitch: 0, flex: 0 }
+
 /**
- * The leg angles that put the paws where the stepper has them, the trunk level at its
- * standing height. Forelegs bend at the elbow backwards, hind legs at the stifle forwards
- * with the hock kept upright.
+ * The leg angles that put the paws where the stepper has them, the trunk carried as
+ * `carriage` (by default level at its standing height, the back straight). Forelegs bend at
+ * the elbow backwards, hind legs at the stifle forwards with the hock kept upright.
  */
-export const dogLegs = (feet: readonly FootState[], body: Body): Pose => {
+export const dogLegs = (
+  feet: readonly FootState[],
+  body: Body,
+  carriage: Carriage = STANDING,
+): Pose => {
   const c = Math.cos(body.heading)
   const s = Math.sin(body.heading)
   const pose: Pose = {}
@@ -211,11 +242,17 @@ export const dogLegs = (feet: readonly FootState[], body: Body): Pose => {
     const foot = feet[i]!
     const dx = foot.x - body.x
     const dz = foot.z - body.z
-    const paw: Vec3 = [
-      c * dx - s * dz,
-      PAW_HEIGHT + foot.lift - DOG_STANDING_HEIGHT,
+    // Into the trunk's frame (pitched), and for a hind paw on into the loin's (bent).
+    const [ty, tz] = pitchPoint(
+      PAW_HEIGHT + foot.lift - carriage.height,
       s * dx + c * dz,
-    ]
+      -carriage.pitch,
+    )
+    const hind = spec.name.endsWith('HindPaw')
+    const [ly, lz] = hind
+      ? pitchPoint(ty - LOIN[1], tz - LOIN[2], -carriage.flex)
+      : [ty - LOIN[1], tz - LOIN[2]]
+    const paw: Vec3 = [c * dx - s * dz, ly + LOIN[1], lz + LOIN[2]]
     const yaw = angleTo(body.heading, foot.yaw)
     const side = spec.name.startsWith('left') ? 'left' : 'right'
     const x = side === 'left' ? PAW_X : -PAW_X

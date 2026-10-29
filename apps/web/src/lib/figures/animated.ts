@@ -73,8 +73,14 @@ export const ANIMATED_CARDS: readonly string[] = [
   '2-208',
   '2-209',
   '2-210',
-  '2-220',
+  '2-211',
+  '2-212',
+  '2-213',
+  '2-214',
+  '2-215',
+  '2-216',
   '2-219',
+  '2-220',
   '2-221',
   '2-222',
   '2-223',
@@ -84,6 +90,8 @@ export const ANIMATED_CARDS: readonly string[] = [
   '2-227',
   '2-228',
   '2-229',
+  '2-230',
+  '2-231',
   '2-232',
   '3-303',
   '3-304',
@@ -115,6 +123,12 @@ export const RIGHT_SIDE_CARDS: readonly string[] = [
 ]
 
 /**
+ * Animated, but not walked through on a course yet (plan R17): the leave cards and their
+ * follow-ups, whose dog stays behind from one card to the next.
+ */
+const NOT_WALKED_YET = new Set(['2-211', '2-212', '2-213', '2-214', '2-215', '2-216'])
+
+/**
  * Whether a deck can be walked through in animation (plan R16): laid out on one field, every
  * card animated — on the side the course has the dog there.
  */
@@ -124,6 +138,7 @@ export const canWalkThrough = (deck: Deck): boolean =>
     (e) =>
       e.at &&
       ANIMATED_CARDS.includes(e.code) &&
+      !NOT_WALKED_YET.has(e.code) &&
       (e.side === 'left' || RIGHT_SIDE_CARDS.includes(e.code)),
   )
 
