@@ -6,6 +6,7 @@ import { ANIMATED_CARDS, animationFor } from '../figures/animated'
 import { DOG, DOG_POSTURES, type DogPosture } from '../figures/dog'
 import {
   ExercisePlayer,
+  jumpsOf,
   stationOf,
   standsOf,
   exerciseSpace,
@@ -14,6 +15,7 @@ import {
   type ExerciseFrame,
 } from '../figures/exercise'
 import { HANDLER, HANDLER_STAND } from '../figures/handler'
+import { BAR_HEIGHT, JUMP_WIDTH } from '../figures/leap'
 import { apply } from '../figures/math'
 import { jointFrames, jointNames, lowestPoint, type Joint, type Pose } from '../figures/rig'
 import { EXERCISES, RIGHT_EXERCISES } from '../figures/exercises'
@@ -598,6 +600,56 @@ describe('every exercise', () => {
     }
   })
 
+  /** The exercises with a jump: the dog over its bar, and nobody into its uprights. */
+  const OVER_A_JUMP = PLAYED.filter(([, e]) => jumpsOf(e).length > 0)
+
+  test.each(OVER_A_JUMP)('%s: the dog clears the bar, nobody runs into an upright', (_, e) => {
+    const station = stationOf(e)
+    const bars = jumpsOf(e).map((j) => ({ x: j.x, z: station + j.z }))
+    let over = 0
+    for (const f of playAll(e)) {
+      for (const who of [solids(DOG, f.dog), solids(HANDLER, f.handler)]) {
+        const team = { x: f.team.x, z: f.team.z, heading: f.team.heading }
+        for (const box of who) {
+          const at = onField(team, box.c[0], box.c[2])
+          for (const b of bars) {
+            // Into an upright (its post 4 cm across, at each end of the bar).
+            for (const end of [-1, 1]) {
+              const post = { x: b.x + (end * JUMP_WIDTH) / 2, z: b.z }
+              const apart = Math.hypot(at.x - post.x, at.z - post.z)
+              if (box.c[1] - box.radius < 0.9 && apart < Math.min(box.half[0], box.half[2]) + 0.02)
+                throw new Error(`${box.joint} into an upright`)
+            }
+          }
+        }
+      }
+      // Each of the dog's boxes over the bar is above it.
+      for (const box of solids(DOG, f.dog)) {
+        const team = { x: f.team.x, z: f.team.z, heading: f.team.heading }
+        const at = onField(team, box.c[0], box.c[2])
+        for (const b of bars) {
+          const reach = box.radius
+          if (Math.abs(at.z - b.z) > reach || Math.abs(at.x - b.x) > JUMP_WIDTH / 2) continue
+          // Only the box's own corners over the bar count: its lowest there.
+          const lowest =
+            box.c[1] -
+            box.half[1] * Math.abs(box.axes[1][1]) -
+            box.half[0] * Math.abs(box.axes[0][1]) -
+            box.half[2] * Math.abs(box.axes[2][1])
+          const crossing = Math.abs(at.z - b.z) < 0.03
+          if (crossing) {
+            over++
+            if (lowest < BAR_HEIGHT + 0.02)
+              throw new Error(
+                `${box.joint} ${((lowest - BAR_HEIGHT) * 100).toFixed(1)} cm over the bar`,
+              )
+          }
+        }
+      }
+    }
+    expect(over).toBeGreaterThan(0)
+  })
+
   test.each([
     [Z006, 90],
     [Z007, -90],
@@ -768,7 +820,7 @@ describe('animations in the card details', () => {
   test('a supplementary card plays Z-014 ending with it; others have none', () => {
     expect(animationFor('D0c')).toEqual({ code: 'Z-014', variant: 'D0c' })
     expect(animationFor('Z-022')).toEqual({ code: 'Z-022' })
-    expect(animationFor('2-217')).toBeNull()
+    expect(animationFor('101')).toBeNull()
     for (const d0 of ['D0a', 'D0b', 'D0c', 'D0d'])
       expect(EXERCISES.some((e) => e.code === 'Z-014' && e.supplementary === d0)).toBe(true)
   })

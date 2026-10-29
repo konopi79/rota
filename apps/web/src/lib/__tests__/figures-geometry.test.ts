@@ -95,9 +95,12 @@ describe('course plan geometry matches the animations (R14)', () => {
       [...props].sort((a, b) => a.ahead - b.ahead || a.side - b.side)
     for (const e of exercises) {
       const card = getCard('CZ', e.code) as Card
+      // (A pair's: the card's own exercise's.)
+      const { own } = ownPart(e)
       const animated = sorted([
-        ...(e.cones ?? []).map((c) => ({ kind: 'cone', ahead: c.z, side: c.x })),
-        ...(e.bowls ?? []).map((c) => ({ kind: 'bowl', ahead: c.z, side: c.x })),
+        ...(own.cones ?? []).map((c) => ({ kind: 'cone', ahead: c.z, side: c.x })),
+        ...(own.bowls ?? []).map((c) => ({ kind: 'bowl', ahead: c.z, side: c.x })),
+        ...(own.jumps ?? []).map((c) => ({ kind: 'jump', ahead: c.z, side: c.x })),
       ])
       const planned = sorted(card.geometry?.props ?? [])
       expect([e.code, planned.map((p) => p.kind)]).toEqual([e.code, animated.map((p) => p.kind)])

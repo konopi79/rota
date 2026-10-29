@@ -369,13 +369,14 @@ describe('national field layout (R14)', () => {
     expect(after('2-218', '2-215')).toEqual({ min: 10, max: 10, shifts: [0] })
   })
 
-  test('jumps 5 m from the card before and after them; 8 m after 3-323', () => {
+  test('jumps 5 m from the card before and after them; 8 m at least after 3-323', () => {
     const at = { x: 10, y: 25, heading: 0, turn: 0 }
     const jump = shapeOf(cz('2-217'), at, 'left', false)
     expect(jump.props.map((p) => [p.kind, 25 - p.y])).toEqual([['jump', 5]])
     expect(approachOf(jump, undefined).min).toBe(5)
     const run = shapeOf(cz('3-323'), at, 'left', false)
-    expect(25 - run.exit.y + approachOf(run, undefined).min).toBe(8)
+    // "Cvik vyžaduje minimální vzdálenost 8 m k dalšímu cviku" — the team is further on by then.
+    expect(25 - run.exit.y + approachOf(run, undefined).min).toBeGreaterThanOrEqual(8)
   })
 
   test('national cards keep their layout with the dog on the right', () => {

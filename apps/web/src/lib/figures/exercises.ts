@@ -1,5 +1,6 @@
 import { RIGHT_SIDE_CARDS } from './animated'
 import type { Exercise } from './exercise'
+import { JUMP_EXERCISES } from './jump-exercises'
 import { LEAVE_EXERCISES } from './leave-exercises'
 import { HIGHER_EXERCISES, LEFT, RIGHT, turnAboutChange } from './ro123-exercises'
 import {
@@ -18,6 +19,7 @@ export const EXERCISES: Exercise[] = [
   ...ROZ_EXERCISES,
   ...HIGHER_EXERCISES,
   ...LEAVE_EXERCISES,
+  ...JUMP_EXERCISES,
 ].sort((a, b) => cardOrder(a.code).localeCompare(cardOrder(b.code)))
 
 export { RIGHT_SIDE_CARDS } from './animated'

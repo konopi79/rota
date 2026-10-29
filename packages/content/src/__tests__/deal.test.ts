@@ -175,9 +175,12 @@ describe('dealDeck', () => {
     expect(dealDeck(options).entries).not.toEqual(dealDeck({ ...options, seed: 43 }).entries)
   })
 
-  test('every dealt deck is performable and complete (property test)', () => {
-    let decks = 0
-    for (const cls of CLASSES) {
+  // Class by class, each within its own time: laid-out decks take a while (RO3 ~100 ms each),
+  // and a CI machine is slower.
+  test.each(CLASSES.map((c) => [c.id, c] as const))(
+    '%s: every dealt deck is performable and complete (property test)',
+    (_, cls) => {
+      let decks = 0
       for (const scope of ['all', 'new'] as const) {
         if (scope === 'new' && cls.newCardCodes.length === 0) continue
         for (const equipment of equipmentSets) {
@@ -201,10 +204,11 @@ describe('dealDeck', () => {
           }
         }
       }
-    }
-    expect(decks).toBeGreaterThan(2000)
-    // FCI decks are laid out on the field too (~20 ms each).
-  }, 60_000)
+      expect(decks).toBeGreaterThan(300)
+      // FCI decks are laid out on the field too (~20 ms each).
+    },
+    60_000,
+  )
 
   test('every card of a class eventually gets dealt', () => {
     for (const cls of CLASSES) {
@@ -217,6 +221,8 @@ describe('dealDeck', () => {
           seed,
         })
         for (const entry of deck.entries) seen.add(entry.code)
+        // Seen them all: no need to deal on (laid-out decks take a while, RO3's most).
+        if (cls.cardCodes.every((c) => seen.has(c))) break
       }
       expect([...cls.cardCodes].filter((c) => !seen.has(c))).toEqual([])
     }
@@ -328,14 +334,16 @@ describe('competition courses (R7)', () => {
     }
   })
 
-  test('every class yields a valid competition course', () => {
-    for (const cls of CLASSES) {
+  test.each(CLASSES.map((c) => [c.id] as const))(
+    '%s yields a valid competition course',
+    (classId) => {
       for (let seed = 0; seed < 100; seed++) {
-        const deck = competition(cls.id as ClassId, seed)
+        const deck = competition(classId as ClassId, seed)
         expect(validateDeck(deck)).toEqual([])
       }
-    }
-  }, 60_000)
+    },
+    60_000,
+  )
 
   test('the validator catches a missing point mix and a wrong course size', () => {
     // A plain training deck rarely meets the mix (~4 %) — find one that misses it.
@@ -476,8 +484,9 @@ describe('competition courses (R7)', () => {
     expect(repeated.length).toBeGreaterThan(10)
   })
 
-  test('national courses follow the side patterns of the guidelines (property test)', () => {
-    for (const classId of ['RO1', 'RO2', 'RO3'] as const) {
+  test.each(['RO1', 'RO2', 'RO3'] as const)(
+    '%s courses follow the side patterns of the guidelines (property test)',
+    (classId) => {
       const shapes = new Set<string>()
       for (let seed = 0; seed < 150; seed++) {
         const deck = competition(classId, seed)
@@ -489,7 +498,8 @@ describe('competition courses (R7)', () => {
       }
       // Every pattern comes up: RO1 start "R" or finish; RO2/RO3 also the mid-course ones.
       expect(shapes.size).toBe(classId === 'RO1' ? 2 : 3)
-    }
-    // ~40 ms a course, laid out on its field (RO3 ~60 ms).
-  }, 60_000)
+      // ~40 ms a course, laid out on its field (RO3 ~100 ms).
+    },
+    60_000,
+  )
 })
