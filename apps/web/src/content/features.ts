@@ -20,7 +20,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'animations-leave'
+export const LATEST_FEATURE_ID = 'animations-jumps'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -49,7 +49,12 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
       {
         id: 'animations',
         title: 'Animace cviků',
-        desc: 'U všech karet RO-Z a RO1, doplňkových karet D0 a 53 karet RO2 a RO3 si v detailu karty pustíš 3D animaci, jak psovod a pes cvik podle zkušebního řádu provedou – s popisky, zpomalením, otáčením pohledu a vyznačeným místem pro provedení cviku. V katalogu takové karty poznáš podle štítku „animace“.',
+        desc: 'U všech národních karet (RO-Z až RO3, RO-V) i doplňkových karet D0 si v detailu karty pustíš 3D animaci, jak psovod a pes cvik podle zkušebního řádu provedou – s popisky, zpomalením, otáčením pohledu a vyznačeným místem pro provedení cviku. V katalogu takové karty poznáš podle štítku „animace“.',
+      },
+      {
+        id: 'animations-jumps',
+        title: 'Skoky, odběhnutí a vyslání v animaci',
+        desc: 'Pes v animaci skáče přes laťku ve výšce podle řádu – za chůze vedle psovoda (2-217, 3-313) i na přivolání z poslední pozice (2-218, 3-314); psovod od psa odběhne a nechá se dohnat (3-323) nebo psa vyšle ke kuželu (3-324). Tím mají animaci všechny karty národních tříd.',
       },
       {
         id: 'animations-leave',

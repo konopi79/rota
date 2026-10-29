@@ -338,7 +338,9 @@ const runTo = (at: PathPoint, to: { x: number; z: number }, heading: number): Pa
   // It comes in along `heading` from well behind its place — not turning into it at the end,
   // its head swinging in at the handler.
   const reach = Math.min(1.2, d / 3)
-  const into = Math.min(1.2, Math.max(INTO_PLACE, d / 3))
+  // Coming from well out to the side, it lines up the sooner (sent off to a cone, 3-324).
+  const across = Math.abs((at.x - to.x) * Math.cos(heading) - (at.z - to.z) * Math.sin(heading))
+  const into = Math.max(Math.min(1.2, Math.max(INTO_PLACE, d / 3)), Math.min(2, across / 2))
   const run = pathFromCurve(
     bezier(
       [at.x, at.z],
@@ -404,3 +406,27 @@ export const recallToHeel = (at: PathPoint): Path => {
     })),
   )
 }
+
+/** Over a jump: straight at the bar from this far before it, and on straight this far after. */
+const RUN_UP = 1.4
+const RUN_OUT = 1.2
+
+/**
+ * Over a jump on the way (2-217 "vysílá psa na překážku", 2-218 the recall over it): from `at`
+ * round to straight before the bar's middle, over it along `bar.heading`, and on — the rest of
+ * the way from there (`after`).
+ */
+export const overBar = (
+  at: PathPoint,
+  bar: { x: number; z: number; heading: number },
+  after: (from: PathPoint) => Path,
+): Path => {
+  const [s, c] = [Math.sin(bar.heading), Math.cos(bar.heading)]
+  const before = { x: bar.x - RUN_UP * s, z: bar.z - RUN_UP * c }
+  const past = { x: bar.x + RUN_OUT * s, z: bar.z + RUN_OUT * c, heading: bar.heading }
+  return joined(runTo(at, before, bar.heading), straight(before, past, bar.heading), after(past))
+}
+
+/** To a place and facing a way there, from `at`: as a dog runs (`runTo`). */
+export const runToPlace = (at: PathPoint, to: { x: number; z: number }, heading: number) =>
+  runTo(at, to, heading)

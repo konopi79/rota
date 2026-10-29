@@ -398,8 +398,99 @@ export const F3_322: Exercise = {
   ],
 }
 
+/**
+ * 2-218 Z poslední pozice – odchod k přivolání přes překážku (p. 45): "Tato karta musí být
+ * použita v kombinaci se statickým cvikem (typ A) a musí být umístěna minimálně 5 metrů před
+ * překážkou. Psovod odkládá psa (v původní pozici z poslední karty) a odchází podél překážky k
+ * další kartě. Způsob přivolání přes překážku určují karty: 2–215, 2–216 a 2–214 s D0a–d."
+ * The card before ends with the dog sitting (as Z-001); the jump 5 m on, 1 m to its side; the
+ * next card 10 m on (the plan's `followUp`).
+ */
+export const L2_218: Exercise = {
+  code: '2-218',
+  jumps: [{ x: 1, z: 5 }],
+  steps: [...stopSit(), { dogStays: true, caption: 'stayLastPosition' }, walkOff],
+}
+
+/**
+ * 3-314 Z poslední pozice – přivolání přes překážku (p. 56): "… Překážka se nachází přibližně
+ * 180 cm vpravo nebo vlevo od konce místa pro vykonání cviku. Psovod odkládá psa v konečné
+ * pozici z posledního cviku a odchází podél překážky k následující kartě." The next card 10 m
+ * on and 1.8 m to the side, in line with the jump — the handler at a slant past it.
+ */
+export const L3_314: Exercise = {
+  code: '3-314',
+  jumps: [{ x: 1.8, z: 5 }],
+  steps: [...stopSit(), { dogStays: true, caption: 'stayLastPosition' }, walkOff],
+}
+
+/**
+ * 3-323 Stop – odběhnutí – přivolání do předsednutí za klusu (p. 60), with a D0 card: "Tým se
+ * zastaví v místě pro vykonání cviku a zaujme základní pozici. Psovod dává povel psovi k
+ * setrvání na místě a odbíhá od něj přímým směrem (zády ke psu) a minimálně po 3 krocích běhu
+ * jej za běhu přivolává do předsednutí. Pes musí okamžitě reagovat a vyběhnout za psovodem.
+ * Jakmile pes dosáhne úrovně nohy psovoda, smí provést až 4 kroky zpět … Běh musí být
+ * zřetelně odlišitelný od normálního tempa." The handler stops as the dog comes level (the
+ * steps back are allowed, not needed), and the dog swings on into the front.
+ */
+const RUN_OFF = 1.6
+export const R3_323 = SUPPLEMENTARIES.map((supplementary): Exercise => {
+  const finish = intoFrontThenD0(supplementary, false, [
+    { dogPath: 'toFront', caption: 'toFrontAfterRun' },
+  ])
+  return {
+    code: '3-323',
+    supplementary,
+    steps: [
+      ...stopSit(),
+      { dogStays: true, caption: 'stayRunOff' },
+      { walk: RUN_OFF, pace: 'fast', caption: 'runOff' },
+      { walk: 20, pace: 'fast', dogChases: true, caption: 'recallRunning' },
+      // On at a walk again after the D0 card.
+      ...finish.map((s) => ('walk' in s ? { ...s, pace: 'normal' as const } : s)),
+    ],
+  }
+})
+
+/**
+ * 3-324 Vyslání ke kuželu – stůj (p. 61): "V místě pro vykonání cviku tým zaujme základní
+ * pozici ve směru kužele, který je umístěn 5 m na stranu od konce místa pro vykonání cviku.
+ * Psovod vysílá psa ke kuželu. V okruhu max. 1 m od kužele je pes zastaven ve stoje. Pes zůstává
+ * v této pozici vedle kužele, zatímco psovod přechází k další kartě." The cone where the plan
+ * puts it (5 m off at 60°, on the dog's side — on the other the dog would run in front of the
+ * handler and over its card); the team turns to face it, and back after.
+ */
+const CONE = { x: 4.3, z: 3.1 }
+const TO_THE_CONE = Math.round((Math.atan2(-CONE.x, CONE.z) * 180) / Math.PI)
+export const L3_324: Exercise = {
+  code: '3-324',
+  cones: [CONE],
+  steps: [
+    { walk: 3.5, caption: 'approach' },
+    { stop: true, caption: 'stop' },
+    { turn: TO_THE_CONE, radius: 0, caption: 'faceCone' },
+    { dog: 'sit', caption: 'sit' },
+    { wait: 1, caption: 'basePosition' },
+    { sendTo: CONE, caption: 'sendToCone' },
+    { turn: -TO_THE_CONE, radius: 0, caption: 'backOnCourse' },
+    { dogStays: true, caption: 'standAtCone' },
+    walkOff,
+  ],
+}
+
 /** The leave cards' parts, and the follow-ups' (each D0 card its own), by card. */
-export const LEAVE_PARTS: Exercise[] = [L2_211, L2_212, L3_301, L3_307, L3_310, L3_311, L3_312]
+export const LEAVE_PARTS: Exercise[] = [
+  L2_211,
+  L2_212,
+  L2_218,
+  L3_301,
+  L3_307,
+  L3_310,
+  L3_311,
+  L3_312,
+  L3_314,
+  L3_324,
+]
 export const FOLLOW_UP_PARTS: Exercise[] = [
   F2_213,
   ...F2_214,
@@ -415,8 +506,24 @@ export const FOLLOW_UP_PARTS: Exercise[] = [
 ]
 
 /** How far on the follow-up's card stands from the leave card's, as the plan has it, metres. */
-const gapTo = (code: string) =>
-  (getCard('CZ', code) as Card | undefined)?.geometry?.fromPrevious ?? GAP
+/** Going on past a jump, the handler is this far past it before turning off, metres. */
+const PAST_THE_JUMP = 1
+
+const geometryOf = (code: string) => (getCard('CZ', code) as Card | undefined)?.geometry
+
+/**
+ * How far on the follow-up's card stands from the leave card's, as the plan has it, metres: as
+ * the leave card says (over a jump, 10 m), or as the follow-up does.
+ */
+const gapTo = (leave: string, followUp: string) =>
+  geometryOf(leave)?.followUp?.ahead ?? geometryOf(followUp)?.fromPrevious ?? GAP
+
+/**
+ * How far to the side (left) it stands: 3-301 either way — to the right, away from the dog;
+ * 3-314 in line with its jump.
+ */
+const asideOf = (leave: string) =>
+  leave === '3-301' ? ASIDE : (geometryOf(leave)?.followUp?.sides?.[0] ?? 0)
 
 /**
  * A leave card and its follow-up played one after the other, for the card `code` (either of
@@ -430,8 +537,10 @@ const pair = (code: string, leave: Exercise, followUp: Exercise): Exercise => {
   // Left on the move, the handler is already on the way.
   const onTheWay = 'walk' in left ? left.walk : 0
   const arriving = followUp.steps.findIndex((s) => !('walk' in s))
-  const gap = gapTo(followUp.code)
-  const aside = leave.code === '3-301' ? ASIDE : 0
+  const gap = gapTo(leave.code, followUp.code)
+  const aside = asideOf(leave.code)
+  const jump = leave.jumps?.[0]
+  const pastJump = jump ? jump.z + PAST_THE_JUMP : 0
   return {
     code,
     pairedWith: code === leave.code ? followUp.code : leave.code,
@@ -442,6 +551,8 @@ const pair = (code: string, leave: Exercise, followUp: Exercise): Exercise => {
     ],
     steps: [
       ...leave.steps.slice(0, leaving + 1),
+      // Past a jump on the way first, straight on along it ("odchází podél překážky").
+      ...(aside && pastJump ? [{ walk: pastJump, caption: 'leaveDog' } as const] : []),
       aside
         ? {
             // At a slant all the way, square to the next card as it gets there (the author).
@@ -467,6 +578,9 @@ const SHOWN_AFTER: Record<string, Exercise[]> = {
   '3-310': [F3_320, F3_321, F3_322, first(F3_308), first(F3_309), first(F3_319)],
   '3-311': [F3_320, F3_321, first(F3_308), first(F3_319)],
   '3-312': [F3_320, F3_321, F3_322, first(F3_308), first(F3_309), first(F3_319)],
+  '2-218': [F2_216, F2_215, first(F2_214), first(F3_319)],
+  '3-314': [first(F3_302), F2_215, F2_216, first(F3_319)],
+  '3-324': [F2_216, F2_215, first(F3_302), first(F3_319)],
 }
 
 /** …and the leave card each follow-up is shown after. */
@@ -491,6 +605,7 @@ export const LEAVE_EXERCISES: Exercise[] = [
   ...FOLLOW_UP_PARTS.map((followUp) => pair(followUp.code, SHOWN_BEFORE[followUp.code]!, followUp)),
   R2_230,
   R2_231,
+  ...R3_323,
 ]
 
 /** Which follow-up a leave card is shown with (each must be one its card allows next). */

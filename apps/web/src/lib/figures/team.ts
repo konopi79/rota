@@ -31,6 +31,7 @@ import {
   type FootTarget,
 } from './locomotion'
 import { Gallop } from './gallop'
+import { LEAP_FROM, Leap, alongBar, type Bar } from './leap'
 import { angleTo, apply } from './math'
 import { FRONT } from './paths'
 import { blendPoses, jointFrames, lowestPoint, type Pose } from './rig'
@@ -66,6 +67,8 @@ export type TeamControls = {
    * dog in front always does (`dogFold`).
    */
   foldBack?: boolean
+  /** A jump on the dog's way: as it comes to the bar it leaps over (`leap.ts`). */
+  dogLeap?: Bar
 }
 
 export type FigureFrame = {
@@ -264,6 +267,8 @@ export class TeamAnimator {
   private dogClearance: Clearance | undefined
   /** Galloping: the stride's state (the trot's stepper waits meanwhile). */
   private gallop: Gallop | null = null
+  /** Leaping over a bar: the leap's state (the gait it came in waits meanwhile). */
+  private leap: Leap | null = null
   /**
    * How the dog carries its trunk: as the gallop left it, settling back to standing at the
    * trot (`dogLegs`).
@@ -290,7 +295,7 @@ export class TeamAnimator {
 
   /** How near the dog's planted paws are to the edge of their reach (`PawStepper.strain`). */
   get dogStrain() {
-    return this.dogStanding < 0.98 || this.gallop ? 0 : (this.dogFeet?.strain ?? 0)
+    return this.dogStanding < 0.98 || this.gallop || this.leap ? 0 : (this.dogFeet?.strain ?? 0)
   }
 
   /** Walking on from steps set by hand at the speed the body already had, m/s. */
@@ -413,57 +418,70 @@ export class TeamAnimator {
     let dogPose = this.dogPosture
     let dogLift = 0
     const galloping = moving && this.dogGait === 'gallop'
-    // Out of the gallop: the trot's stepper goes on from where it left the paws.
-    if (this.gallop && !galloping) {
-      this.carriage = this.gallop.carried()
-      this.dogFeet.takeOver(this.gallop.feet, dog)
-      const last = this.gallop.pose
-      const stand = DOG_POSTURES.stand
-      this.headOff = {
-        neck: (last.neck ?? 0) - (stand.neck ?? 0),
-        head: (last.head ?? 0) - (stand.head ?? 0),
-        tail: (last.tail ?? 0) - (stand.tail ?? 0),
-      }
-      this.gallop = null
+    // Over the bar: on in the gait it has, from where the leap left the paws.
+    if (this.leap && (this.leap.over || !moving)) {
+      const { feet: left, pose: last } = this.leap
+      this.leap = null
+      if (galloping) this.gallop = new Gallop(dog, left)
+      else this.dogFeet.takeOver(left, dog)
+      this.headOff = this.headFrom(last)
     }
-    if (galloping) {
-      this.gallop ??= new Gallop(dog, this.dogFeet.feet)
-      const g = this.gallop.update(dt, dog)
-      dogPose = g.pose
+    // Coming to a bar, whatever gait it came in, it leaps over.
+    if (!this.leap && moving && controls.dogLeap) {
+      const a = alongBar(controls.dogLeap, dog)
+      if (a >= LEAP_FROM && a < 0) {
+        const feetNow = this.gallop ? this.gallop.feet : this.dogFeet.feet
+        if (this.gallop) {
+          this.headOff = this.headFrom(this.gallop.pose)
+          this.gallop = null
+        }
+        this.leap = new Leap(controls.dogLeap, dog, feetNow)
+      }
+    }
+    if (this.leap) {
+      const g = this.leap.update(dog)
+      dogPose = this.withHeadOff(g.pose, dt)
       dogLift = g.lift
-    } else if (!sitting || this.dogStanding > 0.02) {
-      // On its legs (or still settling out of them): paws planted, legs solved to them.
-      const paws = sitting
-        ? this.dogFeet.feet
-        : this.dogFeet.update(dt, dog, dogStep(this.dogGait), controls.dogRest)
-      const tail = -0.15 * Math.sin(4 * Math.PI * this.dogFeet.cycle) * motion
-      // Out of a gallop the trunk settles back to how it is carried standing.
-      const settle = 1 - Math.exp(-SETTLE_RATE * dt)
-      const c = this.carriage
-      this.carriage = {
-        height: c.height + (DOG_STANDING_HEIGHT - c.height) * settle,
-        pitch: c.pitch * (1 - settle),
-        flex: c.flex * (1 - settle),
+    } else {
+      // Out of the gallop: the trot's stepper goes on from where it left the paws.
+      if (this.gallop && !galloping) {
+        this.carriage = this.gallop.carried()
+        this.dogFeet.takeOver(this.gallop.feet, dog)
+        this.headOff = this.headFrom(this.gallop.pose)
+        this.gallop = null
       }
-      const carried: Pose = {
-        ...DOG_POSTURES.stand,
-        head: (DOG_POSTURES.stand.head ?? 0) - (this.dogGait === 'walk' ? 0 : 0.15 * motion),
-        tail: (DOG_POSTURES.stand.tail ?? 0) + tail,
-        ...dogLegs(paws, dog, this.carriage),
-        ...(this.carriage.pitch !== 0 && { trunk: this.carriage.pitch, loin: this.carriage.flex }),
+      if (galloping) {
+        this.gallop ??= new Gallop(dog, this.dogFeet.feet)
+        const g = this.gallop.update(dt, dog)
+        dogPose = g.pose
+        dogLift = g.lift
+      } else if (!sitting || this.dogStanding > 0.02) {
+        // On its legs (or still settling out of them): paws planted, legs solved to them.
+        const paws = sitting
+          ? this.dogFeet.feet
+          : this.dogFeet.update(dt, dog, dogStep(this.dogGait), controls.dogRest)
+        const tail = -0.15 * Math.sin(4 * Math.PI * this.dogFeet.cycle) * motion
+        // Out of a gallop the trunk settles back to how it is carried standing.
+        const settle = 1 - Math.exp(-SETTLE_RATE * dt)
+        const c = this.carriage
+        this.carriage = {
+          height: c.height + (DOG_STANDING_HEIGHT - c.height) * settle,
+          pitch: c.pitch * (1 - settle),
+          flex: c.flex * (1 - settle),
+        }
+        const carried: Pose = {
+          ...DOG_POSTURES.stand,
+          head: (DOG_POSTURES.stand.head ?? 0) - (this.dogGait === 'walk' ? 0 : 0.15 * motion),
+          tail: (DOG_POSTURES.stand.tail ?? 0) + tail,
+          ...dogLegs(paws, dog, this.carriage),
+          ...(this.carriage.pitch !== 0 && {
+            trunk: this.carriage.pitch,
+            loin: this.carriage.flex,
+          }),
+        }
+        // …and so do its neck, head and tail.
+        dogPose = blendPoses(this.dogPosture, this.withHeadOff(carried, dt), this.dogStanding)
       }
-      // …and so do its neck, head and tail.
-      if (this.headOff) {
-        const off = this.headOff
-        carried.neck = (carried.neck ?? 0) + off.neck
-        carried.head = (carried.head ?? 0) + off.head
-        carried.tail = (carried.tail ?? 0) + off.tail
-        // Braking, a dog throws its head up quickly.
-        const k = Math.exp(-HEAD_UP_RATE * dt)
-        this.headOff = { neck: off.neck * k, head: off.head * k, tail: off.tail * k }
-        if (Math.abs(off.neck) + Math.abs(off.head) + Math.abs(off.tail) < 1e-4) this.headOff = null
-      }
-      dogPose = blendPoses(this.dogPosture, carried, this.dogStanding)
     }
     // Turning, the tail swings out of the turn, the more the faster the dog turns — it trails
     // behind, it does not sweep in at whoever the dog turns round.
@@ -488,10 +506,36 @@ export class TeamAnimator {
       speed: this.speed,
       feet: {
         handler: feet,
-        dog: this.gallop ? this.gallop.feet : this.dogFeet.feet,
+        dog: this.leap?.feet ?? this.gallop?.feet ?? this.dogFeet.feet,
         dogOnLegs: !sitting && this.dogStanding > 0.98,
         handlerStill: this.handlerFeet.still,
       },
+    }
+  }
+
+  /** How far a pose's neck, head and tail are from standing (to blend back from). */
+  private headFrom(pose: Pose) {
+    const stand = DOG_POSTURES.stand
+    return {
+      neck: (pose.neck ?? 0) - (stand.neck ?? 0),
+      head: (pose.head ?? 0) - (stand.head ?? 0),
+      tail: (pose.tail ?? 0) - (stand.tail ?? 0),
+    }
+  }
+
+  /** `pose` with the neck, head and tail still off as another gait left them, fading. */
+  private withHeadOff(pose: Pose, dt: number): Pose {
+    const off = this.headOff
+    if (!off) return pose
+    // Braking, a dog throws its head up quickly.
+    const k = Math.exp(-HEAD_UP_RATE * dt)
+    this.headOff = { neck: off.neck * k, head: off.head * k, tail: off.tail * k }
+    if (Math.abs(off.neck) + Math.abs(off.head) + Math.abs(off.tail) < 1e-4) this.headOff = null
+    return {
+      ...pose,
+      neck: (pose.neck ?? 0) + off.neck,
+      head: (pose.head ?? 0) + off.head,
+      tail: (pose.tail ?? 0) + off.tail,
     }
   }
 

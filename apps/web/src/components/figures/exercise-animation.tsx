@@ -16,6 +16,7 @@ import { DOG } from '@/lib/figures/dog'
 import {
   ExercisePlayer,
   SPACE_SIDE,
+  jumpsOf,
   marksOf,
   passesCard,
   spacesOf,
@@ -25,6 +26,7 @@ import {
 } from '@/lib/figures/exercise'
 import { EXERCISES, RIGHT_EXERCISES, RIGHT_SIDE_CARDS } from '@/lib/figures/exercises'
 import { HANDLER } from '@/lib/figures/handler'
+import { BAR_HEIGHT, JUMP_WIDTH, UPRIGHT_HEIGHT } from '@/lib/figures/leap'
 import { cn } from '@/lib/utils'
 
 export type CameraView = 'behind' | 'angle' | 'side' | 'top' | 'front'
@@ -89,13 +91,43 @@ export function CardStand({ code, x, z }: { code: string; x: number; z: number }
   )
 }
 
-/** A mark on the ground across the dog's way (the two thirds of a recall), white, 80 cm. */
-function GroundMark({ x, z }: { x: number; z: number }) {
+/**
+ * A mark on the ground: across the dog's way (the two thirds of a recall), 80 cm, or along the
+ * team's (3-313's line), 2 m; white.
+ */
+function GroundMark({ x, z, lengthwise }: { x: number; z: number; lengthwise?: boolean }) {
   return (
     <mesh position={[x, 0.004, z]} rotation-x={-Math.PI / 2}>
-      <planeGeometry args={[0.8, 0.06]} />
+      <planeGeometry args={lengthwise ? [0.06, 2] : [0.8, 0.06]} />
       <meshBasicMaterial color="#f4f4f0" />
     </mesh>
+  )
+}
+
+/**
+ * A bar jump (regulation p. 10): two uprights on feet, no wings, the bar laid loose across at
+ * 40 cm — yellow uprights as on the video's field.
+ */
+export function Jump({ x, z }: { x: number; z: number }) {
+  return (
+    <group position={[x, 0, z]}>
+      {[-1, 1].map((side) => (
+        <group key={side} position={[(side * JUMP_WIDTH) / 2, 0, 0]}>
+          <mesh position={[0, UPRIGHT_HEIGHT / 2, 0]} castShadow>
+            <boxGeometry args={[0.04, UPRIGHT_HEIGHT, 0.04]} />
+            <meshStandardMaterial color="#e8d81c" />
+          </mesh>
+          <mesh position={[0, 0.02, 0]} castShadow>
+            <boxGeometry args={[0.1, 0.04, 0.3]} />
+            <meshStandardMaterial color="#e8d81c" />
+          </mesh>
+        </group>
+      ))}
+      <mesh position={[0, BAR_HEIGHT - 0.015, 0]} rotation-z={Math.PI / 2} castShadow>
+        <cylinderGeometry args={[0.015, 0.015, JUMP_WIDTH, 12]} />
+        <meshStandardMaterial color="#f2f2f2" />
+      </mesh>
+    </group>
   )
 }
 
@@ -239,7 +271,10 @@ function ExerciseTeam({
       ))}
       {showSpace && spacesOf(exercise).map((s) => <ExerciseSpace key={s.z} x={s.x} z={s.z} />)}
       {marksOf(exercise).map((m) => (
-        <GroundMark key={`${m.x} ${m.z}`} x={m.x} z={m.z} />
+        <GroundMark key={`${m.x} ${m.z}`} x={m.x} z={m.z} lengthwise={m.lengthwise} />
+      ))}
+      {jumpsOf(exercise).map((j) => (
+        <Jump key={`${j.x} ${j.z}`} x={j.x} z={j.z} />
       ))}
       {exercise.cones?.map((cone, i) => (
         <Cone key={i} x={cone.x} z={cone.z} colour={CONE_COLOURS[i % 2]!} />

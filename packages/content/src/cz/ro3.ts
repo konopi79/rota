@@ -569,8 +569,10 @@ export const RO3_CARDS: Card[] = [
       // p. 60: "K tomuto cviku je třeba přidat doplňkovou kartu D0a–d."
       requiresSupplementary: true,
     },
-    // "Cvik vyžaduje minimální vzdálenost 8 m k dalšímu cviku."
-    geometry: { exit: 3, gap: 8 },
+    // "Cvik vyžaduje minimální vzdálenost 8 m k dalšímu cviku." The handler runs on until the
+    // dog comes level, and the dog swings into the front there: the team is that far on as it
+    // goes on (measured off the animation, R17).
+    geometry: { exit: 9.4, gap: 8 },
     image: '3-323',
     sourcePage: 60,
   },
@@ -596,8 +598,9 @@ export const RO3_CARDS: Card[] = [
     },
     // The cone "5 m na stranu od konce místa pro vykonání cviku", "pod úhlem přibližně 45°
     // až 90° k dráze chodu psovoda" and nothing within 3 m of it (Směrnice §1.1.3, p. 3) —
-    // at 60°, so the follow-up card's stand 4 m on stays clear of it.
-    geometry: { props: [{ kind: 'cone', ahead: 3.1, side: -4.3, clear: 3 }] },
+    // at 60°, so the follow-up card's stand 4 m on stays clear of it. On the dog's side (left):
+    // to the right the dog would run in front of the handler, over its own card (R17).
+    geometry: { props: [{ kind: 'cone', ahead: 3.1, side: 4.3, clear: 3 }] },
     image: '3-324',
     sourcePage: 61,
   },
