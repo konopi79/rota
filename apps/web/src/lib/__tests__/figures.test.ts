@@ -1,5 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
+import { getCard, type Card } from '@rota/content'
+
 import { ANIMATED_CARDS, animationFor } from '../figures/animated'
 import { DOG, DOG_POSTURES, type DogPosture } from '../figures/dog'
 import {
@@ -15,6 +17,7 @@ import { HANDLER, HANDLER_STAND } from '../figures/handler'
 import { apply } from '../figures/math'
 import { jointFrames, jointNames, lowestPoint, type Joint, type Pose } from '../figures/rig'
 import { EXERCISES, RIGHT_EXERCISES } from '../figures/exercises'
+import { PAIRS_SHOWN } from '../figures/leave-exercises'
 import {
   Z001,
   Z002,
@@ -750,6 +753,14 @@ describe('Z-015–Z-017 paces', () => {
 })
 
 describe('animations in the card details', () => {
+  test('a leave card is shown with follow-ups its card allows next (R17)', () => {
+    for (const [code, followUps] of Object.entries(PAIRS_SHOWN)) {
+      const allowed = (getCard('CZ', code) as Card).sequencing.nextOneOf ?? []
+      for (const f of followUps)
+        expect([code, f.code, allowed.includes(f.code)]).toEqual([code, f.code, true])
+    }
+  })
+
   test('every scripted card is listed as animated, and nothing else', () => {
     expect([...ANIMATED_CARDS].sort()).toEqual([...new Set(EXERCISES.map((e) => e.code))].sort())
   })

@@ -13,6 +13,7 @@ import {
   DOG_WALKING_BEHIND,
   DOG_WALKING_IN_FRONT,
   bendAhead,
+  partOf,
   recallToFront,
   recallToHeel,
   type Path,
@@ -47,6 +48,12 @@ export type ExerciseStep = { caption: string } & (
       closeUp?: true
       /** Meanwhile the dog changes sides, behind the handler or ahead across in front. */
       dogChanges?: WalkingDogPath
+      /**
+       * Leaving the dog on the move (3-310–3-312 "aniž by se zastavil, odkládá psa"): it stops
+       * within a body length and takes this position, left there (`dogStays`), while the
+       * handler walks on.
+       */
+      dropsDog?: DogPosture
     }
   | { stop: true } // the handler stops, the dog stops beside
   | { dog: DogPosture } // the dog changes position, the handler stands
@@ -63,7 +70,14 @@ export type ExerciseStep = { caption: string } & (
    * (`front`, 2-214), or to the left leg (`heel`: round from the front to a handler facing it,
    * 2-216; up from behind to one with their back to it, 2-215). It gets up and runs.
    */
-  | { recall: 'front' | 'heel' }
+  | {
+      /**
+       * `halfway`: called into the front, it is stopped on the way — before the mark at two
+       * thirds of the distance (3-308, 3-320, 3-321) — and stays there, standing, for the
+       * position the next step gives it.
+       */
+      recall: 'front' | 'heel' | 'halfway'
+    }
   /**
    * The handler back to the dog left (2-213 "se k němu vrací a postaví se vedle psa tak, jak
    * tomu bylo u předchozího cviku"): back along the way to where they left it, and turned
@@ -114,6 +128,11 @@ export type ExerciseStep = { caption: string } & (
        * walking in, the handler walks a little faster or slower so that foot lands there.
        */
       phase?: Phase
+      /**
+       * At a slant all the way (3-301 "psovod šikmo"): bending onto the straight line to the
+       * place at once, and off it only just before, to stand square to the card (the author).
+       */
+      slant?: true
     }
   /**
    * The team turns by `turn` degrees, positive to the right, the handler walking an arc of
@@ -294,6 +313,12 @@ const RECALL_BRAKING = 4
 const BESIDE_DOG_ROOM = 0.04
 /** The handler's command to stay, seconds. */
 const STAY_TIME = 0.6
+/** Stopped on its way in (`halfway`), the dog has run this share of the way to the front. */
+export const HALFWAY = 0.45
+/** Left on the move, the dog stops this hard, m/s² — within a body length from a walk. */
+const DROP_BRAKING = 2.5
+/** Running in, over its last this many metres its strides land where it will stand. */
+const LAST_STRIDES = 0.4
 /** Faster than this the dog gallops, m/s; slowing down, it trots again below the second. */
 const GALLOP_FROM = 2.2
 const GALLOP_UNTIL = 1.8
@@ -328,13 +353,15 @@ export type Exercise = {
   /** Cones and bowls on the field, in the station's frame. */
   cones?: { x: number; z: number }[]
   bowls?: { x: number; z: number }[]
+  /** Marks on the ground (the two thirds of a recall with a down), in the station's frame. */
+  marks?: { x: number; z: number }[]
   /**
    * Two cards played one after the other — a leave card and the follow-up the dog is called
    * or joined by (plan R17): each card's own exercise, and how far on (metres, straight
    * ahead) its handler stops from this exercise's station. Their cards stand where their own
    * exercises have them; `code` is the card this one is shown for, `pairedWith` the other.
    */
-  parts?: { exercise: Exercise; at: number }[]
+  parts?: { exercise: Exercise; at: number; aside?: number }[]
   pairedWith?: string
 }
 
@@ -473,11 +500,15 @@ export const supplementaryPlace = (exercise: Exercise) => {
  * The card stands on the field, in the frame of the exercise's station: its card and its
  * supplementary card, or each part's (`parts`) where that part's handler stops.
  */
+/** A place in a part's frame (`parts`) in the pair's: as far on, and aside. */
+const inPair = <T extends { x: number; z: number }>(
+  p: T,
+  part: NonNullable<Exercise['parts']>[number],
+): T => ({ ...p, x: p.x + (part.aside ?? 0), z: p.z + part.at })
+
 export const standsOf = (exercise: Exercise): { code: string; x: number; z: number }[] => {
   if (exercise.parts)
-    return exercise.parts.flatMap(({ exercise: part, at }) =>
-      standsOf(part).map((s) => ({ ...s, z: s.z + at })),
-    )
+    return exercise.parts.flatMap((part) => standsOf(part.exercise).map((s) => inPair(s, part)))
   const d0 = supplementaryPlace(exercise)
   return [
     { code: exercise.code, ...cardPlace(exercise) },
@@ -488,10 +519,14 @@ export const standsOf = (exercise: Exercise): { code: string; x: number; z: numb
 /** Where each exercise space is (`exerciseSpace`), in the frame of the exercise's station. */
 export const spacesOf = (exercise: Exercise): { x: number; z: number }[] =>
   exercise.parts
-    ? exercise.parts.flatMap(({ exercise: part, at }) =>
-        spacesOf(part).map((s) => ({ ...s, z: s.z + at })),
-      )
+    ? exercise.parts.flatMap((part) => spacesOf(part.exercise).map((s) => inPair(s, part)))
     : [exerciseSpace(exercise)]
+
+/** The marks on the ground (`marks`), in the frame of the exercise's station — a pair's too. */
+export const marksOf = (exercise: Exercise): { x: number; z: number }[] =>
+  exercise.parts
+    ? exercise.parts.flatMap((part) => marksOf(part.exercise).map((s) => inPair(s, part)))
+    : (exercise.marks ?? [])
 
 /** How long a change of the dog's position takes before the next step starts. */
 const POSTURE_TIME = 0.9
@@ -761,12 +796,23 @@ export class ExercisePlayer {
    */
   private left: Pose | null = null
   private leftPosture: DogPosture = 'sit'
+  /** The way the dog faced as it was left. */
+  private leftWay = 0
+  /**
+   * Left on the move (`dropsDog`): lying down it keeps its front paws where they are, its body
+   * going down back over them — the paws stay where it stopped.
+   */
+  private leftOnTheMove = false
   /** The handler beside the dog left again: it goes with them once they walk on. */
   private joining = false
   /** The dog going its own way at the pace of a recall (`recall`), not a trot. */
   private recalling = false
   /** …and how fast it goes at most: running in, or walking over from close by. */
   private recallSpeed = RECALL_SPEED
+  /** Stopped on its way in (`halfway`): it is left where it stops. */
+  private stoppedHalfway = false
+  /** Left on the move (`dropsDog`): where it began to stop, how far it has come and how fast. */
+  private dropping: { from: Pose; went: number; speed: number; posture: DogPosture } | null = null
 
   /** The exercise's steps, a way to a place (`walkTo`) worked out as it comes. */
   private readonly steps: ExerciseStep[]
@@ -791,6 +837,8 @@ export class ExercisePlayer {
   /** Further off the plan's line than this, metres (beside the way in), the team joins it first. */
   private static readonly FAR_OFF = 0.6
   private static readonly LINE_UP = 1.5
+  /** At a slant (`slant`), onto the line and off it round corners this far on, metres. */
+  private static readonly SLANT_BEND = 0.4
 
   constructor(private readonly exercise: Exercise) {
     this.steps = [...exercise.steps]
@@ -819,7 +867,8 @@ export class ExercisePlayer {
     const ahead = to.x * Math.sin(heading) + to.z * Math.cos(heading)
     // Straight on into it at least as far as the team needs to come to a stop from its pace.
     const braking = (this.last?.speed ?? 0) / SETTLE_RATE + 0.6
-    const last = Math.max(0.3, Math.min(Math.max(ExercisePlayer.WALK_IN, braking), ahead - 0.5))
+    const walkIn = step.slant ? braking : Math.max(ExercisePlayer.WALK_IN, braking)
+    const last = Math.max(0.3, Math.min(walkIn, ahead - 0.5))
     const end = { x: to.x - last * Math.sin(heading), z: to.z - last * Math.cos(heading), heading }
     // Onto the plan's line first (however the last exercise left the team: an arc's end, beside
     // the way in), straight on along it, and over to where the exercise starts only just
@@ -847,6 +896,21 @@ export class ExercisePlayer {
       if (joined > lineUp + 0.3)
         through.unshift({ ...onLine(joined), tight: farOff }, onLine(lineUp))
       else if (farOff && joined < back - 0.3) through.unshift({ ...onLine(joined), tight: true })
+    }
+    // At a slant: onto the straight line to the place at once, off it only just before — round
+    // a corner at each end, each bend even either side of its corner (no swinging out).
+    if (step.slant) {
+      const bend = ExercisePlayer.SLANT_BEND
+      const [c, s] = [Math.cos(end.heading), Math.sin(end.heading)]
+      const into = { x: end.x - bend * s, z: end.z - bend * c }
+      const h = Math.atan2(into.x, into.z - bend)
+      through.splice(
+        0,
+        1,
+        { x: bend * Math.sin(h), z: bend + bend * Math.cos(h), heading: h, tight: true },
+        { x: into.x - bend * Math.sin(h), z: into.z - bend * Math.cos(h), heading: h },
+        { ...end, tight: true },
+      )
     }
     // A little off and no room to join first: straight on as the team faces, over to the place
     // only at the end.
@@ -912,7 +976,9 @@ export class ExercisePlayer {
    */
   private expandBackToDog() {
     const step = this.steps[this.index] as Extract<ExerciseStep, { backToDog: true }>
-    const dog = this.left!
+    // Beside the dog the way the team faced as it left it — the course's way, whichever way the
+    // dog came to face since (stopped on its way in, 3-320).
+    const dog = { ...this.left!, heading: this.leftWay }
     const heel = PLACES[this.dogPlace]
     // A little further out than at heel: turning about beside a dog lying down, the handler's
     // feet keep off it (the dog closes up as the team walks on).
@@ -1124,6 +1190,8 @@ export class ExercisePlayer {
       done = this.stepTime >= STOP_TIME
     } else if (current && 'dog' in current) {
       this.posture = current.dog
+      // A dog left where it is takes the position there (3-309 "na dálku").
+      if (this.left) this.leftPosture = current.dog
       controls = { ...controls, dog: current.dog }
       done = this.stepTime >= POSTURE_TIME
     } else if (current && 'wait' in current) {
@@ -1132,6 +1200,7 @@ export class ExercisePlayer {
       if (starting) {
         this.left = onField(this.team, this.dogAt)
         this.leftPosture = this.posture
+        this.leftWay = this.left.heading
       }
       done = this.stepTime >= STAY_TIME
     } else if (current && 'dogJoins' in current) {
@@ -1157,8 +1226,15 @@ export class ExercisePlayer {
       if (starting && 'recall' in current) {
         // Called, from where it was left: it gets up there first, then runs in.
         const at = inTeam(this.team, this.left!)
-        const path = current.recall === 'front' ? recallToFront(at) : recallToHeel(at)
-        this.dogWay = { path, ends: current.recall === 'front' ? 'front' : 'left' }
+        const front = recallToFront(at)
+        const path =
+          current.recall === 'heel'
+            ? recallToHeel(at)
+            : current.recall === 'halfway'
+              ? partOf(front, front.length * HALFWAY)
+              : front
+        this.dogWay = { path, ends: current.recall === 'heel' ? 'left' : 'front' }
+        this.stoppedHalfway = current.recall === 'halfway'
         this.leftPosture = 'stand'
         this.recalling = true
         this.recallSpeed = path.length < SHORT_RECALL ? RECALL_WALK : RECALL_SPEED
@@ -1223,12 +1299,22 @@ export class ExercisePlayer {
         dogAt: onLegs
           ? shifted(path.at(this.dogWalked), this.dogPathShift, this.dogWalked)
           : undefined,
+        // Running in, its last strides land where it will stand, not past it at the handler.
+        ...(this.recalling &&
+          this.recallSpeed === RECALL_SPEED &&
+          left < LAST_STRIDES && { dogRest: onField(this.team, path.at(path.length)) }),
       }
       done = this.dogWalked >= path.length && this.dogBody.lag < DOG_ARRIVED
       if (done) {
-        this.dogPlace = ends
+        this.dogPlace = this.stoppedHalfway ? this.dogPlace : ends
         this.dogPathSpeed = 0
         this.recalling = false
+        // Stopped on its way in, it is left there.
+        if (this.stoppedHalfway) {
+          this.left = onField(this.team, this.dogAt)
+          this.leftPosture = 'stand'
+          this.stoppedHalfway = false
+        }
       }
     } else if (current && 'footwork' in current) {
       const feet = this.last?.feet.handler
@@ -1495,15 +1581,47 @@ export class ExercisePlayer {
       done = this.stepTime >= END_PAUSE
     }
 
+    // Left on the move, the dog stops along the way it goes, within a body length, and is left
+    // there in its position while the handler walks on.
+    if (current && 'walk' in current && current.dropsDog && starting)
+      this.dropping = {
+        from: onField(this.team, this.dogAt),
+        went: 0,
+        speed: Math.max(speed, 0.5),
+        posture: current.dropsDog,
+      }
+    if (this.dropping) {
+      const d = this.dropping
+      d.speed = Math.max(0, d.speed - DROP_BRAKING * dt)
+      d.went += d.speed * dt
+      const at = forward(d.from, d.went)
+      if (d.speed === 0) {
+        this.left = at
+        this.leftPosture = d.posture
+        this.leftWay = at.heading
+        this.leftOnTheMove = true
+        this.dropping = null
+      } else {
+        controls = { ...controls, dogAt: inTeam(this.team, at) }
+        this.dogAim = at
+      }
+    }
+
     // A dog left where it is stays there in its position, whatever the handler does — until
     // the handler, back beside it, walks on with it.
     if (this.left && this.joining && controls.handler !== 'stand') {
       this.left = null
       this.joining = false
     }
+    if (!this.left) this.leftOnTheMove = false
     if (this.left) {
       this.posture = this.leftPosture
-      controls = { ...controls, dog: this.leftPosture, dogAt: inTeam(this.team, this.left) }
+      controls = {
+        ...controls,
+        dog: this.leftPosture,
+        dogAt: inTeam(this.team, this.left),
+        ...(this.leftOnTheMove && { foldBack: true }),
+      }
       this.dogAim = this.left
     }
 
@@ -1635,7 +1753,8 @@ export const stationOf = (exercise: Exercise): number => {
   let distance = 0
   for (const step of exercise.steps) {
     // A change of pace, or the dog changing sides, starts the exercise without stopping.
-    if (!('walk' in step) || (distance > 0 && (step.pace || step.dogChanges))) break
+    if (!('walk' in step) || (distance > 0 && (step.pace || step.dogChanges || step.dropsDog)))
+      break
     distance += step.walk
   }
   return distance

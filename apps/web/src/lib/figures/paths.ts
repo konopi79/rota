@@ -231,6 +231,12 @@ const straight = (
   }
 }
 
+/** The first `length` metres of `path`. */
+export const partOf = (path: Path, length: number): Path => ({
+  length,
+  at: (s) => path.at(Math.min(s, length)),
+})
+
 /** Paths one after another. */
 const joined = (...paths: Path[]): Path => ({
   length: paths.reduce((sum, p) => sum + p.length, 0),
@@ -346,9 +352,23 @@ const runTo = (at: PathPoint, to: { x: number; z: number }, heading: number): Pa
 
 /**
  * The recalls (2-214 "přivolá do předsednutí", 2-216 "přivolá k levé noze", 3-321 …): the dog
- * runs from where it was left into the front, facing the handler.
+ * runs from where it was left into the front, facing the handler. From behind them (3-319
+ * "bez otočení … Pes musí přijít do předsednutí z té strany, na které se nacházel") it runs up
+ * past their left side and turns in ahead of them, round into the front.
  */
-export const recallToFront = (at: PathPoint): Path => runTo(at, { x: 0, z: FRONT }, Math.PI)
+export const recallToFront = (at: PathPoint): Path => {
+  if (at.z > 0) return runTo(at, { x: 0, z: FRONT }, Math.PI)
+  const r = PAST_LEFT / 2
+  return joined(
+    runTo(at, { x: PAST_LEFT, z: FRONT + 0.2 }, 0),
+    // Round towards the handler, from running on up their left side to facing them.
+    pathFromCurve((u) => {
+      const angle = Math.PI * u
+      return { x: r + r * Math.cos(angle), z: FRONT + 0.2 + r * Math.sin(angle) }
+    }),
+    pathFromCurve((u) => ({ x: 0, z: FRONT + 0.2 - 0.2 * u })),
+  )
+}
 
 /**
  * Coming to the left leg of a handler facing it, the dog runs past their left side and turns
