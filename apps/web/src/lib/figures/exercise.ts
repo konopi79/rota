@@ -936,13 +936,11 @@ export class ExercisePlayer {
 
   /** The last metres of a way to a place, straight on into it (`walkTo`). */
   private static readonly WALK_IN = 1.2
-  /**
-   * Onto the plan's line within this far and as far again as it is off it, metres; over to
-   * where the exercise starts within `LINE_UP` m before getting there.
-   */
+  /** Onto the plan's line within this far and as far again as it is off it, metres. */
   private static readonly JOIN = geometry.HAIRPIN_JOIN
   /** Further off the plan's line than this, metres (beside the way in), the team joins it first. */
   private static readonly FAR_OFF = 0.6
+  /** Without a plan's line, straight on as the team faces until this far before the place. */
   private static readonly LINE_UP = 1.5
   /** At a slant (`slant`), onto the line and off it round corners this far on, metres. */
   private static readonly SLANT_BEND = 0.4
@@ -979,14 +977,28 @@ export class ExercisePlayer {
     const to = inTeam(this.team, step.walkTo)
     const heading = angleTo(0, to.heading)
     const ahead = to.x * Math.sin(heading) + to.z * Math.cos(heading)
-    // Straight on into it at least as far as the team needs to come to a stop from its pace.
+    // Straight on into it at least as far as the team needs to come to a stop from its pace —
+    // only that far where it has to get well over to the side on a short way (beside the way
+    // in after a turn about, the next card close): the bend over takes the rest, else it went
+    // nearly sideways (the author, 2026-10-30: "plynule, bez náhlých otočení").
     const braking = (this.last?.speed ?? 0) / SETTLE_RATE + 0.6
-    const walkIn = step.slant ? braking : Math.max(ExercisePlayer.WALK_IN, braking)
+    const plan = step.along && inTeam(this.team, step.along)
+    // How far off the line the team joins (below): the plan's, or the one through the place.
+    const offLine = (p: { x: number; z: number }, h: number) =>
+      Math.abs(-p.x * Math.cos(h) + p.z * Math.sin(h))
+    const across = plan && Math.min(offLine(plan, plan.heading), offLine(to, plan.heading))
+    const along = plan && plan.x * Math.sin(plan.heading) + plan.z * Math.cos(plan.heading)
+    const shortAside =
+      !!plan &&
+      across! > ExercisePlayer.FAR_OFF &&
+      along! - (ExercisePlayer.JOIN + across!) < ExercisePlayer.WALK_IN + 0.9
+    const walkIn = step.slant || shortAside ? braking : Math.max(ExercisePlayer.WALK_IN, braking)
     const last = Math.max(0.3, Math.min(walkIn, ahead - 0.5))
     const end = { x: to.x - last * Math.sin(heading), z: to.z - last * Math.cos(heading), heading }
     // Onto the plan's line first (however the last exercise left the team: an arc's end, beside
-    // the way in), straight on along it, and over to where the exercise starts only just
-    // before the card — as a handler lines up at it.
+    // the way in), then over to where the exercise starts, a little aside of it (`stopAt`), in
+    // one long even bend the rest of the way — over only just before the card, the team swung
+    // back and forth (the author, 2026-10-30: "bez náhlých otočení").
     const through: { x: number; z: number; heading: number; tight?: boolean }[] = [end]
     if (step.along) {
       const line = inTeam(this.team, step.along)
@@ -1000,16 +1012,30 @@ export class ExercisePlayer {
         z: line.z - fromEnd * c,
         heading: h,
       })
+      // …and on the line through where the exercise starts.
+      const onStart = (fromEnd: number) => ({
+        x: to.x - fromEnd * s,
+        z: to.z - fromEnd * c,
+        heading: h,
+      })
       const toEnd = Math.max(0, -(end.x - line.x) * s - (end.z - line.z) * c)
-      const lineUp = toEnd + ExercisePlayer.LINE_UP
       // Onto the line the way the plan has it (`geometry.wayTo`): over in a short bend, at
-      // the latest just before the place — then straight on, and over to where the exercise
-      // starts only at the end, if there is room for that.
-      const joined = Math.max(back - (ExercisePlayer.JOIN + Math.abs(off)), toEnd + 0.3)
-      const farOff = Math.abs(off) > ExercisePlayer.FAR_OFF
-      if (joined > lineUp + 0.3)
-        through.unshift({ ...onLine(joined), tight: farOff }, onLine(lineUp))
-      else if (farOff && joined < back - 0.3) through.unshift({ ...onLine(joined), tight: true })
+      // the latest just before the place — or onto the line through the place, a little aside
+      // of it (`stopAt`), if the team is nearer that one: over to the plan's line and back to
+      // the place, it turned there and back (the author, 2026-10-30). Far off both with little
+      // way to go (beside the way in after a turn about, the next card close), straight over to
+      // where the exercise starts, turning to go across at a slant and back.
+      const offStart = -to.x * c + to.z * s
+      const nearer = Math.abs(offStart) < Math.abs(off)
+      const aside = nearer ? offStart : off
+      const joined = Math.max(back - (ExercisePlayer.JOIN + Math.abs(aside)), toEnd + 0.3)
+      // Only a little aside (an exercise ending off the line, the next starting a little aside
+      // of it): over in one long even bend the whole way, all but straight — not a bend over
+      // in the first metres (the author, 2026-10-30: "měl jít pořád dál rovně").
+      if (Math.abs(aside) > ExercisePlayer.FAR_OFF && joined > toEnd + 0.6)
+        through.unshift({ ...(nearer ? onStart : onLine)(joined), tight: true })
+      else if (Math.abs(aside) > ExercisePlayer.FAR_OFF && joined < back - 0.3)
+        through.unshift({ ...onStart(joined), tight: true })
     }
     // At a slant: onto the straight line to the place at once, off it only just before — round
     // a corner at each end, each bend even either side of its corner (no swinging out).
@@ -1026,9 +1052,9 @@ export class ExercisePlayer {
         { ...end, tight: true },
       )
     }
-    // A little off and no room to join first: straight on as the team faces, over to the place
-    // only at the end.
-    if (through.length === 1 && Math.abs(end.heading) < 0.2) {
+    // No plan's line, a little off: straight on as the team faces, over to the place only at
+    // the end.
+    if (!step.along && through.length === 1 && Math.abs(end.heading) < 0.2) {
       const straight = end.z - ExercisePlayer.LINE_UP
       if (straight > 0.3) through.unshift({ x: 0, z: straight, heading: 0 })
     }
