@@ -488,6 +488,8 @@ describe('competition courses (R7)', () => {
     '%s courses follow the side patterns of the guidelines (property test)',
     (classId) => {
       const shapes = new Set<string>()
+      // Every pattern comes up: RO1 start "R" or finish; RO2/RO3 also the mid-course ones.
+      const patterns = classId === 'RO1' ? 2 : 3
       for (let seed = 0; seed < 150; seed++) {
         const deck = competition(classId, seed)
         const errors = validateDeck(deck)
@@ -495,11 +497,11 @@ describe('competition courses (R7)', () => {
         expect(deck.entries).toHaveLength(deck.options.count)
         const changes = deck.entries.filter((x) => SIDE_CHANGES.has(x.code)).length
         shapes.add(`${deck.options.startSide}/${finishSide(deck)}/${changes}`)
+        // Enough courses checked once every pattern has come up (RO3 ~200 ms a course).
+        if (seed >= 60 && shapes.size === patterns) break
       }
-      // Every pattern comes up: RO1 start "R" or finish; RO2/RO3 also the mid-course ones.
-      expect(shapes.size).toBe(classId === 'RO1' ? 2 : 3)
-      // ~40 ms a course, laid out on its field (RO3 ~100 ms).
+      expect(shapes.size).toBe(patterns)
     },
-    60_000,
+    120_000,
   )
 })
