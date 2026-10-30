@@ -44,4 +44,24 @@ export const R3_313: Exercise = {
   ],
 }
 
+/**
+ * Past the card first, with the dog on the right: the jump is on its side, and so is the card
+ * — on its way out to the jump at once the dog ran through it. "Ústní a/nebo posunkový povel
+ * k překonání překážky může psovod dát i za místem pro vykonání cviku." Metres.
+ */
+const PAST_THE_CARD = 2
+export const R3_313_RIGHT: Exercise = {
+  ...R3_313,
+  steps: [
+    { walk: 3.5, caption: 'approach' },
+    {
+      walk: 5,
+      dogJumps: OVER_AND_BACK + 1 - PAST_THE_CARD,
+      jumpsAfter: PAST_THE_CARD,
+      caption: 'sendOverJumpAway',
+    },
+    { walk: 5, caption: 'heelAfterJump' },
+  ],
+}
+
 export const JUMP_EXERCISES: Exercise[] = [R2_217, R3_313]

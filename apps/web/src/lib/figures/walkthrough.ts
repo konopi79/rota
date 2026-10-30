@@ -21,7 +21,7 @@ import {
   type Phase,
   type Pose,
 } from './exercise'
-import { EXERCISES, RIGHT_EXERCISES, RIGHT_SIDE_CARDS } from './exercises'
+import { EXERCISES, RIGHT_EXERCISES, RIGHT_PARTS, RIGHT_SIDE_CARDS } from './exercises'
 import { FOLLOW_UP_PARTS, LEAVE_PARTS } from './leave-exercises'
 import { JUMP_WIDTH } from './leap'
 import { onField, PLACES } from './team'
@@ -122,9 +122,10 @@ export function animationOf(entry: DeckEntry): Exercise | undefined {
   const right = entry.side === 'right'
   if (right && !RIGHT_SIDE_CARDS.includes(entry.code)) return undefined
   // A leave card and its follow-up each play their own part, the dog left in between.
-  const parts = [...LEAVE_PARTS, ...FOLLOW_UP_PARTS].filter((e) => e.code === entry.code)
-  if (parts.length && !right)
-    return parts.find((e) => e.supplementary === entry.supplementary) ?? parts[0]
+  const parts = (right ? RIGHT_PARTS : [...LEAVE_PARTS, ...FOLLOW_UP_PARTS]).filter(
+    (e) => e.code === entry.code,
+  )
+  if (parts.length) return parts.find((e) => e.supplementary === entry.supplementary) ?? parts[0]
   const variants = (right ? RIGHT_EXERCISES : EXERCISES).filter((e) => e.code === entry.code)
   if (entry.supplementary) return variants.find((e) => e.supplementary === entry.supplementary)
   if (variants.some((e) => e.fromPace)) {

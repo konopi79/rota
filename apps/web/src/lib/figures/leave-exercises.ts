@@ -179,9 +179,11 @@ export const F2_216: Exercise = {
  * of its head (the video), not into it.
  */
 const AHEAD_OF_THE_DOG = 0.2
-const stayTurnStepRecall = (code: string, sign: 1 | -1): Exercise => {
+/** …with the dog on the right (`dogRight`) the right turn goes towards it. */
+export const stayTurnStepRecall = (code: string, sign: 1 | -1, dogRight = false): Exercise => {
+  const towardsTheDog = dogRight ? RIGHT : LEFT
   const turn: FootTarget[] = turnSteps(sign).map((t) =>
-    sign === LEFT ? { ...t, z: t.z + AHEAD_OF_THE_DOG } : t,
+    sign === towardsTheDog ? { ...t, z: t.z + AHEAD_OF_THE_DOG } : t,
   )
   return {
     code,
@@ -462,6 +464,7 @@ export const R3_323 = SUPPLEMENTARIES.map((supplementary): Exercise => {
  */
 const CONE = { x: 4.3, z: 3.1 }
 const TO_THE_CONE = Math.round((Math.atan2(-CONE.x, CONE.z) * 180) / Math.PI)
+// With the dog on the right the cone stays left — on its side the dog ran through the card.
 export const L3_324: Exercise = {
   code: '3-324',
   cones: [CONE],
@@ -530,19 +533,26 @@ const asideOf = (leave: string) =>
  * 3-301 — and the follow-up's part from where its handler stops. Each card stands where its own
  * part has it.
  */
-const pair = (code: string, leave: Exercise, followUp: Exercise): Exercise => {
+export const pair = (
+  code: string,
+  leave: Exercise,
+  followUp: Exercise,
+  dogRight = false,
+): Exercise => {
   const leaving = leave.steps.findIndex((s) => 'dogStays' in s || ('walk' in s && s.dropsDog))
   const left = leave.steps[leaving]!
   // Left on the move, the handler is already on the way.
   const onTheWay = 'walk' in left ? left.walk : 0
   const arriving = followUp.steps.findIndex((s) => !('walk' in s))
   const gap = gapTo(leave.code, followUp.code)
-  const aside = asideOf(leave.code)
+  // With the dog on the right the other side: away from the dog (3-301), the jump's (3-314).
+  const aside = asideOf(leave.code) * (dogRight ? -1 : 1)
   const jump = leave.jumps?.[0]
   const pastJump = jump ? jump.z + PAST_THE_JUMP : 0
   return {
     code,
     pairedWith: code === leave.code ? followUp.code : leave.code,
+    ...(dogRight && { dogStarts: 'right' as const }),
     ...(followUp.supplementary && { supplementary: followUp.supplementary }),
     parts: [
       { exercise: leave, at: 0 },
