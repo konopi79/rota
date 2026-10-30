@@ -22,6 +22,8 @@ import {
   type Pose,
 } from './exercise'
 import { EXERCISES, RIGHT_EXERCISES, RIGHT_SIDE_CARDS } from './exercises'
+import { FOLLOW_UP_PARTS, LEAVE_PARTS } from './leave-exercises'
+import { JUMP_WIDTH } from './leap'
 import { onField, PLACES } from './team'
 
 /**
@@ -44,6 +46,11 @@ export type Walkthrough = {
   startMark?: Pose
   /** Each card: where its exercise starts, its card (and D0 card), cones and bowls. */
   stations: Station[]
+  /**
+   * Where the walkthrough starts from (`from`, or the leave card before it when that card
+   * follows one: its dog has to be left first).
+   */
+  from: number
 }
 
 export type Station = {
@@ -57,8 +64,13 @@ export type Station = {
   d0?: Pose
   cones: Pose[]
   bowls: Pose[]
+  /** Jumps (the bar across `heading`) and marks on the ground (`lengthwise`: along the way). */
+  jumps: Pose[]
+  marks: (Pose & { lengthwise?: true })[]
   /** The step of `Walkthrough.exercise` the way to this card starts with. */
   firstStep: number
+  /** …and the step its exercise starts with. */
+  exerciseStep: number
 }
 
 /** The plan is drawn x right, y down, headings clockwise from up (degrees); the scenes have +x
@@ -78,10 +90,17 @@ const within = (base: Pose, p: Pose): Pose => {
   return { x: c * dx - s * dz, z: s * dx + c * dz, heading: p.heading - base.heading }
 }
 
+/** Going on past a jump, the handler is this far past it before turning off, metres. */
+const PAST_THE_JUMP = 1
+
 /** Where the team sets off: this far before the start line, metres, walking in. */
 const RUN_UP = 2
-/** Past the finish line it walks on this far and stops, metres. */
-const RUN_OUT = 1.5
+/**
+ * Past the finish line it walks on this far and stops, metres — less where something stands
+ * closer than `RUN_OUT_CLEAR` to where it would stop.
+ */
+const RUN_OUTS = [1.5, 1, 0.5]
+const RUN_OUT_CLEAR = 1.2
 /**
  * The start and finish cards at their lines, right of the team, which passes them on the left
  * as it does every card (+x is the team's left): this far from the handler, or from the dog
@@ -102,6 +121,10 @@ const besideLine = (side: Side, further = 0): Pose => ({
 export function animationOf(entry: DeckEntry): Exercise | undefined {
   const right = entry.side === 'right'
   if (right && !RIGHT_SIDE_CARDS.includes(entry.code)) return undefined
+  // A leave card and its follow-up each play their own part, the dog left in between.
+  const parts = [...LEAVE_PARTS, ...FOLLOW_UP_PARTS].filter((e) => e.code === entry.code)
+  if (parts.length && !right)
+    return parts.find((e) => e.supplementary === entry.supplementary) ?? parts[0]
   const variants = (right ? RIGHT_EXERCISES : EXERCISES).filter((e) => e.code === entry.code)
   if (entry.supplementary) return variants.find((e) => e.supplementary === entry.supplementary)
   if (variants.some((e) => e.fromPace)) {
@@ -186,11 +209,14 @@ function ownSteps(exercise: Exercise, pace: Pace): { steps: ExerciseStep[]; leav
  * start). Starting later, the team sets off a few metres before that card, with the dog on
  * the side and at the pace the course has there.
  */
-export function walkthroughOf(deck: Deck, cls: RoClass, from = 0): Walkthrough {
+export function walkthroughOf(deck: Deck, cls: RoClass, start = 0): Walkthrough {
   const layout = deck.layout!
   const round = layout.rounds[0]!
   const entries = deck.entries
   const card = (code: string) => getCard(cls.ruleset, code) as Card
+  // A card that follows a leave card starts with it: its dog has to be left first.
+  let from = start
+  while (from > 0 && card(entries[from]!.code).sequencing.onlyAfterLeave) from--
 
   // Where each exercise starts, on the scene: the plan's station, and the handler stopping
   // where the exercise's script has it (`stopAt`, from the right in the square).
@@ -218,9 +244,16 @@ export function walkthroughOf(deck: Deck, cls: RoClass, from = 0): Walkthrough {
     const at = stationsOnScene[i]!
     const firstStep = steps.length
     const phase = phaseOf(exercise)
+    // From a leave card to a follow-up beside its way (3-301, 3-314): at a slant all the way
+    // (the author) — past the jump on the way first, along it.
+    const before = i > from ? exercises[i - 1]! : undefined
+    const aside =
+      before && LEAVE_PARTS.includes(before) && !!card(before.code).geometry?.followUp?.sides
+    const jump = aside ? before.jumps?.[0] : undefined
+    if (jump) steps.push({ walk: jump.z + PAST_THE_JUMP, caption: leaving ?? 'toCard' })
     steps.push({
       walkTo: local(at),
-      along: local(plans[i]!),
+      ...(aside ? { slant: true as const } : { along: local(plans[i]!) }),
       ...(phase && { phase }),
       pace: entry.pace,
       flipped: exercise.dogStarts === 'right',
@@ -228,10 +261,12 @@ export function walkthroughOf(deck: Deck, cls: RoClass, from = 0): Walkthrough {
     })
     const cardHere = card(entry.code)
     const after = paceAfter(cardHere, entry.pace, endsStatic(cls, cardHere, entry.supplementary))
+    const exerciseStep = steps.length
     const own = ownSteps(exercise, after)
-    steps.push(...own.steps)
-    leaving = own.leaving
     const place = (p: { x: number; z: number }) => local(onField(at, { ...p, heading: 0 }))
+    // A place an exercise sends the dog to, from its station into the walkthrough's frame.
+    steps.push(...own.steps.map((s) => ('sendTo' in s ? { ...s, sendTo: place(s.sendTo) } : s)))
+    leaving = own.leaving
     const d0 = supplementaryPlace(exercise)
     stations.push({
       index: i,
@@ -242,7 +277,13 @@ export function walkthroughOf(deck: Deck, cls: RoClass, from = 0): Walkthrough {
       ...(d0 && { d0: place(d0) }),
       cones: (exercise.cones ?? []).map(place),
       bowls: (exercise.bowls ?? []).map(place),
+      jumps: (exercise.jumps ?? []).map(place),
+      marks: (exercise.marks ?? []).map((m) => ({
+        ...place(m),
+        ...(m.lengthwise && { lengthwise: true as const }),
+      })),
       firstStep,
+      exerciseStep,
     })
   }
   // On to the finish at the pace the last card leaves the team in, through the line.
@@ -253,9 +294,25 @@ export function walkthroughOf(deck: Deck, cls: RoClass, from = 0): Walkthrough {
     lastEntry.pace,
     endsStatic(cls, lastCard, lastEntry.supplementary),
   )
+  // Past the line as far as there is room: not up to another exercise's card or equipment
+  // (the plan keeps only the finish itself clear).
+  const things = stations.flatMap((s) => [
+    s.card,
+    ...(s.d0 ? [s.d0] : []),
+    ...s.cones,
+    ...s.bowls,
+    ...s.jumps.flatMap((j) =>
+      [-1, 1].map((end) => onField(j, { x: (end * JUMP_WIDTH) / 2, z: 0, heading: 0 })),
+    ),
+  ])
+  const runOut =
+    RUN_OUTS.find((d) => {
+      const stop = local(onField(finishLine, { x: 0, z: d, heading: 0 }))
+      return things.every((q) => Math.hypot(q.x - stop.x, q.z - stop.z) >= RUN_OUT_CLEAR)
+    }) ?? RUN_OUTS.at(-1)!
   steps.push(
     { walkTo: local(finishLine), along: local(finishLine), pace, caption: leaving ?? 'toFinish' },
-    { walk: RUN_OUT, caption: 'finishLine' },
+    { walk: runOut, caption: 'finishLine' },
     { stop: true, caption: 'finishLine' },
   )
 
@@ -271,6 +328,9 @@ export function walkthroughOf(deck: Deck, cls: RoClass, from = 0): Walkthrough {
       code: 'course',
       steps,
       ...(entries[from]!.side === 'right' && { dogStarts: 'right' }),
+      // The jumps on the course, for the dog to leap over (the walkthrough's frame: it starts
+      // walking, so its station is where it sets off).
+      jumps: stations.flatMap((s) => s.jumps),
     },
     field: { corners },
     start: local(startLine),
@@ -282,5 +342,6 @@ export function walkthroughOf(deck: Deck, cls: RoClass, from = 0): Walkthrough {
       startMark: local(onField(startLine, besideLine('right', MARK_BESIDE))),
     }),
     stations,
+    from,
   }
 }

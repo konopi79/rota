@@ -13,6 +13,7 @@ import {
   GAP_MIN,
   normalize,
   PROP_SPACING,
+  propPoints,
   shapeOf,
   D0_BESIDE,
   d0StandOf,
@@ -269,7 +270,7 @@ export class FieldPlanner {
       const finish = walkTo(exit, option.ahead, option.across)
       if (!this.free(finish, undefined, this.signs, props)) continue
       const national = this.previous?.card.ruleset === 'CZ'
-      if (!national || this.aisleClear(wayTo(shape, exit, finish))) return finish
+      if (!national || this.aisleClear(wayTo(shape, exit, finish, true))) return finish
     }
     return undefined
   }
@@ -325,7 +326,11 @@ export class FieldPlanner {
    * but the one it comes from (the last laid out, or the start).
    */
   private aisleClear(aisle: Point[]): boolean {
-    const stands = [...this.signs.slice(0, -1), ...this.d0sBut(1), ...this.props]
+    const stands = [
+      ...this.signs.slice(0, -1),
+      ...this.d0sBut(1),
+      ...this.props.flatMap(propPoints),
+    ]
     return clearOf(this.stations.slice(0, -1), aisle) && clearOf(stands, aisle, STAND_SPACING)
   }
 
@@ -350,7 +355,7 @@ export class FieldPlanner {
       shape.walk &&
       !(
         clearOf(this.stations, shape.walk) &&
-        clearOf([...stands, ...props], shape.walk, STAND_SPACING)
+        clearOf([...stands, ...props.flatMap(propPoints)], shape.walk, STAND_SPACING)
       )
     ) {
       return false
@@ -360,6 +365,9 @@ export class FieldPlanner {
       if (!this.inside(prop)) return false
       if (all.some(near)) return false
       if (props.some(near) || !this.clearOfBacks(prop, STAND_SPACING)) return false
+      // (A jump's uprights clear of the ways walked too.)
+      const off = (p: Point) => this.aisles.every((way) => distanceToWay(p, way) >= STAND_SPACING)
+      if (!propPoints(prop).every(off)) return false
     }
     const jumps = [...props, ...shape.props].filter((p) => p.kind === 'jump').length
     if (jumps > this.maxJumps) return false
@@ -373,7 +381,10 @@ export class FieldPlanner {
       if (!this.free(next, undefined, signs, allProps, d0s)) return false
       if (card.ruleset !== 'CZ') return true
       const way = wayTo(shape, shape.exit, next)
-      return clearOf(this.stations, way) && clearOf([...stands, ...props], way, STAND_SPACING)
+      return (
+        clearOf(this.stations, way) &&
+        clearOf([...stands, ...props.flatMap(propPoints)], way, STAND_SPACING)
+      )
     })
   }
 

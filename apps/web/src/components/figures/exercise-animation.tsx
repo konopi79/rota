@@ -95,12 +95,25 @@ export function CardStand({ code, x, z }: { code: string; x: number; z: number }
  * A mark on the ground: across the dog's way (the two thirds of a recall), 80 cm, or along the
  * team's (3-313's line), 2 m; white.
  */
-function GroundMark({ x, z, lengthwise }: { x: number; z: number; lengthwise?: boolean }) {
+export function GroundMark({
+  x,
+  z,
+  heading = 0,
+  lengthwise,
+}: {
+  x: number
+  z: number
+  /** The way the team goes (a course walked through: its station's). */
+  heading?: number
+  lengthwise?: boolean
+}) {
   return (
-    <mesh position={[x, 0.004, z]} rotation-x={-Math.PI / 2}>
-      <planeGeometry args={lengthwise ? [0.06, 2] : [0.8, 0.06]} />
-      <meshBasicMaterial color="#f4f4f0" />
-    </mesh>
+    <group position={[x, 0.004, z]} rotation-y={heading}>
+      <mesh rotation-x={-Math.PI / 2}>
+        <planeGeometry args={lengthwise ? [0.06, 2] : [0.8, 0.06]} />
+        <meshBasicMaterial color="#f4f4f0" />
+      </mesh>
+    </group>
   )
 }
 
@@ -108,9 +121,9 @@ function GroundMark({ x, z, lengthwise }: { x: number; z: number; lengthwise?: b
  * A bar jump (regulation p. 10): two uprights on feet, no wings, the bar laid loose across at
  * 40 cm — yellow uprights as on the video's field.
  */
-export function Jump({ x, z }: { x: number; z: number }) {
+export function Jump({ x, z, heading = 0 }: { x: number; z: number; heading?: number }) {
   return (
-    <group position={[x, 0, z]}>
+    <group position={[x, 0, z]} rotation-y={heading}>
       {[-1, 1].map((side) => (
         <group key={side} position={[(side * JUMP_WIDTH) / 2, 0, 0]}>
           <mesh position={[0, UPRIGHT_HEIGHT / 2, 0]} castShadow>

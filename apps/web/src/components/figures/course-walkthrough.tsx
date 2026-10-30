@@ -23,6 +23,8 @@ import {
   CardStand,
   Cone,
   CONE_COLOURS,
+  GroundMark,
+  Jump,
   SLOW_MOTION,
 } from '@/components/figures/exercise-animation'
 import { Button } from '@/components/ui/button'
@@ -197,10 +199,10 @@ function Team({
     team.current?.rotation.set(0, frame.team.heading, 0)
     focusRef.current = onField(frame.team, { ...frame.handler, heading: 0 })
     focusRef.current.heading = frame.team.heading
-    const key = `${frame.stepIndex} ${frame.caption} ${frame.flipped} ${frame.finished}`
+    const key = `${frame.scriptStep} ${frame.caption} ${frame.flipped} ${frame.finished}`
     if (key !== last.current) {
       last.current = key
-      onFrame(frame.stepIndex, frame.caption, frame.flipped, frame.finished)
+      onFrame(frame.scriptStep, frame.caption, frame.flipped, frame.finished)
     }
     done.current = frame.finished
   })
@@ -329,9 +331,9 @@ export function CourseWalkthrough({
   const pressed = useRef<{ x: number; y: number } | null>(null)
   const card = (code: string) => getCard(cls.ruleset, code) as Card
 
-  // The card the team is at, or walking to: each way to a card counts as two steps played.
+  // The card the team is at, or walking to.
   const at = walkthrough.stations.reduce<Station | undefined>(
-    (current, s, i) => (state.step >= s.firstStep + i ? s : current),
+    (current, s) => (state.step >= s.firstStep ? s : current),
     undefined,
   )
   const total = deck.entries.length
@@ -339,6 +341,12 @@ export function CourseWalkthrough({
     setFrom(Math.max(0, Math.min(total - 1, index)))
     setRun((r) => r + 1)
     setPaused(false)
+  }
+  // On to the next card — past a follow-up: played from its leave card, it would start over.
+  const next = () => {
+    let i = (at?.index ?? -1) + 1
+    while (i < total && card(deck.entries[i]!.code).sequencing.onlyAfterLeave) i++
+    if (i < total) restart(i)
   }
   const captionKey =
     state.caption &&
@@ -384,6 +392,18 @@ export function CourseWalkthrough({
               ))}
               {s.bowls.map((c, i) => (
                 <Bowl key={`bowl${i}`} x={c.x} z={c.z} />
+              ))}
+              {s.jumps.map((j, i) => (
+                <Jump key={`jump${i}`} x={j.x} z={j.z} heading={j.heading} />
+              ))}
+              {s.marks.map((m, i) => (
+                <GroundMark
+                  key={`mark${i}`}
+                  x={m.x}
+                  z={m.z}
+                  heading={m.heading}
+                  lengthwise={m.lengthwise}
+                />
               ))}
             </group>
           ))}
@@ -441,12 +461,7 @@ export function CourseWalkthrough({
         >
           {state.finished ? <RotateCcw /> : paused ? <Play /> : <Pause />}
         </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => restart((at?.index ?? -1) + 1)}
-          aria-label={t('walkthrough.next')}
-        >
+        <Button variant="outline" size="icon" onClick={next} aria-label={t('walkthrough.next')}>
           <ChevronRight />
         </Button>
         <ToggleGroup

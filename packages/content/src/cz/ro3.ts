@@ -331,7 +331,20 @@ export const RO3_CARDS: Card[] = [
       equipment: ['jump'],
     },
     // The card 5 m before the jump, the next ones 5 m past it; the handler passes it "ve vzdálenosti cca 1,8 m".
-    geometry: { exit: 5, gap: 10, props: [{ kind: 'jump', ahead: 5, side: 2.4 }] },
+    // Kept clear as the team's way (`via`): the handler's straight on, the dog's out along
+    // the jump and back into heel 9.5 m on — read off the animation.
+    geometry: {
+      exit: 5,
+      gap: 10,
+      via: [
+        [6.5, 0],
+        [0, 0.4],
+        [3.5, 2.4],
+        [6.5, 2.4],
+        [9.5, 0.4],
+      ],
+      props: [{ kind: 'jump', ahead: 5, side: 2.4 }],
+    },
     image: '3-313',
     sourcePage: 56,
   },

@@ -24,7 +24,7 @@ import {
 import { geometry } from '@rota/content'
 
 import { towards, type Course } from './courses'
-import { JUMP_WIDTH, LEAP_FROM, LEAP_UNTIL, alongBar, type Bar } from './leap'
+import { JUMP_WIDTH, LEAP_FROM, LEAP_UNTIL, acrossBar, alongBar, type Bar } from './leap'
 import type { FootTarget } from './locomotion'
 import {
   FIRM_STOP,
@@ -368,6 +368,8 @@ const RECALL_WALK = 0.7
 const RECALL_BRAKING = 4
 /** Back beside the dog left, the handler stands this much further from it than at heel, metres. */
 const BESIDE_DOG_ROOM = 0.04
+/** A jump the dog is sent over stands at most this far to the side of the team's way, metres. */
+const JUMP_BESIDE = 3
 /** The handler's command to stay, seconds. */
 const STAY_TIME = 0.6
 /** Stopped on its way in (`halfway`), the dog has run this share of the way to the front. */
@@ -425,8 +427,11 @@ export type Exercise = {
    * beyond).
    */
   marks?: { x: number; z: number; lengthwise?: true }[]
-  /** Bar jumps, in the station's frame: the bar's middle, the bar across the team's way. */
-  jumps?: { x: number; z: number }[]
+  /**
+   * Bar jumps, in the station's frame: the bar's middle, the bar across the team's way — or
+   * across `heading` (a course walked through, where each jump stands as its station does).
+   */
+  jumps?: { x: number; z: number; heading?: number }[]
   /**
    * Two cards played one after the other — a leave card and the follow-up the dog is called
    * or joined by (plan R17): each card's own exercise, and how far on (metres, straight
@@ -601,7 +606,7 @@ export const marksOf = (exercise: Exercise): { x: number; z: number; lengthwise?
     : (exercise.marks ?? [])
 
 /** The jumps (`jumps`), in the frame of the exercise's station — a pair's too. */
-export const jumpsOf = (exercise: Exercise): { x: number; z: number }[] =>
+export const jumpsOf = (exercise: Exercise): { x: number; z: number; heading?: number }[] =>
   exercise.parts
     ? exercise.parts.flatMap((part) => jumpsOf(part.exercise).map((s) => inPair(s, part)))
     : (exercise.jumps ?? [])
@@ -642,6 +647,8 @@ export type ExerciseFrame = TeamFrame & {
   flipped: boolean
   /** The step that runs next (after this frame). */
   stepIndex: number
+  /** …as a step of the exercise's script (a way to a place counts as the one step it is). */
+  scriptStep: number
   finished: boolean
 }
 
@@ -890,7 +897,7 @@ export class ExercisePlayer {
   /** Stopped on its way in (`halfway`): it is left where it stops. */
   private stoppedHalfway = false
   /** The jumps on the field (this exercise's frame), their bars across the team's way. */
-  private readonly bars: { x: number; z: number }[]
+  private readonly bars: Bar[]
   /**
    * Over a jump while the team walks on (`dogJumps`): the dog's way on the field, and from how
    * far the team had walked to how far it will have walked as the dog comes back into heel.
@@ -908,6 +915,8 @@ export class ExercisePlayer {
 
   /** The exercise's steps, a way to a place (`walkTo`) worked out as it comes. */
   private readonly steps: ExerciseStep[]
+  /** For each of them, the step of the script it comes from. */
+  private readonly origins: number[]
 
   /** The walk ended on the other foot than the steps out of it start from (`closeUp`). */
   private closingUp = false
@@ -934,8 +943,13 @@ export class ExercisePlayer {
 
   constructor(private readonly exercise: Exercise) {
     this.steps = [...exercise.steps]
+    this.origins = exercise.steps.map((_, i) => i)
     const station = stationOf(exercise)
-    this.bars = jumpsOf(exercise).map((j) => ({ x: j.x, z: station + j.z }))
+    this.bars = jumpsOf(exercise).map((j) => ({
+      x: j.x,
+      z: station + j.z,
+      heading: j.heading ?? 0,
+    }))
     this.flipped = exercise.dogStarts === 'right'
     this.dogPlace = this.flipped ? 'right' : 'left'
     this.animator = new TeamAnimator(this.dogPlace)
@@ -1025,6 +1039,7 @@ export class ExercisePlayer {
           until: this.index + 1,
         }
       : null
+    this.origins.splice(this.index, 1, ...Array(2).fill(this.origins[this.index]))
     this.steps.splice(
       this.index,
       1,
@@ -1037,23 +1052,39 @@ export class ExercisePlayer {
   private barAhead(): Bar | undefined {
     const dog = onField(this.team, this.dogAt)
     for (const b of this.bars) {
-      const bar = { ...b, heading: Math.cos(dog.heading) >= 0 ? 0 : Math.PI }
+      // Over it the way the dog goes.
+      const bar = {
+        ...b,
+        heading: b.heading + (Math.cos(dog.heading - b.heading) >= 0 ? 0 : Math.PI),
+      }
       const a = alongBar(bar, dog)
-      const side = Math.abs(dog.x - b.x)
-      if (a >= LEAP_FROM - 0.2 && a < LEAP_UNTIL && side < JUMP_WIDTH / 2) return bar
+      if (a >= LEAP_FROM - 0.2 && a < LEAP_UNTIL && Math.abs(acrossBar(bar, dog)) < JUMP_WIDTH / 2)
+        return bar
     }
     return undefined
   }
 
   /** The jump between a dog at `dog` and a handler at `handler`, if the way crosses its bar. */
-  private barBetween(dog: Pose, handler: Pose) {
+  private barBetween(dog: Pose, handler: Pose): Bar | undefined {
+    for (const b of this.bars) {
+      const [from, to] = [alongBar(b, dog), alongBar(b, handler)]
+      if (Math.sign(from) === Math.sign(to)) continue
+      const t = from / (from - to)
+      const across = acrossBar(b, dog) + (acrossBar(b, handler) - acrossBar(b, dog)) * t
+      if (Math.abs(across) < JUMP_WIDTH)
+        return { ...b, heading: b.heading + (from < 0 ? 0 : Math.PI) }
+    }
+    return undefined
+  }
+
+  /** The jump ahead of a team at `team`, its bar across the team's way. */
+  private barAheadOf(team: Pose): Bar | undefined {
+    // Across the team's way and beside it — not another card's jump further off on a course.
     return this.bars
-      .map((b) => ({ ...b, heading: handler.z > dog.z ? 0 : Math.PI }))
-      .find((b) => {
-        const t = (b.z - dog.z) / (handler.z - dog.z || 1e-9)
-        const x = dog.x + (handler.x - dog.x) * t
-        return t > 0 && t < 1 && Math.abs(x - b.x) < JUMP_WIDTH
-      })
+      .filter((b) => Math.abs(Math.cos(b.heading - team.heading)) > 0.9)
+      .map((b) => ({ ...b, heading: team.heading }))
+      .filter((b) => alongBar(b, team) < 0 && Math.abs(acrossBar(b, team)) < JUMP_BESIDE)
+      .sort((a, b) => alongBar(b, team) - alongBar(a, team))[0]
   }
 
   /**
@@ -1102,6 +1133,7 @@ export class ExercisePlayer {
     const out = Math.sign(heel.x) * BESIDE_DOG_ROOM
     const base = onField(dog, { x: -heel.x - out, z: -heel.z, heading: 0 })
     const { caption, pace } = step
+    this.origins.splice(this.index, 1, ...Array(5).fill(this.origins[this.index]))
     this.steps.splice(
       this.index,
       1,
@@ -1727,7 +1759,7 @@ export class ExercisePlayer {
     // Over a jump while the team walks on: the dog's way, as far along as the team has walked.
     if (current && 'walk' in current && current.dogJumps && starting) {
       const from = onField(this.team, this.dogAt)
-      const bar = this.bars.find((b) => alongBar({ ...b, heading: this.team.heading }, from) < 0)!
+      const bar = this.barAheadOf(this.team)!
       const end = onField(forward(this.team, current.dogJumps), PLACES[this.dogPlace])
       const route = overBar(from, { ...bar, heading: this.team.heading }, (past) =>
         runToPlace(past, end, end.heading),
@@ -1950,6 +1982,7 @@ export class ExercisePlayer {
       caption: current?.caption ?? null,
       flipped: this.flipped,
       stepIndex: this.index,
+      scriptStep: this.origins[this.index] ?? this.exercise.steps.length,
       finished: this.index > this.steps.length,
     }
   }

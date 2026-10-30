@@ -20,7 +20,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'animations-jumps'
+export const LATEST_FEATURE_ID = 'course-walkthrough-leave'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -100,6 +100,11 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
         id: 'course-walkthrough',
         title: 'Parkur v animaci',
         desc: 'Tréninkový parkur RO-Z a RO1 si projdeš celý v 3D animaci: tým jde po plánku od startu ke každé kartě, provede cvik a pokračuje do cíle – i se psem vpravo po startu „R“. Kamera za týmem (natočíš si ji) nebo nad celou plochou, pauza, rychlost a přeskakování po kartách.',
+      },
+      {
+        id: 'course-walkthrough-leave',
+        title: 'Parkur v animaci i pro RO2, RO3 a RO-V',
+        desc: 'V animaci projdeš i parkur vyšších tříd: pes zůstane odložený u své karty, psovod dojde k další a odtud ho přivolá nebo se k němu vrátí, překážky a kužel stojí na ploše podle plánku. Zatím jen parkur, kde pes nejde vpravo u karty, kterou animace se psem vpravo ještě neumí – to se týká hlavně RO3.',
       },
       {
         id: 'plan-zoom-print',

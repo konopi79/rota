@@ -26,6 +26,10 @@ export type Bar = { x: number; z: number; heading: number }
 export const alongBar = (bar: Bar, body: { x: number; z: number }) =>
   (body.x - bar.x) * Math.sin(bar.heading) + (body.z - bar.z) * Math.cos(bar.heading)
 
+/** How far off the bar's middle a body is along the bar (metres, left positive). */
+export const acrossBar = (bar: Bar, body: { x: number; z: number }) =>
+  (body.x - bar.x) * Math.cos(bar.heading) - (body.z - bar.z) * Math.sin(bar.heading)
+
 /**
  * Where along the way over the bar (the body's middle, metres from the bar, negative before
  * it) each part of the leap happens.

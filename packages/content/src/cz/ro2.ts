@@ -360,7 +360,20 @@ export const RO2_CARDS: Card[] = [
       equipment: ['jump'],
     },
     // The card "minimálně však 5 metrů před překážkou", the next ones "minimálně 5 metrů od překážky"; the handler passes right beside it.
-    geometry: { exit: 5, gap: 10, props: [{ kind: 'jump', ahead: 5, side: 1 }] },
+    // Kept clear as the team's way (`via`): the handler's straight on, the dog's out along
+    // the jump and back into heel 8.5 m on — read off the animation.
+    geometry: {
+      exit: 5,
+      gap: 10,
+      via: [
+        [6.5, 0],
+        [0, 0.4],
+        [3.5, 1],
+        [6.5, 1],
+        [8.5, 0.4],
+      ],
+      props: [{ kind: 'jump', ahead: 5, side: 1 }],
+    },
     image: '2-217',
     sourcePage: 44,
   },
