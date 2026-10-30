@@ -10,7 +10,7 @@ import {
 import { cardImageUrl } from '@/components/deck/card-image'
 import { cn } from '@/lib/utils'
 
-const { bearing, offset, shapeOf, signOf, walkOf } = geometry
+const { bearing, offset, shapeOf, signOf, walkOf, wayTo } = geometry
 
 /**
  * Drawing margin around the field, in metres: room for the cards that stand over the edge
@@ -72,14 +72,23 @@ export function FieldPlan({
   // Walks between the cards, straight on from where an exercise ends: start → card → … →
   // finish. After a turn about the team walks back beside its way in — a hairpin from the
   // card (drawn over the way in, the walk back looked like a turn before the card). A
-  // national recall card set to the side of its leave card is walked to straight.
+  // national recall card set to the side of its leave card is walked to straight. A national
+  // course is drawn as walked through in animation: the turn about is done on the spot, and the
+  // team gets over beside its way in at a slant (`wayTo`; the author, 2026-10-30 — the hairpin
+  // drawn, the way to the next card looked straight where the team could not walk it so).
   const walks: [Point, Point][] = []
+  const slants: [Point, Point][] = []
   const hairpins: { from: Pose; beside: Point }[] = []
   const targets = [...items.map(({ at }) => at), r.finish]
   let from: Pose = r.start
   targets.forEach((to, i) => {
     const across = walkOf(from, to)?.across ?? 0
-    if (items[i - 1]?.shape.hairpin && Math.abs(across) > 0.05) {
+    const before = items[i - 1]
+    if (before?.shape.hairpin && Math.abs(across) > 0.05 && before.card.ruleset === 'CZ') {
+      const [, join] = wayTo(before.shape, from, to, i === items.length)
+      slants.push([from, join!])
+      walks.push([join!, to])
+    } else if (before?.shape.hairpin && Math.abs(across) > 0.05) {
       const beside = offset(from, from.heading, 0, across)
       hairpins.push({ from, beside })
       walks.push([beside, to])
@@ -130,6 +139,17 @@ export function FieldPlan({
       )}
       {walks.map(([a, b], i) => (
         <Walk key={i} from={a} to={b} />
+      ))}
+      {slants.map(([a, b], i) => (
+        <line
+          key={`s${i}`}
+          x1={a.x}
+          y1={a.y}
+          x2={b.x}
+          y2={b.y}
+          className="stroke-foreground"
+          strokeWidth={0.1}
+        />
       ))}
       {hairpins.map(({ from, beside }, i) => {
         // Bulging on the way the team came in, as wide as it is.

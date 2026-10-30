@@ -505,7 +505,6 @@ export const FOLLOW_UP_PARTS: Exercise[] = [
   F3_322,
 ]
 
-/** How far on the follow-up's card stands from the leave card's, as the plan has it, metres. */
 /** Going on past a jump, the handler is this far past it before turning off, metres. */
 const PAST_THE_JUMP = 1
 

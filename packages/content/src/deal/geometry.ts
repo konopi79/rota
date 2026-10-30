@@ -61,6 +61,22 @@ export type PlacedProp = Point & {
   clear?: number
 }
 
+/**
+ * A jump's uprights stand this far either side of its middle, metres: the bar "1–1,5 m"
+ * wide (řád p. 10), 1.2 m as animated.
+ */
+export const JUMP_HALF_WIDTH = 0.6
+
+/**
+ * What a way walked keeps clear of for a piece of equipment: a jump its middle and both its
+ * uprights, the bar across `heading` — a way 1 m from its middle could pass 0.4 m from an
+ * upright (walked through in animation, R17).
+ */
+export const propPoints = (p: PlacedProp): Point[] =>
+  p.kind === 'jump'
+    ? [p, offset(p, p.heading, 0, -JUMP_HALF_WIDTH), offset(p, p.heading, 0, JUMP_HALF_WIDTH)]
+    : [p]
+
 /** What an exercise sets out on the field and where the team leaves it. */
 export type Shape = {
   props: PlacedProp[]
@@ -261,16 +277,31 @@ export function approachOf(previous: Shape | undefined, next: Card | undefined):
  * as it goes aside, metres — as it is walked through in animation (R16).
  */
 export const HAIRPIN_JOIN = 1.2
+/**
+ * …and at the latest this far before the finish line (`toFinish`; a card's place: 0.5 m) —
+ * walked through in animation, the team joins the line before it straightens up for it, and
+ * over later its dog went along the end of a jump (R17). Before every card too, the courses
+ * of RO3 would not fit as often, and take much longer to deal.
+ */
+export const FINISH_STRAIGHT = 1.5
 
 /**
  * The way to the next card, from where the exercise ends to where `to` is: straight on — or
  * after a turn about over beside the way in first (`HAIRPIN_JOIN`), then straight on.
  */
-export function wayTo(previous: Shape | undefined, from: Pose, to: Point): Point[] {
+export function wayTo(
+  previous: Shape | undefined,
+  from: Pose,
+  to: Point,
+  toFinish = false,
+): Point[] {
   if (!previous?.hairpin) return [from, to]
   const walk = walkOf(from, { ...to, heading: from.heading })
   if (!walk) return [from, to]
-  const join = Math.min(HAIRPIN_JOIN + Math.abs(walk.across), Math.max(0, walk.ahead - 0.5))
+  const join = Math.min(
+    HAIRPIN_JOIN + Math.abs(walk.across),
+    Math.max(0, walk.ahead - (toFinish ? FINISH_STRAIGHT : 0.5)),
+  )
   return [from, offset(from, from.heading, join, walk.across), to]
 }
 

@@ -16,6 +16,7 @@ import { DOG } from '@/lib/figures/dog'
 import {
   ExercisePlayer,
   SPACE_SIDE,
+  conesOf,
   jumpsOf,
   marksOf,
   passesCard,
@@ -27,6 +28,7 @@ import {
 import { EXERCISES, RIGHT_EXERCISES, RIGHT_SIDE_CARDS } from '@/lib/figures/exercises'
 import { HANDLER } from '@/lib/figures/handler'
 import { BAR_HEIGHT, JUMP_WIDTH, UPRIGHT_HEIGHT } from '@/lib/figures/leap'
+import { onField } from '@/lib/figures/team'
 import { cn } from '@/lib/utils'
 
 export type CameraView = 'behind' | 'angle' | 'side' | 'top' | 'front'
@@ -95,12 +97,25 @@ export function CardStand({ code, x, z }: { code: string; x: number; z: number }
  * A mark on the ground: across the dog's way (the two thirds of a recall), 80 cm, or along the
  * team's (3-313's line), 2 m; white.
  */
-function GroundMark({ x, z, lengthwise }: { x: number; z: number; lengthwise?: boolean }) {
+export function GroundMark({
+  x,
+  z,
+  heading = 0,
+  lengthwise,
+}: {
+  x: number
+  z: number
+  /** The way the team goes (a course walked through: its station's). */
+  heading?: number
+  lengthwise?: boolean
+}) {
   return (
-    <mesh position={[x, 0.004, z]} rotation-x={-Math.PI / 2}>
-      <planeGeometry args={lengthwise ? [0.06, 2] : [0.8, 0.06]} />
-      <meshBasicMaterial color="#f4f4f0" />
-    </mesh>
+    <group position={[x, 0.004, z]} rotation-y={heading}>
+      <mesh rotation-x={-Math.PI / 2}>
+        <planeGeometry args={lengthwise ? [0.06, 2] : [0.8, 0.06]} />
+        <meshBasicMaterial color="#f4f4f0" />
+      </mesh>
+    </group>
   )
 }
 
@@ -108,9 +123,9 @@ function GroundMark({ x, z, lengthwise }: { x: number; z: number; lengthwise?: b
  * A bar jump (regulation p. 10): two uprights on feet, no wings, the bar laid loose across at
  * 40 cm — yellow uprights as on the video's field.
  */
-export function Jump({ x, z }: { x: number; z: number }) {
+export function Jump({ x, z, heading = 0 }: { x: number; z: number; heading?: number }) {
   return (
-    <group position={[x, 0, z]}>
+    <group position={[x, 0, z]} rotation-y={heading}>
       {[-1, 1].map((side) => (
         <group key={side} position={[(side * JUMP_WIDTH) / 2, 0, 0]}>
           <mesh position={[0, UPRIGHT_HEIGHT / 2, 0]} castShadow>
@@ -191,8 +206,30 @@ export function Bowl({ x, z }: { x: number; z: number }) {
   )
 }
 
-/** Where the camera looks: the team's place on the field. */
-export type Focus = { x: number; z: number }
+/**
+ * Where the camera looks: the team's place on the field — or between the handler and the dog
+ * when it is away from them (left, sent to a cone, called in), the camera that much further off
+ * (`zoom`) so both are in the picture.
+ */
+export type Focus = { x: number; z: number; zoom?: number }
+
+/** The dog this far from the team and more, the camera starts taking it in, metres. */
+const APART = 1
+/** …over this much further, it is fully between them. */
+const APART_BLEND = 2
+/** The camera moves this much further off for each metre they are apart (beyond `APART`). */
+const ZOOM_PER_METRE = 0.22
+
+/** Where the camera looks with the handler at `team` and the dog at `dog` (field). */
+const focusOn = (team: Focus, dog: { x: number; z: number }): Focus => {
+  const apart = Math.hypot(dog.x - team.x, dog.z - team.z)
+  const w = Math.min(1, Math.max(0, (apart - APART) / APART_BLEND))
+  return {
+    x: team.x + (w * (dog.x - team.x)) / 2,
+    z: team.z + (w * (dog.z - team.z)) / 2,
+    zoom: 1 + w * ZOOM_PER_METRE * Math.max(0, apart - APART),
+  }
+}
 
 /** The cards the page can play, once each (Z-014 has a variant per supplementary card). */
 const CODES = [...new Set(EXERCISES.map((e) => e.code))]
@@ -251,7 +288,8 @@ function ExerciseTeam({
     const place = { x: frame.team.x, z: frame.team.z - station }
     team.current?.position.set(place.x, 0, place.z)
     team.current?.rotation.set(0, frame.team.heading, 0)
-    focusRef.current = place
+    const dogAt = onField(frame.team, frame.dog)
+    focusRef.current = focusOn(place, { x: dogAt.x, z: dogAt.z - station })
     if (frame.caption !== caption.current || frame.flipped !== flipped.current) {
       caption.current = frame.caption
       flipped.current = frame.flipped
@@ -276,7 +314,7 @@ function ExerciseTeam({
       {jumpsOf(exercise).map((j) => (
         <Jump key={`${j.x} ${j.z}`} x={j.x} z={j.z} />
       ))}
-      {exercise.cones?.map((cone, i) => (
+      {conesOf(exercise).map((cone, i) => (
         <Cone key={i} x={cone.x} z={cone.z} colour={CONE_COLOURS[i % 2]!} />
       ))}
       {exercise.bowls?.map((bowl, i) => (
@@ -292,6 +330,8 @@ export function CameraRig({ view, focusRef }: { view: CameraView; focusRef: RefO
   const { camera, gl } = useThree()
   const controlsRef = useRef<OrbitControls>(null)
   const followed = useRef<Focus>({ x: 0, z: 0 })
+  // How far off the camera is now, relative to the view's own distance (a zoom by hand is kept).
+  const zoomed = useRef(1)
 
   useEffect(() => {
     const controls = new OrbitControls(camera, gl.domElement)
@@ -310,8 +350,14 @@ export function CameraRig({ view, focusRef }: { view: CameraView; focusRef: RefO
     const { x, z } = focusRef.current
     const [ox, oy, oz] = VIEWS[view]
     controls.target.set(TARGET[0] + x, TARGET[1], TARGET[2] + z)
-    controls.object.position.set(TARGET[0] + x + ox, TARGET[1] + oy, TARGET[2] + z + oz)
+    const zoom = focusRef.current.zoom ?? 1
+    controls.object.position.set(
+      TARGET[0] + x + ox * zoom,
+      TARGET[1] + oy * zoom,
+      TARGET[2] + z + oz * zoom,
+    )
     followed.current = { x, z }
+    zoomed.current = zoom
     controls.update()
   }, [view, focusRef])
 
@@ -325,6 +371,14 @@ export function CameraRig({ view, focusRef }: { view: CameraView; focusRef: RefO
     controls.target.z += dz
     controls.object.position.x += dx
     controls.object.position.z += dz
+    // Further off or nearer as the dog goes away or comes back, from where the camera is.
+    const zoom = focusRef.current.zoom ?? 1
+    if (Math.abs(zoom - zoomed.current) > 1e-4) {
+      const by = zoom / zoomed.current
+      const offset = controls.object.position.clone().sub(controls.target).multiplyScalar(by)
+      controls.object.position.copy(controls.target).add(offset)
+      zoomed.current = zoom
+    }
     controls.update()
   })
 

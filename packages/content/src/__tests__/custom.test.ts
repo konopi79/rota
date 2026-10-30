@@ -141,8 +141,11 @@ describe('customDeckIssues', () => {
 })
 
 describe('customDeckIssues with the guidelines', () => {
-  test('every dealt national course replayed by hand passes', () => {
-    for (const classId of ['RO-Z', 'RO1', 'RO2', 'RO3', 'RO-V'] as const) {
+  // Class by class, each within its own time: laid-out courses take a while (RO3 ~200 ms
+  // each), and a CI machine is slower.
+  test.each(['RO-Z', 'RO1', 'RO2', 'RO3', 'RO-V'] as const)(
+    '%s: every dealt national course replayed by hand passes',
+    (classId) => {
       for (let seed = 1; seed <= 30; seed++) {
         const dealt = dealDeck({
           classId,
@@ -156,8 +159,9 @@ describe('customDeckIssues with the guidelines', () => {
         const deck = customDeck(classId, dealt.options.startSide, dealt.entries)
         expect(customDeckIssues(deck, { guidelines: true })).toEqual([])
       }
-    }
-  })
+    },
+    60_000,
+  )
 
   test('repeats, required exercises and side changes — not the course size', () => {
     const order = ['1-101', 'Z-006', '1-101'].map((code) => ({ code }))

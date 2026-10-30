@@ -10,6 +10,7 @@ import {
   EDGE,
   MAX_JUMPS,
   PROP_SPACING,
+  propPoints,
   shapeOf,
   d0StandOf,
   D0_BESIDE,
@@ -592,7 +593,11 @@ function validateRound(
   // National courses: the way between two cards passes clear of the other exercises,
   // their cards and equipment (Směrnice §1.1.3: "Dráha v uličce s kartami musí být široká
   // nejméně 1,5 m") — the cards' stands a little further (`STAND_SPACING`).
-  const standsAt = new Set([...signs, ...d0s, ...props].map((s) => s.p))
+  // (A jump: its middle and both uprights.)
+  const equipment = props.flatMap((q) =>
+    propPoints(q.p).map((p) => ({ label: q.owner, owner: q.owner, kind: q.p.kind, p })),
+  )
+  const standsAt = new Set([...signs, ...d0s, ...equipment].map((s) => s.p))
   const aside = (p: Point) => (standsAt.has(p) ? STAND_SPACING : WALK_SPACING)
   if (cls.ruleset === 'CZ') {
     const targets = [
@@ -603,9 +608,9 @@ function validateRound(
       if (!at) return
       const before = shapes[i - 1]
       const from = i ? label(i - 1) : 'start'
-      const aisle = wayTo(before, before?.exit ?? start, at)
+      const aisle = wayTo(before, before?.exit ?? start, at, to === 'finish')
       const near = (p: Point) => distanceToWay(p, aisle) < aside(p) - EPS
-      for (const o of [...spots, ...props.map((q) => ({ label: q.owner, p: q.p }))]) {
+      for (const o of [...spots, ...equipment]) {
         if (o.label !== to && o.label !== from && near(o.p)) {
           errors.push(`${to}: the way to it passes too close to ${o.label}`)
         }
@@ -619,11 +624,11 @@ function validateRound(
     if (!walk) return
     const others = [
       ...spots.filter((s) => s.label !== label(i)),
-      ...props.filter((q) => q.owner !== label(i)),
+      ...equipment.filter((q) => q.owner !== label(i)),
     ]
     for (const o of others) {
       if (distanceToWay(o.p, walk) < aside(o.p) - EPS) {
-        const what = 'label' in o ? o.label : `the ${o.p.kind} of ${o.owner}`
+        const what = 'kind' in o ? `the ${o.kind} of ${o.label}` : o.label
         errors.push(`${label(i)}: walks too close to ${what}`)
       }
     }
