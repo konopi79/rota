@@ -17,6 +17,7 @@ import {
   partOf,
   recallToFront,
   recallToHeel,
+  roundCone,
   runToPlace,
   type Path,
   type PathPoint,
@@ -104,8 +105,9 @@ export type ExerciseStep = { caption: string } & (
   /** (Worked out from `backToDog`.) The handler beside the dog again: it is at heel. */
   | { dogJoins: true }
   /**
-   * The dog sent off to a place (3-324 "vysílá psa ke kuželu"): it gets up from heel, runs
-   * there, stops standing facing the way it ran, and is left there (`dogStays`). Station frame.
+   * The dog sent off to a cone (3-324 "vysílá psa ke kuželu"): it gets up from heel, runs
+   * round it (`roundCone`), stops standing within 1 m of it and is left there (`dogStays`).
+   * Station frame.
    */
   | { sendTo: { x: number; z: number } }
   | { dogPath: DogPath } // the dog goes along a path round the standing handler
@@ -374,8 +376,6 @@ const JUMP_BESIDE = 3
 const STAY_TIME = 0.6
 /** Stopped on its way in (`halfway`), the dog has run this share of the way to the front. */
 export const HALFWAY = 0.45
-/** Sent off to a place (`sendTo`), the dog stops this far short of it, metres. */
-const SEND_SHORT = 0.6
 /**
  * Called while the handler runs on (`dogChases`): how quickly the dog picks up its pace, m/s²;
  * how quickly it turns to its way, 1/s; and within this far of heel it is there, metres.
@@ -604,6 +604,12 @@ export const marksOf = (exercise: Exercise): { x: number; z: number; lengthwise?
   exercise.parts
     ? exercise.parts.flatMap((part) => marksOf(part.exercise).map((s) => inPair(s, part)))
     : (exercise.marks ?? [])
+
+/** The cones (`cones`), in the frame of the exercise's station — a pair's too. */
+export const conesOf = (exercise: Exercise): { x: number; z: number }[] =>
+  exercise.parts
+    ? exercise.parts.flatMap((part) => conesOf(part.exercise).map((s) => inPair(s, part)))
+    : (exercise.cones ?? [])
 
 /** The jumps (`jumps`), in the frame of the exercise's station — a pair's too. */
 export const jumpsOf = (exercise: Exercise): { x: number; z: number; heading?: number }[] =>
@@ -1373,20 +1379,14 @@ export class ExercisePlayer {
       done = !walking && speed < 0.01 && (this.last?.feet.handlerStill ?? true)
     } else if (current && ('dogPath' in current || 'recall' in current || 'sendTo' in current)) {
       if (starting && 'sendTo' in current) {
-        // Off from heel to stop by the place, facing the way it runs.
+        // Off from heel round the cone, stopped by it.
         const station = stationOf(this.exercise)
         const to = inTeam(this.team, {
           x: current.sendTo.x,
           z: station + current.sendTo.z,
           heading: 0,
         })
-        const at = this.dogAt
-        const heading = Math.atan2(to.x - at.x, to.z - at.z)
-        const stop = {
-          x: to.x - SEND_SHORT * Math.sin(heading),
-          z: to.z - SEND_SHORT * Math.cos(heading),
-        }
-        const path = runToPlace(at, stop, heading)
+        const path = roundCone(this.dogAt, to)
         this.dogWay = { path, ends: this.dogPlace }
         this.sentOff = true
         this.recalling = true

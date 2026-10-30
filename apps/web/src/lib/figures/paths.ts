@@ -430,3 +430,33 @@ export const overBar = (
 /** To a place and facing a way there, from `at`: as a dog runs (`runTo`). */
 export const runToPlace = (at: PathPoint, to: { x: number; z: number }, heading: number) =>
   runTo(at, to, heading)
+
+/** Round a cone, the dog's middle this far from it, metres (its paws keep clear of the plate). */
+const ROUND_CONE = 0.6
+/** Out of the bend round it, it runs on this far back towards where it came from, metres. */
+const OFF_THE_CONE = 0.5
+
+/**
+ * Sent round a cone (3-324 "vysílá psa ke kuželu … V okruhu max. 1 m od kužele je pes
+ * zastaven", the author: it runs round it, and is stopped once round, still within 1 m): from
+ * `at` past the cone on its outer side (away from the team's way, x = 0), round behind it and
+ * back past its inner side towards where it came from, stopping ~0.8 m from it.
+ */
+export const roundCone = (at: PathPoint, cone: { x: number; z: number }): Path => {
+  const d = Math.hypot(at.x - cone.x, at.z - cone.z) || 1
+  // From the cone back towards where the dog sets off, and across that, outwards.
+  const u = { x: (at.x - cone.x) / d, z: (at.z - cone.z) / d }
+  const across = { x: u.z, z: -u.x }
+  const p = Math.sign(cone.x) * across.x >= 0 ? across : { x: -across.x, z: -across.z }
+  const point = (angle: number) => ({
+    x: cone.x + ROUND_CONE * (p.x * Math.cos(angle) - u.x * Math.sin(angle)),
+    z: cone.z + ROUND_CONE * (p.z * Math.cos(angle) - u.z * Math.sin(angle)),
+  })
+  const out = point(Math.PI)
+  const back = Math.atan2(u.x, u.z)
+  return joined(
+    runTo(at, point(0), back + Math.PI),
+    pathFromCurve((t) => point(Math.PI * t)),
+    straight(out, { x: out.x + OFF_THE_CONE * u.x, z: out.z + OFF_THE_CONE * u.z }, back),
+  )
+}

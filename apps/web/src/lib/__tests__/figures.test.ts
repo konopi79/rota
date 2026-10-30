@@ -6,6 +6,7 @@ import { ANIMATED_CARDS, animationFor } from '../figures/animated'
 import { DOG, DOG_POSTURES, type DogPosture } from '../figures/dog'
 import {
   ExercisePlayer,
+  conesOf,
   jumpsOf,
   stationOf,
   standsOf,
@@ -580,7 +581,7 @@ describe('every exercise', () => {
         }
       }
       // …nor knocks over a cone (the bodies' middles, a body's half width off it).
-      for (const cone of [...(exercise.cones ?? []), ...(exercise.bowls ?? [])]) {
+      for (const cone of [...conesOf(exercise), ...(exercise.bowls ?? [])]) {
         const at = { x: cone.x, z: station + cone.z }
         expect(Math.hypot(handler.x - at.x, handler.z - at.z)).toBeGreaterThan(0.3)
         expect(Math.hypot(dog.x - at.x, dog.z - at.z)).toBeGreaterThan(0.25)
