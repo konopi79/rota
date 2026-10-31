@@ -200,8 +200,15 @@ export const R1_116: Exercise = {
   stopAt: ROOM_AROUND,
   steps: [
     { walk: 3.5, caption: 'approach' },
-    { turn: -180, radius: 0, dogRound: 'aroundFromHeel', caption: 'aboutTurnDogBehind' },
-    { turn: -180, radius: 0, dogRound: 'aroundFromHeel', caption: 'aboutTurnAgain' },
+    // As Z-010, to the dog's side ("psovod vlevo, pes vpravo"; `bySide`).
+    {
+      turn: -180,
+      radius: 0,
+      dogRound: 'aroundFromHeel',
+      bySide: true,
+      caption: 'aboutTurnDogBehind',
+    },
+    { turn: -180, radius: 0, dogRound: 'aroundFromHeel', bySide: true, caption: 'aboutTurnAgain' },
     leave(),
   ],
 }

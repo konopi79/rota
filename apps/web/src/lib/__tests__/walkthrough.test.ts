@@ -163,7 +163,12 @@ describe('a course walked through in animation (R16, R17)', () => {
   })
 
   test('courses with a card not animated on the side of the dog cannot be walked through', () => {
-    // RO-V from a start "R": its first card is not animated with the dog on the right yet.
-    expect(walkable('RO-V', 30)).not.toContain(0)
+    const { deck } = courseOf('RO3', 1)
+    expect(canWalkThrough(deck)).toBe(true)
+    // 3-324 is not animated with the dog on the right (only a training deck deals it there).
+    const entries = deck.entries.map((e, i) =>
+      i ? e : { ...e, code: '3-324', side: 'right' as const },
+    )
+    expect(canWalkThrough({ ...deck, entries })).toBe(false)
   })
 })

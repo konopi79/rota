@@ -379,14 +379,19 @@ describe('national field layout (R14)', () => {
     expect(25 - run.exit.y + approachOf(run, undefined).min).toBeGreaterThanOrEqual(8)
   })
 
-  test('national cards keep their layout with the dog on the right', () => {
+  test('national cards keep their layout with the dog on the right — a jump goes to its side', () => {
     const at = { x: 10, y: 20, heading: 0, turn: 90 }
-    for (const card of czExercises) {
+    const jumps = (card: Card) => card.geometry?.props?.some((p) => p.kind === 'jump')
+    for (const card of czExercises.filter((c) => !jumps(c))) {
       expect([card.code, shapeOf(card, at, 'right', false)]).toEqual([
         card.code,
         shapeOf(card, at, 'left', false),
       ])
     }
+    const jump = (side: 'left' | 'right') => shapeOf(cz('2-217'), at, side, false).props[0]!
+    // Heading up the plan: left is −x, right +x.
+    expect(jump('left').x).toBeCloseTo(9)
+    expect(jump('right').x).toBeCloseTo(11)
   })
 
   test('the card left before the team, or before it for a change of direction (§5.3.1)', () => {

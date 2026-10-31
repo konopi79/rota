@@ -20,7 +20,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'course-walkthrough-leave'
+export const LATEST_FEATURE_ID = 'animations-right'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -64,7 +64,7 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
       {
         id: 'animations-right',
         title: 'Animace se psem vpravo',
-        desc: 'Všechny karty RO-Z a výměny strany (1-123 až 1-125, 2-232, 3-325 až 3-327) si v animaci pustíš i se psem u pravé nohy – jako po startu „R“. Obraty zůstávají, jak je karta říká, takže pes je najednou uvnitř oblouku; doplňková karta D0 ho vrátí k levé noze.',
+        desc: 'Všechny národní karty si v animaci pustíš i se psem u pravé nohy – jako po startu „R“ nebo uprostřed parkuru RO2 a RO3. Obraty zůstávají, jak je karta říká, takže pes je najednou uvnitř oblouku, překážka stojí na jeho straně a doplňková karta D0 ho vrátí k levé noze.',
       },
     ],
   },
@@ -104,7 +104,7 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
       {
         id: 'course-walkthrough-leave',
         title: 'Parkur v animaci i pro RO2, RO3 a RO-V',
-        desc: 'V animaci projdeš i parkur vyšších tříd: pes zůstane odložený u své karty, psovod dojde k další a odtud ho přivolá nebo se k němu vrátí, překážky a kužel stojí na ploše podle plánku. Zatím jen parkur, kde pes nejde vpravo u karty, kterou animace se psem vpravo ještě neumí – to se týká hlavně RO3.',
+        desc: 'V animaci projdeš i parkur vyšších tříd: pes zůstane odložený u své karty, psovod dojde k další a odtud ho přivolá nebo se k němu vrátí, překážky a kužel stojí na ploše podle plánku.',
       },
       {
         id: 'plan-zoom-print',

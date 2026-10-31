@@ -17,6 +17,7 @@ import {
   partOf,
   recallToFront,
   recallToHeel,
+  PAST_THE_CARD,
   roundCone,
   runToPlace,
   type Path,
@@ -66,6 +67,8 @@ export type ExerciseStep = { caption: string } & (
        * the handler walking on all the while.
        */
       dogJumps?: number
+      /** …the dog sent only once the team has walked this far on (metres; 3-313 on the right). */
+      jumpsAfter?: number
       /**
        * The dog left behind is called while the handler runs on (3-323 "za běhu jej přivolává"):
        * it gets up and gallops after them, slowing to their pace as it comes up into heel —
@@ -370,8 +373,11 @@ const RECALL_WALK = 0.7
 const RECALL_BRAKING = 4
 /** Back beside the dog left, the handler stands this much further from it than at heel, metres. */
 const BESIDE_DOG_ROOM = 0.04
-/** A jump the dog is sent over stands at most this far to the side of the team's way, metres. */
-const JUMP_BESIDE = 3
+/**
+ * A jump the dog is sent over stands at most this far to the side of the team's way, metres
+ * (3-313: 2.4 m) — another card's, 3 m off, the dog went over instead.
+ */
+const JUMP_BESIDE = 2.6
 /** The handler's command to stay, seconds. */
 const STAY_TIME = 0.6
 /** Stopped on its way in (`halfway`), the dog has run this share of the way to the front. */
@@ -909,6 +915,8 @@ export class ExercisePlayer {
    * far the team had walked to how far it will have walked as the dog comes back into heel.
    */
   private jumpRun: { route: Path; from: number; over: number; pace: number[] } | null = null
+  /** The step whose jump the dog has been sent over (`jumpsAfter`: not at once). */
+  private jumpStep = -1
   /**
    * Called while the handler runs on (`dogChases`): where the dog's way has got to on the field
    * (its body follows) and how fast it goes.
@@ -1112,11 +1120,14 @@ export class ExercisePlayer {
   /** The jump ahead of a team at `team`, its bar across the team's way. */
   private barAheadOf(team: Pose): Bar | undefined {
     // Across the team's way and beside it — not another card's jump further off on a course.
-    return this.bars
-      .filter((b) => Math.abs(Math.cos(b.heading - team.heading)) > 0.9)
-      .map((b) => ({ ...b, heading: team.heading }))
-      .filter((b) => alongBar(b, team) < 0 && Math.abs(acrossBar(b, team)) < JUMP_BESIDE)
-      .sort((a, b) => alongBar(b, team) - alongBar(a, team))[0]
+    return (
+      this.bars
+        .filter((b) => Math.abs(Math.cos(b.heading - team.heading)) > 0.9)
+        .map((b) => ({ ...b, heading: team.heading }))
+        .filter((b) => alongBar(b, team) < 0 && Math.abs(acrossBar(b, team)) < JUMP_BESIDE)
+        // The one nearest the team's way.
+        .sort((a, b) => Math.abs(acrossBar(a, team)) - Math.abs(acrossBar(b, team)))[0]
+    )
   }
 
   /**
@@ -1421,13 +1432,24 @@ export class ExercisePlayer {
         // Called, from where it was left: it gets up there first, then runs in.
         const at = inTeam(this.team, this.left!)
         const kind = current.recall
+        // With the dog on the right (`flipped`) its ways in are the mirror image: into heel at
+        // the right leg, up the handler's right side from behind.
+        const own = (from: PathPoint) =>
+          kind === 'heel'
+            ? recallToHeel(from)
+            : recallToFront(from, this.flipped ? PAST_THE_CARD : undefined)
         const rest = (from: PathPoint) =>
-          kind === 'heel' ? recallToHeel(from) : recallToFront(from)
+          this.flipped
+            ? mirrored(own({ x: -from.x, z: from.z, heading: -from.heading }))
+            : own(from)
         // A jump between the dog and the handler: it comes over it (2-218, 3-314).
         const bar = this.barBetween(this.left!, this.team)
         const front = bar ? overBar(at, inTeam(this.team, bar), rest) : rest(at)
         const path = kind === 'halfway' ? partOf(front, front.length * HALFWAY) : front
-        this.dogWay = { path, ends: kind === 'heel' ? 'left' : 'front' }
+        this.dogWay = {
+          path,
+          ends: kind === 'heel' ? (this.flipped ? 'right' : 'left') : 'front',
+        }
         this.stoppedHalfway = current.recall === 'halfway'
         this.leftPosture = 'stand'
         this.recalling = true
@@ -1783,7 +1805,14 @@ export class ExercisePlayer {
     }
 
     // Over a jump while the team walks on: the dog's way, as far along as the team has walked.
-    if (current && 'walk' in current && current.dogJumps && starting) {
+    if (
+      current &&
+      'walk' in current &&
+      current.dogJumps &&
+      this.jumpStep !== this.index &&
+      travelled - this.stepStart >= (current.jumpsAfter ?? 0)
+    ) {
+      this.jumpStep = this.index
       const from = onField(this.team, this.dogAt)
       const bar = this.barAheadOf(this.team)!
       const end = onField(forward(this.team, current.dogJumps), PLACES[this.dogPlace])

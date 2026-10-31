@@ -125,20 +125,16 @@ export const ANIMATED_CARDS: readonly string[] = [
 ]
 
 /**
- * The cards played with the dog at the handler's right leg as well (plan R15): every RO-Z
- * card — after a start "R" the dog stays on the right until a D0 card brings it to the left
- * leg — and the cards that change the side, the other way round.
+ * The cards played with the dog at the handler's right leg as well (plan R15, R17): after a
+ * start "R" the dog stays on the right until a card changes the side or a D0 card brings it
+ * to the left leg, and RO2 / RO3 courses go right mid-course — every animated card but one.
  */
-export const RIGHT_SIDE_CARDS: readonly string[] = [
-  ...ANIMATED_CARDS.filter((code) => code.startsWith('Z-')),
-  '1-123',
-  '1-124',
-  '1-125',
-  '2-232',
-  '3-325',
-  '3-326',
-  '3-327',
-]
+export const RIGHT_SIDE_CARDS: readonly string[] = ANIMATED_CARDS.filter(
+  // Not on the right yet: called back from its cone (left of the team, as from the left) into
+  // the right heel, the dog's paws slipped turning behind the handler. Never dealt on the
+  // right in a course (no leave card there, not an RO-V card) — only a training deck.
+  (code) => code !== '3-324',
+)
 
 /**
  * Whether a deck can be walked through in animation (plan R16): laid out on one field, every

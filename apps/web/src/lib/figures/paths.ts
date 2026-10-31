@@ -358,11 +358,11 @@ const runTo = (at: PathPoint, to: { x: number; z: number }, heading: number): Pa
  * "bez otočení … Pes musí přijít do předsednutí z té strany, na které se nacházel") it runs up
  * past their left side and turns in ahead of them, round into the front.
  */
-export const recallToFront = (at: PathPoint): Path => {
+export const recallToFront = (at: PathPoint, past = PAST_LEFT): Path => {
   if (at.z > 0) return runTo(at, { x: 0, z: FRONT }, Math.PI)
-  const r = PAST_LEFT / 2
+  const r = past / 2
   return joined(
-    runTo(at, { x: PAST_LEFT, z: FRONT + 0.2 }, 0),
+    runTo(at, { x: past, z: FRONT + 0.2 }, 0),
     // Round towards the handler, from running on up their left side to facing them.
     pathFromCurve((u) => {
       const angle = Math.PI * u
@@ -377,6 +377,15 @@ export const recallToFront = (at: PathPoint): Path => {
  * about behind them, towards them, into heel: down the left side this far out (metres), round
  * a half circle of this radius whose bottom is this far behind the handler.
  */
+/**
+ * Up the side the card stands on (the dog on the right, 3-319): between the handler and the
+ * card, this far out, metres — further out it ran through the card (the handler kept in their
+ * space), outside it and its D0 card it would go a long way round.
+ */
+export const PAST_THE_CARD = 0.55
+
+/** Nearer its place at heel than this, the dog turns on the spot and steps over, metres. */
+const BESIDE_HEEL = 0.6
 const PAST_LEFT = HEEL_PLACE.x + 2 * 0.165
 const ABOUT_RADIUS = 0.165
 const ABOUT_BEHIND = -0.5
@@ -387,6 +396,10 @@ const ABOUT_BEHIND = -0.5
  * behind or beside them (2-215 "bez otočení", 2-230) it comes up into heel, facing on.
  */
 export const recallToHeel = (at: PathPoint): Path => {
+  // From a step or two beside it (2-230 / 2-231): round on the spot to face on, then over
+  // into heel — running round into it from behind, it turned away first (the author).
+  if (Math.hypot(at.x - HEEL_PLACE.x, at.z - HEEL_PLACE.z) < BESIDE_HEEL)
+    return joined(spin(at, at.heading, 0), straight(at, HEEL_PLACE, 0))
   if (at.z <= FRONT) return runTo(at, HEEL_PLACE, 0)
   const centre = { x: PAST_LEFT - ABOUT_RADIUS, z: ABOUT_BEHIND }
   return joined(

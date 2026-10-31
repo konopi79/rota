@@ -158,8 +158,17 @@ type Placed = Pick<Card, 'ruleset' | 'placement' | 'geometry'>
  * The way a card's sideways distances point: FCI towards the dog's side, national always
  * to the left — national cards keep their layout with the dog on the right.
  */
-const toDogOf = (card: Pick<Card, 'ruleset'>, side: Side) =>
-  card.ruleset === 'FCI' && side === 'right' ? 1 : -1
+/**
+ * Which way the dog's side is (1 right, −1 left) for an exercise's geometry: FCI's follows the
+ * dog, national geometry is the card's own — a turn to the right stays one with the dog on the
+ * right — but for a jump, which stands on the dog's side: the dog goes over it beside the
+ * handler (walked through in animation, R17).
+ */
+const toDogOf = (card: Pick<Card, 'ruleset' | 'geometry'>, side: Side) =>
+  (card.ruleset === 'FCI' || !!card.geometry?.props?.some((p) => p.kind === 'jump')) &&
+  side === 'right'
+    ? 1
+    : -1
 
 /**
  * Where the card itself stands. FCI §4.3: "Pokud se směr trasy nemění, provádí se cvik na
