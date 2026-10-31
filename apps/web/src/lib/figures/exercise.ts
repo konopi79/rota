@@ -17,6 +17,7 @@ import {
   partOf,
   recallToFront,
   recallToHeel,
+  PAST_THE_CARD,
   roundCone,
   runToPlace,
   type Path,
@@ -1434,7 +1435,9 @@ export class ExercisePlayer {
         // With the dog on the right (`flipped`) its ways in are the mirror image: into heel at
         // the right leg, up the handler's right side from behind.
         const own = (from: PathPoint) =>
-          kind === 'heel' ? recallToHeel(from) : recallToFront(from)
+          kind === 'heel'
+            ? recallToHeel(from)
+            : recallToFront(from, this.flipped ? PAST_THE_CARD : undefined)
         const rest = (from: PathPoint) =>
           this.flipped
             ? mirrored(own({ x: -from.x, z: from.z, heading: -from.heading }))

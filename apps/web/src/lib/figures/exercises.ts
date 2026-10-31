@@ -88,8 +88,6 @@ const A_STEP_LATER = 0.4
 const MORE_ROOM: Record<string, { x: number; z: number }> = {
   '2-219': { x: 0.3, z: -1.2 },
   '2-229': { x: 0.35, z: 0 },
-  // Called from behind, the dog comes up the handler's right side — past the card.
-  '3-319': { x: 0.4, z: 0 },
 }
 const STEP_LATER = new Set(['Z-018', 'Z-026', '1-123', '3-327'])
 

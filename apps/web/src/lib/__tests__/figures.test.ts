@@ -11,6 +11,7 @@ import {
   stationOf,
   standsOf,
   exerciseSpace,
+  spacesOf,
   SPACE_SIDE,
   type Exercise,
   type ExerciseFrame,
@@ -545,6 +546,32 @@ describe('every exercise', () => {
         for (const q of [foot, toe])
           for (const side of [-1, 1]) {
             // The shoe's edges, 11 cm wide.
+            const x = q.x + side * 0.055 * Math.cos(foot.yaw) - space.x
+            const z = q.z - station - space.z
+            expect(Math.abs(x)).toBeLessThanOrEqual(SPACE_SIDE / 2)
+            expect(Math.abs(z)).toBeLessThanOrEqual(SPACE_SIDE / 2)
+          }
+      }
+    },
+  )
+
+  // …and at a leave card's follow-up, once the handler stands at its card (3-319 from the right
+  // stood outside it).
+  test.each(PLAYED.filter(([, e]) => e.parts))(
+    '%s: at the follow-up, the handler has both shoes in its exercise space',
+    (_, exercise) => {
+      const followUp = exercise.parts![1]!.exercise
+      const arriving = followUp.steps.findIndex((s) => !('walk' in s))
+      const from = exercise.steps.length - (followUp.steps.length - arriving)
+      const frames = playAll(exercise)
+      // As the handler has stopped at its card (the step after the stop begins).
+      const start = frames.find((f) => f.scriptStep > from)!
+      const station = stationOf(exercise)
+      const space = spacesOf(exercise)[1]!
+      for (const foot of start.feet.handler) {
+        const toe = { x: foot.x + 0.26 * Math.sin(foot.yaw), z: foot.z + 0.26 * Math.cos(foot.yaw) }
+        for (const q of [foot, toe])
+          for (const side of [-1, 1]) {
             const x = q.x + side * 0.055 * Math.cos(foot.yaw) - space.x
             const z = q.z - station - space.z
             expect(Math.abs(x)).toBeLessThanOrEqual(SPACE_SIDE / 2)
