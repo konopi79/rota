@@ -46,7 +46,7 @@
     "quiz": "Kvíz – poznáš karty?",
     "speak": "Číst karty nahlas",
     "cndc": "Více karet na jednom stanovišti (CNDC)",
-    "cndcHint": "Některé karty stojí vedle sebe a cviky z nich uděláš na jednom stanovišti za sebou. Zatím bez plánku a animace průchodu. Aplikace skládá raději přísněji – jen kombinace, které pravidla jistě dovolují.",
+    "cndcHint": "CNDC: některé karty stojí vedle sebe a cviky z nich uděláš na jednom stanovišti za sebou. Zatím bez plánku a animace průchodu; aplikace skládá jen kombinace, které pravidla jistě dovolují.",
     "custom": "Vlastní parkur",
     "field": "Plocha",
     "fieldHint": "Na plochu této velikosti se karty rozmístí v plánku parkuru. Řád žádá aspoň 20 × 20 m; na větší se častěji vejdou odložení, slalomy a skoky – jako na parkurech rozhodčích.",

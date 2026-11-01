@@ -257,18 +257,15 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
       )}
 
       {cls.course.cndc && (
-        <div className="space-y-1">
-          <div className="flex items-center justify-between gap-4">
-            <Label htmlFor="cndc" className="text-base">
-              {t('setup.cndc')}
-            </Label>
-            <Switch
-              id="cndc"
-              checked={setup.cndc}
-              onCheckedChange={(checked) => update({ cndc: checked })}
-            />
-          </div>
-          <p className="text-muted-foreground text-sm">{t('setup.cndcHint')}</p>
+        <div className="flex items-center justify-between gap-4">
+          <Label htmlFor="cndc" className="text-base">
+            {t('setup.cndc')}*
+          </Label>
+          <Switch
+            id="cndc"
+            checked={setup.cndc}
+            onCheckedChange={(checked) => update({ cndc: checked })}
+          />
         </div>
       )}
 
@@ -325,6 +322,8 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
       <FeedbackLink className="text-muted-foreground self-center text-sm underline underline-offset-4">
         {t('feedback.link')}
       </FeedbackLink>
+      {/* The note to the CNDC switch, out of the way at the bottom. */}
+      {cls.course.cndc && <p className="text-muted-foreground text-xs">* {t('setup.cndcHint')}</p>}
     </main>
   )
 }
