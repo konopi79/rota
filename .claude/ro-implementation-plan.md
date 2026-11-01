@@ -41,7 +41,7 @@ committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 | R15 | Animations: the dog on the right                               | ✅ 2026-10-28 |
 | R16 | Course walked through in animation (RO-Z, RO1)                 | ✅ 2026-10-29 |
 | R17 | Animations: leave, recall, jumps + walkthroughs RO2, RO3, RO-V | ✅ 2026-10-30 |
-| R18 | CNDC (several cards at one station)                            | ⏳ answers    |
+| R18 | CNDC (several cards at one station)                            | ⏳            |
 | R19 | FCI animations + walkthrough                                   | ⏳            |
 
 > **Order:** R3 is built before R2 so the national classes are usable end to end first;
@@ -714,7 +714,9 @@ mirrored while the dog is (`figures.captionRight`).
 
 ### R18 — CNDC
 
-- [ ] Waiting for the answers to the six questions posted on 2026-10-20 — then design (grouping over a valid deck), plan and walkthrough
+- [x] Grouping over a dealt deck, stricter than the rules (2026-11-01, the author: "lepší mít přísnější verzi než žádnou … povolit můžeme vždycky"): what is still open is answered the safe way, so a group dealt is always allowed and some allowed ones are never dealt (`deal/cndc.ts`). From the regulation and the guidelines: up to three cards (řád p. 16), RO1 and RO-V at most three of two (Směrnice §1.1.1), RO-Z none; a group with a change of direction starts with one (§1.1.6 — as on every real plan seen, 302 + D0c + 031, 120 + 317). From real RO3 plans (2024–2025, ROPLAN and walked by the author): a D0 exercise anywhere in a group, a leave card only last, a follow-up only first, every card counted. Safe-side choices: no equipment, pace or long exercises (1-107, 2-227, 3-323) in a group; pairs that "představují cvik z vyšší třídy" derived from the cards — a static exercise and a turn while walking ("Stop / Stůj – obrat – vpřed", 105/112 ≙ 205 the guidelines' example), two turns from a stop, a position after a static exercise (`forbiddenPair`), to be confirmed; RO2 two to four groups, RO3 three to six (real plans: 4–8). The same deck with or without (groups drawn from a stream of their own), validated (`cndcIssues`); the setup's switch (`cndc=1`), a screen per station in the deck ("7–8 / 24", the cards under one another or side by side), the course's groups marked, read aloud ("Na stejném stanovišti karta …"); after a dynamic exercise the next card of a station comes "po kroku vpřed", one more step at most (řád p. 16 — the author read CNDC as static first, the regulation allows both). Not laid out yet; feature item `cndc`
+- [ ] The answers still open (which cards never stand in a CNDC, the higher-class pairs) — then allow what the safe side leaves out
+- [ ] CNDC on the field plan (one station, +1 m after dynamic exercises, Směrnice §1.1.2) and walked through; in the hand-made course editor
 
 ### R19 — FCI animations + walkthrough
 

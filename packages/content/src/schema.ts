@@ -297,6 +297,18 @@ export const roClassSchema = z
         fields: z.array(fieldSchema).min(1).optional(),
         /** Jumps on one field at most (FCI §3.5: "celkem dvě překážky"). */
         maxJumps: z.number().int().positive().optional(),
+        /**
+         * Several cards at one station, a CNDC (plan R18, `deal/cndc.ts`): how many groups
+         * a deck dealt with them gets (least, most) and how many cards a group has at most.
+         * Missing: none (RO-Z, FCI).
+         */
+        cndc: z
+          .object({
+            groups: z.tuple([z.number().int().positive(), z.number().int().positive()]),
+            cards: z.union([z.literal(2), z.literal(3)]),
+          })
+          .strict()
+          .optional(),
       })
       .strict(),
     /** Every exercise card of the class, lower classes included where cumulative. */

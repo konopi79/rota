@@ -65,6 +65,14 @@ describe('deck URL', () => {
     expect(encodeDeckParams(params)).not.toContain('parkur')
   })
 
+  test('marks a deck with several cards at one station (CNDC), others stay without', () => {
+    const grouped = { ...params, options: { ...params.options, cndc: true } }
+    const encoded = encodeDeckParams(grouped)
+    expect(encoded).toEndWith('&cndc=1')
+    expect(decodeDeckParams(new URLSearchParams(encoded))).toEqual(grouped)
+    expect(encodeDeckParams(params)).not.toContain('cndc')
+  })
+
   test('carries an FCI field other than the default; 20 × 20 m stays out of the URL', () => {
     const fci = { ...params, options: { ...params.options, classId: 'FCI-ROB' as const } }
     const large = { ...fci, options: { ...fci.options, field: { width: 20, height: 30 } } }

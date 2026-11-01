@@ -86,6 +86,8 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
   // FCI: the field the deck is laid out on — the class's first unless another one is chosen.
   const fields = cls.course.fields ?? []
   const field = fields.find((f) => setup.field && fieldKey(f) === fieldKey(setup.field))
+  // Several cards at one station, where the class has them (CNDC, plan R18).
+  const cndc = !!cls.course.cndc && setup.cndc
 
   const start = () => {
     saveSetup(classId, setup)
@@ -99,6 +101,7 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
         startSide,
         seed: randomSeed(),
         ...(field && { field }),
+        ...(cndc && { cndc: true }),
       },
       showDescription: setup.showDescription,
       speak: setup.speak,
@@ -122,6 +125,7 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
         seed: randomSeed(),
         competition: true,
         ...(field && { field }),
+        ...(cndc && { cndc: true }),
       },
       showDescription: setup.showDescription,
       speak: setup.speak,
@@ -252,6 +256,19 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
         </Field>
       )}
 
+      {cls.course.cndc && (
+        <div className="flex items-center justify-between gap-4">
+          <Label htmlFor="cndc" className="text-base">
+            {t('setup.cndc')}*
+          </Label>
+          <Switch
+            id="cndc"
+            checked={setup.cndc}
+            onCheckedChange={(checked) => update({ cndc: checked })}
+          />
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-4">
         <Label htmlFor="show-description" className="text-base">
           {t('setup.showDescription')}
@@ -305,6 +322,8 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
       <FeedbackLink className="text-muted-foreground self-center text-sm underline underline-offset-4">
         {t('feedback.link')}
       </FeedbackLink>
+      {/* The note to the CNDC switch, out of the way at the bottom. */}
+      {cls.course.cndc && <p className="text-muted-foreground text-xs">* {t('setup.cndcHint')}</p>}
     </main>
   )
 }

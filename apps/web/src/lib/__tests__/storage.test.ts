@@ -39,6 +39,7 @@ describe('setup storage', () => {
       startSide: 'left',
       showDescription: false,
       speak: false,
+      cndc: false,
     })
   })
 

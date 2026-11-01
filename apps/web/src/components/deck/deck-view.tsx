@@ -5,6 +5,8 @@ import {
   getCard,
   getClass,
   randomSeed,
+  stationsOf,
+  stepForwardAfter,
   type Card,
   type DeckEntry,
   type RoClass,
@@ -61,8 +63,21 @@ function Deck({ params, cls }: { params: DeckParams; cls: RoClass }) {
   const custom = params.order !== undefined
   const openInEditor = useOpenInEditor(cls)
   const total = deck.entries.length
-  const position = Math.min(params.position, total + 1)
+  // Several cards at one station (CNDC) come up together: a screen per station, the
+  // position at its first card.
+  const stations = useMemo(() => stationsOf(deck.entries), [deck])
+  const stationAt = useCallback(
+    (pos: number) =>
+      pos >= 1 && pos <= total
+        ? stations.find(([from, to]) => pos - 1 >= from && pos - 1 <= to)
+        : undefined,
+    [stations, total],
+  )
+  const asked = Math.min(params.position, total + 1)
+  const station = stationAt(asked)
+  const position = station ? station[0] + 1 : asked
   const entry = position >= 1 && position <= total ? deck.entries[position - 1] : undefined
+  const together = station ? deck.entries.slice(station[0], station[1] + 1) : []
 
   const canSpeak = useSyncExternalStore(noSubscribe, speechSupported, () => false)
   const [showPlan, setShowPlan] = useState(false)
@@ -83,6 +98,13 @@ function Deck({ params, cls }: { params: DeckParams; cls: RoClass }) {
       if (!at) return { kind: 'finish', side: finishSide(deck) }
       const card = getCard(cls.ruleset, at.code) as Card
       const supplementary = at.supplementary ? getCard(cls.ruleset, at.supplementary) : undefined
+      const [, to] = stationAt(pos) ?? [pos - 1, pos - 1]
+      const following = deck.entries.slice(pos, to + 1).map((e, i) => ({
+        number: pos + 1 + i,
+        card: getCard(cls.ruleset, e.code) as Card,
+        ...(e.supplementary && { supplementary: getCard(cls.ruleset, e.supplementary) }),
+        ...(stepForwardAfter(cls, deck.entries[pos - 1 + i] as DeckEntry) && { stepFirst: true }),
+      }))
       return {
         kind: 'card',
         number: pos,
@@ -90,9 +112,10 @@ function Deck({ params, cls }: { params: DeckParams; cls: RoClass }) {
         card,
         supplementary,
         previous: deck.entries[pos - 2],
+        ...(following.length && { following }),
       }
     },
-    [deck, cls.ruleset, params.options.startSide],
+    [deck, cls, params.options.startSide, stationAt],
   )
 
   // Position changes replace the URL instead of pushing: the back button should leave the
@@ -110,8 +133,15 @@ function Deck({ params, cls }: { params: DeckParams; cls: RoClass }) {
     },
     [navigate, params, total, position, screenAt, t],
   )
-  const next = useCallback(() => go(position + 1), [go, position])
-  const prev = useCallback(() => go(position - 1), [go, position])
+  // On by a station, back to the start of the one before.
+  const next = useCallback(
+    () => go(station ? station[1] + 2 : position + 1),
+    [go, position, station],
+  )
+  const prev = useCallback(() => {
+    const before = position > total ? total : position - 1
+    go(before >= 1 ? (stationAt(before)?.[0] ?? before - 1) + 1 : before)
+  }, [go, position, total, stationAt])
   const reshuffle = () => {
     navigate({ ...params, options: { ...params.options, seed: randomSeed() }, position: 0 })
     if (params.speak) speak(announcement({ kind: 'start', startSide: params.options.startSide }, t))
@@ -136,13 +166,15 @@ function Deck({ params, cls }: { params: DeckParams; cls: RoClass }) {
 
   // Warm the cache for the next screen so the card is there the moment it is needed.
   useEffect(() => {
-    const upcoming = deck.entries[position]
-    if (!upcoming) return
-    for (const code of [upcoming.code, upcoming.supplementary]) {
-      const card = code ? getCard(cls.ruleset, code) : undefined
-      if (card) new Image().src = cardImageUrl(card)
-    }
-  }, [deck, position, cls.ruleset])
+    const from = station ? station[1] + 1 : position
+    const upcoming = stationAt(from + 1)
+    const entries = upcoming ? deck.entries.slice(upcoming[0], upcoming[1] + 1) : []
+    for (const e of entries)
+      for (const code of [e.code, e.supplementary]) {
+        const card = code ? getCard(cls.ruleset, code) : undefined
+        if (card) new Image().src = cardImageUrl(card)
+      }
+  }, [deck, position, station, stationAt, cls.ruleset])
 
   const pointer = useRef<{ x: number; y: number } | null>(null)
   const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -178,7 +210,13 @@ function Deck({ params, cls }: { params: DeckParams; cls: RoClass }) {
         </Button>
         {entry && (
           <span className="text-lg font-semibold tabular-nums">
-            {t('deck.progress', { current: position, total })}
+            {together.length > 1
+              ? t('deck.progressStation', {
+                  from: position,
+                  to: position + together.length - 1,
+                  total,
+                })
+              : t('deck.progress', { current: position, total })}
           </span>
         )}
         <div className="ml-auto flex items-center gap-1.5">
@@ -224,12 +262,22 @@ function Deck({ params, cls }: { params: DeckParams; cls: RoClass }) {
         onPointerUp={onPointerUp}
       >
         {position === 0 && <StartScreen cls={cls} params={params} dealt={total} />}
-        {entry && <EntryCards cls={cls} entry={entry} />}
+        {entry && together.length > 1 ? (
+          <StationCards cls={cls} entries={together} first={position} />
+        ) : (
+          entry && <EntryCards cls={cls} entry={entry} />
+        )}
         {roundStarts && <p className="text-center font-medium">{t('deck.newRound')}</p>}
         {position > total && <FinishScreen cls={cls} count={total} />}
       </div>
 
-      {entry && params.showDescription && <Description cls={cls} entry={entry} />}
+      {entry && params.showDescription && (
+        <section className="max-h-[35dvh] space-y-4 overflow-y-auto border-t px-4 py-3 text-sm">
+          {(together.length > 1 ? together : [entry]).map((e, i) => (
+            <Description key={i} cls={cls} entry={e} />
+          ))}
+        </section>
+      )}
 
       {showPlan && deck.layout && (
         <div
@@ -326,6 +374,40 @@ function EntryCards({ cls, entry }: { cls: RoClass; entry: DeckEntry }) {
   )
 }
 
+/**
+ * The cards of one station (CNDC), done one after the other — "zleva doprava nebo shora dolů"
+ * (řád p. 16): under one another upright, side by side across, each with its number.
+ */
+function StationCards({
+  cls,
+  entries,
+  first,
+}: {
+  cls: RoClass
+  entries: DeckEntry[]
+  first: number
+}) {
+  const { t } = useTranslation()
+  return (
+    <div className="flex h-full w-full flex-col gap-2 landscape:flex-row">
+      {entries.map((entry, i) => (
+        <div key={i} className="flex min-h-0 min-w-0 flex-1 flex-col items-center gap-1">
+          <span className="text-sm font-semibold tabular-nums">
+            {first + i}
+            {/* After a dynamic exercise the next one starts with a step forward (řád p. 16). */}
+            {i > 0 && stepForwardAfter(cls, entries[i - 1] as DeckEntry) && (
+              <span className="text-muted-foreground font-normal"> · {t('deck.stepFirst')}</span>
+            )}
+          </span>
+          <div className="min-h-0 w-full flex-1">
+            <EntryCards cls={cls} entry={entry} />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function StartScreen({ cls, params, dealt }: { cls: RoClass; params: DeckParams; dealt: number }) {
   const { t } = useTranslation()
   const start = getCard(cls.ruleset, 'START')
@@ -370,7 +452,7 @@ function Description({ cls, entry }: { cls: RoClass; entry: DeckEntry }) {
   const card = requireCard(cls, entry.code)
   const supplementary = entry.supplementary ? requireCard(cls, entry.supplementary) : undefined
   return (
-    <section className="max-h-[35dvh] space-y-2 overflow-y-auto border-t px-4 py-3 text-sm">
+    <div className="space-y-2">
       <h2 className="font-semibold">
         {card.code} · {card.name}
       </h2>
@@ -388,7 +470,7 @@ function Description({ cls, entry }: { cls: RoClass; entry: DeckEntry }) {
           {t('deck.supplementary')} {supplementary.code}: {supplementary.name}
         </p>
       )}
-    </section>
+    </div>
   )
 }
 

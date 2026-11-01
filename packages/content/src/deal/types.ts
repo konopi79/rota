@@ -24,6 +24,11 @@ export type DealOptions = {
    * when missing (or not one of them).
    */
   field?: Field
+  /**
+   * Several cards at one station where the class allows it (CNDC, plan R18): the same deck,
+   * some of its cards grouped (`DeckEntry.withPrevious`) — for now without a field layout.
+   */
+  cndc?: boolean
 }
 
 export type DeckEntry = {
@@ -36,6 +41,8 @@ export type DeckEntry = {
   pace: Pace
   /** Where the card stands on the field — only in classes laid out on one (FCI). */
   at?: Placement
+  /** Done at the same station as the card before: a CNDC (plan R18, `deal/cndc.ts`). */
+  withPrevious?: true
 }
 
 /** A point on the field in metres; x to the right, y down (as drawn). */

@@ -61,6 +61,8 @@ const paramsSchema = z.object({
   hlas: z.enum(['0', '1']).default('0'),
   /** A field other than the class's first (FCI `20x30`, national `20x20`). Missing: the first one. */
   pole: z.string().optional(),
+  /** Several cards at one station (CNDC, plan R18). */
+  cndc: z.enum(['0', '1']).default('0'),
 })
 
 const customSchema = paramsSchema
@@ -109,6 +111,7 @@ export function encodeDeckParams({
   // Likewise the field: only one other than the class's first (decks before it had none).
   const field = !order && options.field && otherField(options.classId, fieldKey(options.field))
   if (field) params.set('pole', fieldKey(field))
+  if (options.cndc && !order) params.set('cndc', '1')
   if (order && unchecked) params.set('kontrola', '0')
   else if (order && guidelines) params.set('smernice', '1')
   if (speak) params.set('hlas', '1')
@@ -138,6 +141,7 @@ export function decodeDeckParams(search: URLSearchParams): DeckParams | null {
       seed: p.seed,
       ...(p.parkur === '1' && { competition: true }),
       ...(field && { field }),
+      ...(p.cndc === '1' && { cndc: true }),
     },
     showDescription: p.popis === '1',
     ...(p.hlas === '1' && { speak: true }),
