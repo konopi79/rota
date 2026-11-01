@@ -1,6 +1,7 @@
 import type { Card } from '../schema'
 import {
   MAX_JUMPS,
+  afterDynamicStation,
   angleDiff,
   approachOf,
   bearing,
@@ -19,6 +20,7 @@ import {
   d0StandOf,
   signOf,
   STAND_SPACING,
+  standsOf,
   turnsOf,
   WALK_SPACING,
   wayTo,
@@ -53,6 +55,8 @@ const spacing = (prop: PlacedProp, q: Point) =>
   Math.max(prop.clear ?? PROP_SPACING, ('clear' in q && (q as PlacedProp).clear) || 0)
 
 type Previous = { card: Card; at: Placement; side: Side }
+/** A card of the station being laid out (CNDC: several, plan R18). */
+type Member = { card: Card; at: Placement }
 /** A D0 card's stand, and the station (index into `stations`) whose card it goes with. */
 type D0Stand = { p: Point; of: number }
 
@@ -66,6 +70,11 @@ export type PlannerState = {
   aisles: Point[][]
   previous: Previous | undefined
   room: Float64Array
+  station: Member[]
+  dynamic: boolean
+  stationStart: number
+  stationAisles: number
+  stationBacks: number
 }
 
 /**
@@ -92,6 +101,16 @@ export class FieldPlanner {
   /** National courses: the ways walked between the cards, kept clear (`WALK_SPACING`). */
   private aisles: Point[][] = []
   private previous: Previous | undefined
+  /**
+   * The station laid out last — one card, or several at one station (CNDC, `join`): its cards,
+   * whether one of them ends in motion (`ended`), and where its stations, ways walked and
+   * steps back begin in the lists above. The way on from it keeps clear of everything else.
+   */
+  private station: Member[] = []
+  private dynamic = false
+  private stationStart = 0
+  private stationAisles = 0
+  private stationBacks = 0
   /** Every metre of the field inside its edge (`emptiest`)… */
   private readonly grid: Point[] = []
   /** …and how far each is from the nearest exercise or card laid out so far. */
@@ -127,8 +146,13 @@ export class FieldPlanner {
    * card or two had better turn.
    */
   runway(): number {
-    // The card just done and its sign stand right at the start of the way.
-    const others = [...this.stations.slice(0, -1), ...this.signs.slice(0, -1), ...this.d0sBut(1)]
+    // The station just done and its cards stand right at the start of the way.
+    const before = this.stationStart
+    const others = [
+      ...this.stations.slice(0, before),
+      ...this.signs.slice(0, before),
+      ...this.d0sBefore(before),
+    ]
     return this.roomAfter(this.shapeOfPrevious(false), others)
   }
 
@@ -176,7 +200,7 @@ export class FieldPlanner {
   }
 
   save(): PlannerState {
-    const { stations, signs, d0s, props, backs, aisles, previous, room } = this
+    const { stations, signs, d0s, props, backs, aisles, previous, room, station } = this
     return {
       stations: [...stations],
       signs: [...signs],
@@ -186,6 +210,11 @@ export class FieldPlanner {
       aisles: [...aisles],
       previous,
       room: room.slice(),
+      station: [...station],
+      dynamic: this.dynamic,
+      stationStart: this.stationStart,
+      stationAisles: this.stationAisles,
+      stationBacks: this.stationBacks,
     }
   }
 
@@ -198,6 +227,22 @@ export class FieldPlanner {
     this.aisles = [...state.aisles]
     this.previous = state.previous
     this.room = state.room.slice()
+    this.station = [...state.station]
+    this.dynamic = state.dynamic
+    this.stationStart = state.stationStart
+    this.stationAisles = state.stationAisles
+    this.stationBacks = state.stationBacks
+  }
+
+  /** The card just laid out ends in motion (`!static_`): a CNDC with it needs more room after. */
+  ended(static_: boolean) {
+    if (!static_) this.dynamic = true
+  }
+
+  /** The approach to the next station, further after a CNDC with a dynamic exercise. */
+  private approachAfter(shape: Shape | undefined, card: Card | undefined): Approach {
+    const approach = approachOf(shape, card)
+    return this.dynamic && this.station.length > 1 ? afterDynamicStation(approach) : approach
   }
 
   /** Where `card` stands, with the dog on `side` — or `undefined` if it cannot fit. */
@@ -207,7 +252,7 @@ export class FieldPlanner {
     if (recallFollows && !this.previous) return undefined
     const previousShape = this.shapeOfPrevious(recallFollows)
     const exit = previousShape?.exit ?? this.start
-    const approach = approachOf(previousShape, card)
+    const approach = this.approachAfter(previousShape, card)
     const props = [...this.props, ...(previousShape?.props ?? [])]
 
     const options = walksFrom(approach).flatMap((walk) =>
@@ -241,6 +286,11 @@ export class FieldPlanner {
     this.props = props
     const sign = signOf(card, at)
     const d0 = d0StandOf(card, at)
+    this.station = [{ card, at }]
+    this.dynamic = false
+    this.stationStart = this.stations.length
+    this.stationAisles = this.aisles.length
+    this.stationBacks = this.backs.length
     this.stations.push(at)
     this.signs.push(sign)
     this.mark(at)
@@ -256,11 +306,77 @@ export class FieldPlanner {
     return at
   }
 
+  /**
+   * `card` done at the station laid out last (CNDC, plan R18), right where its last exercise
+   * ends — `step` metres on after a dynamic one (`CNDC_STEP`) — its card on the station's stand
+   * beside the others (`standsOf`); or `undefined` if it does not fit there.
+   */
+  join(card: Card, side: Side, step: number): Placement | undefined {
+    const previous = this.previous
+    if (!previous || !this.station.length) return undefined
+    const from = walkTo(shapeOf(previous.card, previous.at, previous.side, false).exit, step)
+    const turns = [...turnsOf(card)]
+    while (turns.length) {
+      const turn = pick(turns, this.random) as number
+      turns.splice(turns.indexOf(turn), 1)
+      const at: Placement = { ...from, turn }
+      const { sign, d0 } = standsOf([...this.station, { card, at }]).at(-1) as {
+        sign: Point
+        d0?: Point
+      }
+      if (!this.freeAtStation(at, sign, d0)) continue
+      const shape = shapeOf(card, at, side, false)
+      if (!this.fits(card, at, shape, this.props, { sign, d0 })) continue
+      this.stations.push(at)
+      this.signs.push(sign)
+      this.mark(at)
+      this.mark(sign)
+      if (d0) {
+        this.d0s.push({ p: d0, of: this.stations.length - 1 })
+        this.mark(d0)
+      }
+      if (shape.back) this.backs.push([at, shape.back])
+      if (shape.walk) this.aisles.push(shape.walk)
+      this.station.push({ card, at })
+      this.previous = { card, at, side }
+      return at
+    }
+    return undefined
+  }
+
+  /**
+   * A card joining the last station could be done at `at`, its card at `sign` (and `d0`): clear
+   * of the other stations as a card of its own would be — its own station's cards, ways and
+   * steps back are where it is done.
+   */
+  private freeAtStation(at: Pose, sign: Point, d0: Point | undefined): boolean {
+    const before = this.stationStart
+    const signs = this.signs.slice(0, before)
+    const d0s = this.d0sBefore(before)
+    const stands = d0 ? [sign, d0] : [sign]
+    const apart = (p: Point, q: Point, by: number) => distance(p, q) >= by
+    const clear = (p: Point, aside: number) =>
+      this.backs
+        .slice(0, this.stationBacks)
+        .every(([a, b]) => distanceToSegment(p, a, b) >= PROP_SPACING) &&
+      this.aisles.slice(0, this.stationAisles).every((way) => distanceToWay(p, way) >= aside - 1e-9)
+    // Beside its card, a D0 card may come as much nearer the others.
+    const spacingOf = (p: Point) => (p === sign ? CARD_SPACING : CARD_SPACING - D0_BESIDE)
+    return (
+      this.inside(at) &&
+      stands.every((p) => signs.every((s) => apart(s, p, spacingOf(p)))) &&
+      stands.every((p) => d0s.every((q) => apart(p, q, CARD_SPACING - D0_BESIDE))) &&
+      this.props.every((q) => [at, ...stands].every((p) => apart(q, p, spacing(q, p)))) &&
+      clear(at, WALK_SPACING) &&
+      stands.every((p) => clear(p, STAND_SPACING))
+    )
+  }
+
   /** The finish, 3–5 m after the last exercise. */
   finish(): Pose | undefined {
     const shape = this.shapeOfPrevious(false)
     const exit = shape?.exit ?? this.start
-    const approach = approachOf(shape, undefined)
+    const approach = this.approachAfter(shape, undefined)
     const props = [...this.props, ...(shape?.props ?? [])]
     const options = walksFrom(approach)
     while (options.length) {
@@ -285,7 +401,11 @@ export class FieldPlanner {
 
   /** The D0 cards' stands but those of the last `last` stations. */
   private d0sBut(last: number): Point[] {
-    const upTo = this.stations.length - last
+    return this.d0sBefore(this.stations.length - last)
+  }
+
+  /** The D0 cards' stands of the stations before `upTo`. */
+  private d0sBefore(upTo: number): Point[] {
     return this.d0s.filter((d) => d.of < upTo).map((d) => d.p)
   }
 
@@ -323,19 +443,30 @@ export class FieldPlanner {
 
   /**
    * The way to the next card passes clear of every exercise, card and piece of equipment
-   * but the one it comes from (the last laid out, or the start).
+   * but the station it comes from (the last laid out, or the start).
    */
   private aisleClear(aisle: Point[]): boolean {
+    const before = this.stationStart
     const stands = [
-      ...this.signs.slice(0, -1),
-      ...this.d0sBut(1),
+      ...this.signs.slice(0, before),
+      ...this.d0sBefore(before),
       ...this.props.flatMap(propPoints),
     ]
-    return clearOf(this.stations.slice(0, -1), aisle) && clearOf(stands, aisle, STAND_SPACING)
+    return clearOf(this.stations.slice(0, before), aisle) && clearOf(stands, aisle, STAND_SPACING)
   }
 
-  /** The rest of the exercise fits too (`at` itself is `free`). */
-  private fits(card: Card, at: Placement, shape: Shape, props: PlacedProp[]): boolean {
+  /**
+   * The rest of the exercise fits too (`at` itself is `free`). `joined`: the card joins the last
+   * station (CNDC) and stands there — the station's own cards and exercises are where it is
+   * done, and the next station comes further after it (`afterDynamicStation`).
+   */
+  private fits(
+    card: Card,
+    at: Placement,
+    shape: Shape,
+    props: PlacedProp[],
+    joined?: { sign: Point; d0?: Point },
+  ): boolean {
     if (!this.inside(shape.exit)) return false
     // Steps back stay clear of the other exercises, their cards and equipment — but going
     // back to the dog (2-213, 3-320, 3-322) leads to the leave card before.
@@ -344,17 +475,20 @@ export class FieldPlanner {
       if (!this.inside(back)) return false
       const clear = (p: { x: number; y: number }) => distanceToSegment(p, at, back) >= PROP_SPACING
       const toDog = card.sequencing.onlyAfterLeave ? 1 : 0
-      const stations = this.stations.slice(0, this.stations.length - toDog)
-      const signs = this.signs.slice(0, this.signs.length - toDog)
-      if (![...stations, ...signs, ...this.d0sBut(toDog), ...props].every(clear)) return false
+      const keep = joined ? this.stationStart : this.stations.length - toDog
+      const stations = this.stations.slice(0, keep)
+      const signs = this.signs.slice(0, keep)
+      if (![...stations, ...signs, ...this.d0sBefore(keep), ...props].every(clear)) return false
     }
     // The way walked inside a national exercise, like the way between two cards.
-    const stands = [...this.signs, ...this.d0sBut(0)]
-    const all = [...this.stations, ...stands]
+    const others = joined ? this.stationStart : this.stations.length
+    const stations = this.stations.slice(0, others)
+    const stands = [...this.signs.slice(0, others), ...this.d0sBefore(others)]
+    const all = [...this.stations, ...this.signs, ...this.d0sBut(0)]
     if (
       shape.walk &&
       !(
-        clearOf(this.stations, shape.walk) &&
+        clearOf(stations, shape.walk) &&
         clearOf([...stands, ...props.flatMap(propPoints)], shape.walk, STAND_SPACING)
       )
     ) {
@@ -371,18 +505,21 @@ export class FieldPlanner {
     }
     const jumps = [...props, ...shape.props].filter((p) => p.kind === 'jump').length
     if (jumps > this.maxJumps) return false
-    // Room for one more card (or the finish) after this one, the way to it clear too.
-    const signs = [...this.signs, signOf(card, at)]
-    const own = d0StandOf(card, at)
+    // Room for one more card (or the finish) after this one, the way to it clear too —
+    // after a CNDC as if it had a dynamic exercise (whether it has may not be known yet).
+    const signs = [...this.signs, joined?.sign ?? signOf(card, at)]
+    const own = joined ? joined.d0 : d0StandOf(card, at)
     const d0s = [...this.d0sBut(0), ...(own ? [own] : [])]
     const allProps = [...props, ...shape.props]
-    return walksFrom(approachOf(shape, undefined)).some(({ ahead, across }) => {
+    const approach = approachOf(shape, undefined)
+    const walks = walksFrom(joined ? afterDynamicStation(approach) : approach)
+    return walks.some(({ ahead, across }) => {
       const next = walkTo(shape.exit, ahead, across)
       if (!this.free(next, undefined, signs, allProps, d0s)) return false
       if (card.ruleset !== 'CZ') return true
       const way = wayTo(shape, shape.exit, next)
       return (
-        clearOf(this.stations, way) &&
+        clearOf(stations, way) &&
         clearOf([...stands, ...props.flatMap(propPoints)], way, STAND_SPACING)
       )
     })

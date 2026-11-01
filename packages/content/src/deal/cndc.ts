@@ -151,3 +151,63 @@ export function groupStations(
 
 /** Of the groups where three cards may stand, about this share have three. */
 const THREE_SHARE = 0.35
+
+/**
+ * CNDC while a laid-out deck is dealt (the planner puts a group at one station, `join`): how
+ * many groups are still wanted, and the station dealt last — how many cards it has and how
+ * many it is meant to get.
+ */
+export type Grouping = { pending: number; size: number; target: number }
+
+/** As many groups as `course.cndc.groups` allows, between its least and most, drawn. */
+export function startGrouping(cls: RoClass, random: () => number): Grouping | undefined {
+  const limits = cls.course.cndc
+  if (!limits) return undefined
+  const [least, most] = limits.groups
+  return { pending: least + Math.floor(random() * (most - least + 1)), size: 1, target: 1 }
+}
+
+/**
+ * Whether the next card, `remaining` to deal with it, should be done at the station dealt
+ * last: a group grows to its size; a new one starts about evenly over the deck, surely once
+ * the cards left only just do for the groups still wanted.
+ */
+export function wantsJoin(grouping: Grouping, remaining: number, random: () => number): boolean {
+  if (grouping.size > 1) return grouping.size < grouping.target
+  return grouping.pending > 0 && random() < grouping.pending / Math.max(1, remaining - 1)
+}
+
+/** A card has joined the station dealt last (`joined`), or started a new one. */
+export function grouped(
+  cls: RoClass,
+  grouping: Grouping,
+  joined: boolean,
+  random: () => number,
+): Grouping {
+  if (!joined) return { ...grouping, size: 1, target: 1 }
+  if (grouping.size > 1) return { ...grouping, size: grouping.size + 1 }
+  const three = (cls.course.cndc?.cards ?? 2) > 2 && random() < THREE_SHARE
+  return { pending: grouping.pending - 1, size: 2, target: three ? 3 : 2 }
+}
+
+/**
+ * Whether `card` may join `station` — with any of the D0 cards it may be dealt with
+ * (`supplementaries`), since which one is drawn after.
+ */
+export function joinable(
+  cls: RoClass,
+  station: DeckEntry[],
+  card: Card,
+  supplementaries: string[],
+): boolean {
+  const options = card.sequencing.requiresSupplementary ? supplementaries : [undefined]
+  return (
+    options.length > 0 &&
+    options.every((supplementary) =>
+      cndcAllowed(cls, [
+        ...station,
+        { code: card.code, ...(supplementary && { supplementary }), side: 'left', pace: 'normal' },
+      ]),
+    )
+  )
+}

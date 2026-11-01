@@ -280,9 +280,9 @@ regulations:
     them, like the FCI point mix. RO-V's list names 1-114/1-115, which are not RO-V cards.
   - **RO-Z about 50/50 static and dynamic** (§1.1.1, p. 2, "v podstatě"): within one of
     half (`course.staticShare`); for "A nebo B" cards the D0 card is chosen to keep it.
-  - **CNDC limits** (§1.1.1, §1.1.6): ROTA builds every card as its own station, never a
-    CNDC, so the limits hold trivially. Distances and card placement (§1.1.2–1.1.4) need
-    a field plan, which national courses do not have.
+  - **CNDC limits** (§1.1.1, §1.1.6): only with the setup's switch (R18) — then the class's
+    limits, a group with a change of direction starting with one; otherwise every card is
+    its own station.
 
 - **Last card only.** RO-V: Z-016 and 1-110 only as the last card.
 - **Tracked changes in the PDF.** The 2026 regulation was published with struck-through
@@ -716,7 +716,8 @@ mirrored while the dog is (`figures.captionRight`).
 
 - [x] Grouping over a dealt deck, stricter than the rules (2026-11-01, the author: "lepší mít přísnější verzi než žádnou … povolit můžeme vždycky"): what is still open is answered the safe way, so a group dealt is always allowed and some allowed ones are never dealt (`deal/cndc.ts`). From the regulation and the guidelines: up to three cards (řád p. 16), RO1 and RO-V at most three of two (Směrnice §1.1.1), RO-Z none; a group with a change of direction starts with one (§1.1.6 — as on every real plan seen, 302 + D0c + 031, 120 + 317). From real RO3 plans (2024–2025, ROPLAN and walked by the author): a D0 exercise anywhere in a group, a leave card only last, a follow-up only first, every card counted. Safe-side choices: no equipment, pace or long exercises (1-107, 2-227, 3-323) in a group; pairs that "představují cvik z vyšší třídy" derived from the cards — a static exercise and a turn while walking ("Stop / Stůj – obrat – vpřed", 105/112 ≙ 205 the guidelines' example), two turns from a stop, a position after a static exercise (`forbiddenPair`), to be confirmed; RO2 two to four groups, RO3 three to six (real plans: 4–8). The same deck with or without (groups drawn from a stream of their own), validated (`cndcIssues`); the setup's switch (`cndc=1`), a screen per station in the deck ("7–8 / 24", the cards under one another or side by side), the course's groups marked, read aloud ("Na stejném stanovišti karta …"); after a dynamic exercise the next card of a station comes "po kroku vpřed", one more step at most (řád p. 16 — the author read CNDC as static first, the regulation allows both). Not laid out yet; feature item `cndc`
 - [ ] The answers still open (which cards never stand in a CNDC, the higher-class pairs) — then allow what the safe side leaves out
-- [ ] CNDC on the field plan (one station, +1 m after dynamic exercises, Směrnice §1.1.2) and walked through; in the hand-made course editor
+- [x] CNDC on the field plan (2026-11-01): a laid-out deck groups its cards as it is dealt (`FieldPlanner.join`; a deck without a layout is still grouped afterwards, the same deck as without). The next card of a station is done where the exercise before ends, a step on after a dynamic one (`CNDC_STEP`, řád p. 16; the optional step between left out); its card stands beside the one before on the station's stand, its D0 card between (`standsOf`, "přímo vedle sebe", as 302 + D0c + 031 on a real plan), so a group with a turn has its cards in the team's way, as the first card's placement puts them. After a CNDC with a dynamic exercise the next station is 4–6 m on instead of 3–5 (`CNDC_EXTRA`, Směrnice §1.1.2). The validator checks a station's cards where they are done and keeps one station's things from being checked against each other; decks without CNDC are the same as before (compared seed by seed with `main`). RO3 courses deal in about the same time (~95 ms), with ~3.7 groups of the 3–6 wanted; the plan draws a station's cards side by side, numbered past them, its caption saying so; feature item `cndc-plan`
+- [ ] CNDC walked through in animation; in the hand-made course editor
 
 ### R19 — FCI animations + walkthrough
 

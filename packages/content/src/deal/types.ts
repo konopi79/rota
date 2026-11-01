@@ -25,8 +25,9 @@ export type DealOptions = {
    */
   field?: Field
   /**
-   * Several cards at one station where the class allows it (CNDC, plan R18): the same deck,
-   * some of its cards grouped (`DeckEntry.withPrevious`) — for now without a field layout.
+   * Several cards at one station where the class allows it (CNDC, plan R18): some cards
+   * grouped (`DeckEntry.withPrevious`) — on a laid-out deck as it is dealt, so it differs from
+   * the deck without; a deck without a layout is the same deck, grouped.
    */
   cndc?: boolean
 }

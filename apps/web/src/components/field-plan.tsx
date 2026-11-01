@@ -1,5 +1,6 @@
 import {
   geometry,
+  stationsOf,
   type Card,
   type DeckEntry,
   type Layout,
@@ -27,6 +28,9 @@ export const planAspect = ({ width, height }: { width: number; height: number })
 const CARD_W = 1.7
 const CARD_H = (CARD_W * 283) / 400
 const NUMBER_R = 0.5
+/** A D0 card is drawn smaller, beside its main card, and so are the cards of one station. */
+const D0_W = CARD_W * 0.6
+const CARD_GAP = 0.05
 
 /**
  * The plan of one round of a deck laid out on a field, drawn the way judges draw their
@@ -34,7 +38,8 @@ const NUMBER_R = 0.5
  * where the regulation puts it (A — the team works left of the card, B — in front of it),
  * a national D0 card right beside it, numbered, with its cones, bowls and jumps, and the
  * path walked between the cards. 1 unit = 1 m. `current` highlights a card (index into
- * `entries`).
+ * `entries`) — with the others of its station, if it shares one (CNDC, plan R18): the cards of
+ * one station stand side by side, numbered past them.
  */
 export function FieldPlan({
   layout,
@@ -66,8 +71,27 @@ export function FieldPlan({
     const c = card(entry.code)
     const shape = shapeOf(c, at, entry.side, recallFollows)
     const supplementary = entry.supplementary ? card(entry.supplementary) : undefined
-    return [{ index: r.first + i, card: c, supplementary, at, shape }]
+    return [{ index: r.first + i, card: c, supplementary, at, shape, joined: !!entry.withPrevious }]
   })
+  // Several cards at one station (CNDC): drawn side by side from where the first one stands,
+  // facing the team as it comes in to it — larger than life like every card, so further apart
+  // than `geometry.standsOf` puts them.
+  const stations = stationsOf(entries)
+  const stationOf = (index: number) => stations.find(([a, b]) => index >= a && index <= b)
+  const highlighted = current === undefined ? undefined : stationOf(current)
+  const centres = new Map<number, { centre: Point; heading: number; grouped: boolean }>()
+  for (const [a, b] of stations) {
+    const first = items.find((item) => item.index === a)
+    if (!first) continue
+    let centre = signOf(first.card, first.at)
+    for (let index = a; index <= b; index++) {
+      const item = items.find((it) => it.index === index)
+      if (!item) continue
+      centres.set(index, { centre, heading: first.at.heading, grouped: b > a })
+      const width = CARD_W + CARD_GAP + (item.supplementary ? D0_W + CARD_GAP : 0)
+      centre = offset(centre, first.at.heading, 0, width)
+    }
+  }
 
   // Walks between the cards, straight on from where an exercise ends: start → card → … →
   // finish. After a turn about the team walks back beside its way in — a hairpin from the
@@ -82,6 +106,12 @@ export function FieldPlan({
   const targets = [...items.map(({ at }) => at), r.finish]
   let from: Pose = r.start
   targets.forEach((to, i) => {
+    // At the station of the card before (CNDC): no way between them.
+    const item = items[i]
+    if (item?.joined) {
+      from = item.shape.exit
+      return
+    }
     const across = walkOf(from, to)?.across ?? 0
     const before = items[i - 1]
     if (before?.shape.hairpin && Math.abs(across) > 0.05 && before.card.ruleset === 'CZ') {
@@ -173,16 +203,23 @@ export function FieldPlan({
 
       <PlacedCard card={startCard} at={r.start} />
       <PlacedCard card={finishCard} at={r.finish} />
-      {items.map(({ index, card: c, supplementary, at }) => (
-        <PlacedCard
-          key={index}
-          card={c}
-          supplementary={supplementary}
-          at={at}
-          number={index + 1}
-          active={index === current}
-        />
-      ))}
+      {items.map(({ index, card: c, supplementary, at }) => {
+        const placed = centres.get(index)
+        return (
+          <PlacedCard
+            key={index}
+            card={c}
+            supplementary={supplementary}
+            at={placed ? { ...at, heading: placed.heading } : at}
+            centre={placed?.centre}
+            grouped={placed?.grouped}
+            number={index + 1}
+            active={
+              highlighted ? index >= highlighted[0] && index <= highlighted[1] : index === current
+            }
+          />
+        )
+      })}
     </svg>
   )
 }
@@ -248,27 +285,36 @@ function PlacedCard({
   card,
   supplementary,
   at,
+  centre: own,
+  grouped,
   number,
   active,
 }: {
   /** Without one: the start or the finish. */
   card: Card
   supplementary?: Card
+  /** Where the team does the exercise — the heading it faces the card in. */
   at: Point & { heading: number }
+  /** Where the card is drawn, if not where it stands for itself (a CNDC). */
+  centre?: Point
+  /** One of several cards at one station: its number behind it, clear of the cards beside. */
+  grouped?: boolean
   number?: number
   active?: boolean
 }) {
   const ahead = card.placement === 'B'
-  const centre = signOf(card.kind === 'exercise' ? card : undefined, at)
-  const side = { w: CARD_W * 0.6, h: CARD_H * 0.6 }
+  const centre = own ?? signOf(card.kind === 'exercise' ? card : undefined, at)
+  const side = { w: D0_W, h: CARD_H * 0.6 }
   // The number past the D0 card, if there is one.
-  const past = supplementary ? side.w + 0.05 : 0
-  const tag = offset(
-    centre,
-    at.heading,
-    -CARD_H / 2 - 0.15,
-    (ahead ? CARD_W / 2 + 0.35 : CARD_W / 2 + 0.2) + past,
-  )
+  const past = supplementary ? side.w + CARD_GAP : 0
+  const tag = grouped
+    ? offset(centre, at.heading, CARD_H / 2 + NUMBER_R + 0.1)
+    : offset(
+        centre,
+        at.heading,
+        -CARD_H / 2 - 0.15,
+        (ahead ? CARD_W / 2 + 0.35 : CARD_W / 2 + 0.2) + past,
+      )
   const outline = active ? 'stroke-primary' : 'stroke-foreground'
   return (
     <g>
