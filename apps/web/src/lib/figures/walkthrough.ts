@@ -1,6 +1,7 @@
 import {
   endsStatic,
   finishSide,
+  geometry,
   getCard,
   paceAfter,
   type Card,
@@ -71,6 +72,8 @@ export type Station = {
   firstStep: number
   /** …and the step its exercise starts with. */
   exerciseStep: number
+  /** Done at the station of the card before (CNDC): its card stands beside that one. */
+  withPrevious?: true
 }
 
 /** The plan is drawn x right, y down, headings clockwise from up (degrees); the scenes have +x
@@ -215,9 +218,14 @@ export function walkthroughOf(deck: Deck, cls: RoClass, start = 0): Walkthrough 
   const round = layout.rounds[0]!
   const entries = deck.entries
   const card = (code: string) => getCard(cls.ruleset, code) as Card
-  // A card that follows a leave card starts with it: its dog has to be left first.
+  // A card that follows a leave card starts with it: its dog has to be left first. A card done
+  // at the station of the one before (CNDC) starts with the station's first.
   let from = start
-  while (from > 0 && card(entries[from]!.code).sequencing.onlyAfterLeave) from--
+  while (
+    from > 0 &&
+    (entries[from]!.withPrevious || card(entries[from]!.code).sequencing.onlyAfterLeave)
+  )
+    from--
 
   // Where each exercise starts, on the scene: the plan's station, and the handler stopping
   // where the exercise's script has it (`stopAt`, from the right in the square).
@@ -242,8 +250,51 @@ export function walkthroughOf(deck: Deck, cls: RoClass, start = 0): Walkthrough 
   for (let i = from; i < entries.length; i++) {
     const entry = entries[i]!
     const exercise = exercises[i]!
-    const at = stationsOnScene[i]!
     const firstStep = steps.length
+    // Several cards at one station (CNDC): the next exercise right where the one before ends,
+    // after a dynamic one a step on ("krok dopředu pro ukončení cviku", řád p. 16) — no way
+    // to it. Its card on the station's stand, beside the one before.
+    const previousEntry = entries[i - 1]
+    if (i > from && entry.withPrevious && previousEntry) {
+      const previous = card(previousEntry.code)
+      if (!endsStatic(cls, previous, previousEntry.supplementary)) {
+        steps.push({ walk: geometry.CNDC_STEP, pace: entry.pace, caption: 'cndcStep' })
+      } else {
+        steps.push({ wait: 0.4, caption: 'cndcNext' })
+      }
+      steps.push({ dogSide: exercise.dogStarts ?? 'left', caption: 'cndcNext' })
+      const exerciseStep = steps.length
+      const cardHere = card(entry.code)
+      const after = paceAfter(cardHere, entry.pace, endsStatic(cls, cardHere, entry.supplementary))
+      const own = ownSteps(exercise, after)
+      // Where the team is now, as the plan has it: the frame of the exercise's own steps.
+      const here = fromPlan(entry.at!)
+      const place = (p: { x: number; z: number }) => local(onField(here, { ...p, heading: 0 }))
+      steps.push(...own.steps.map((s) => ('sendTo' in s ? { ...s, sendTo: place(s.sendTo) } : s)))
+      leaving = own.leaving
+      // Beside the card before (and its D0 card), facing the same way.
+      const before = stations.at(-1)!
+      const besides = previousEntry.supplementary ? 2 : 1
+      const stand = (n: number) =>
+        onField(before.card, { x: -n * geometry.D0_BESIDE, z: 0, heading: 0 })
+      stations.push({
+        index: i,
+        code: entry.code,
+        ...(entry.supplementary && { supplementary: entry.supplementary }),
+        at: local(here),
+        card: stand(besides),
+        ...(entry.supplementary && { d0: stand(besides + 1) }),
+        cones: [],
+        bowls: [],
+        jumps: [],
+        marks: [],
+        firstStep,
+        exerciseStep,
+        withPrevious: true,
+      })
+      continue
+    }
+    const at = stationsOnScene[i]!
     const phase = phaseOf(exercise)
     // From a leave card to a follow-up beside its way (3-301, 3-314): at a slant all the way
     // (the author) — past the jump on the way first, along it.

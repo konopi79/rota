@@ -108,6 +108,12 @@ export type ExerciseStep = { caption: string } & (
   /** (Worked out from `backToDog`.) The handler beside the dog again: it is at heel. */
   | { dogJoins: true }
   /**
+   * From here on the script is one written for the dog at this leg (`dogStarts`), its ways round
+   * the handler mirrored for `right` — what a way to a place says with `flipped`, for a card
+   * done at the station of the one before (CNDC, plan R18), with no way to it.
+   */
+  | { dogSide: 'left' | 'right' }
+  /**
    * The dog sent off to a cone (3-324 "vysílá psa ke kuželu"): it gets up from heel, runs
    * round it (`roundCone`), stops standing within 1 m of it and is left there (`dogStays`).
    * Station frame.
@@ -1397,6 +1403,9 @@ export class ExercisePlayer {
       done = this.stepTime >= STAY_TIME
     } else if (current && 'dogJoins' in current) {
       this.joining = true
+      done = true
+    } else if (current && 'dogSide' in current) {
+      this.flipped = current.dogSide === 'right'
       done = true
     } else if (current && 'around' in current) {
       if (starting) this.aroundPath = this.side({ path: PATHS[current.around] }).path

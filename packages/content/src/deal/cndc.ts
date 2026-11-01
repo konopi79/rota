@@ -38,6 +38,9 @@ const TURNS_ROUND = new Set(['Z-013', '1-101', '1-116', '1-121', '1-122', '3-315
 export const turns = (card: Card): boolean =>
   turnsOf(card).some((t) => t !== 0) || TURNS_ROUND.has(card.code)
 
+/** A side step (1-102, 1-114, 1-115, 2-207, 2-222, 2-229): done before its card, not a turn. */
+const stepsAside = (card: Card): boolean => card.placement === 'B' && !turns(card)
+
 /**
  * Cards that, after a static exercise, only add a position change — the pair is then one of
  * the class's own cards ("Stop – vstaň – sedni", "Stop – stůj – lehni", …).
@@ -69,8 +72,8 @@ export function forbiddenPair(cls: RoClass, first: DeckEntry, second: DeckEntry)
 /**
  * Whether `entries` may stand at one station, in this order: the class has CNDC, as many
  * cards as it allows, each one eligible; a leave card only last (its follow-up is the next
- * station's), a follow-up only first; a turn only if the group starts with one; no forbidden
- * pair.
+ * station's), a follow-up only first, a card ending behind where it starts only last, a side
+ * step only first; a turn only if the group starts with one; no forbidden pair.
  */
 export function cndcAllowed(cls: RoClass, entries: DeckEntry[]): boolean {
   const limits = cls.course.cndc
@@ -78,7 +81,13 @@ export function cndcAllowed(cls: RoClass, entries: DeckEntry[]): boolean {
   const cards = entries.map((e) => cardOf(cls, e.code))
   if (!cards.every(cndcEligible)) return false
   if (cards.slice(0, -1).some((c) => c.sequencing.nextOneOf)) return false
+  // Nor one that ends back where the handler stepped to (`geometry.exit` < 0: steps back, turns
+  // done backwards): the next exercise would start there, where the plan has no place for it.
+  if (cards.slice(0, -1).some((c) => (c.geometry?.exit ?? 0) < 0)) return false
   if (cards.slice(1).some((c) => c.sequencing.onlyAfterLeave)) return false
+  // A side step only first: its card stands right before it (§5.3.1), and further on in a group
+  // the station's cards stand where the step goes (walked through in animation).
+  if (cards.slice(1).some(stepsAside)) return false
   if (cards.some(turns) && !turns(cards[0] as Card)) return false
   return entries.slice(1).every((e, i) => !forbiddenPair(cls, entries[i] as DeckEntry, e))
 }
@@ -169,13 +178,22 @@ export function startGrouping(cls: RoClass, random: () => number): Grouping | un
 
 /**
  * Whether the next card, `remaining` to deal with it, should be done at the station dealt
- * last: a group grows to its size; a new one starts about evenly over the deck, surely once
+ * last: a group grows to its size; a new one is tried for early and often (`JOIN_EAGERNESS`), surely once
  * the cards left only just do for the groups still wanted.
  */
 export function wantsJoin(grouping: Grouping, remaining: number, random: () => number): boolean {
   if (grouping.size > 1) return grouping.size < grouping.target
-  return grouping.pending > 0 && random() < grouping.pending / Math.max(1, remaining - 1)
+  return (
+    grouping.pending > 0 &&
+    random() < (JOIN_EAGERNESS * grouping.pending) / Math.max(1, remaining - 1)
+  )
 }
+
+/**
+ * How much more often than evenly a group is started: many a card does not fit where the
+ * exercise before ends, so a group tried for is often not made.
+ */
+const JOIN_EAGERNESS = 2
 
 /** A card has joined the station dealt last (`joined`), or started a new one. */
 export function grouped(

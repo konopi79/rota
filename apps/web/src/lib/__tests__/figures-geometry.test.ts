@@ -90,6 +90,13 @@ describe('course plan geometry matches the animations (R14)', () => {
     }
   }, 120_000)
 
+  test('the cards that need room before their card at a CNDC are those stopped further off (R18)', () => {
+    // The animation stops the handler at least 30 cm further from the card, the dog working
+    // between them (`stopAt`, the dog on the left).
+    const roomy = exercises.filter((e) => (e.stopAt?.z ?? 0) <= -0.3).map((e) => e.code)
+    expect([...layout.ROOM_BEFORE].sort()).toEqual([...new Set(roomy)].sort())
+  })
+
   test('the same cones and bowls in the same places', () => {
     const sorted = (props: { kind: string; ahead: number; side: number }[]) =>
       [...props].sort((a, b) => a.ahead - b.ahead || a.side - b.side)

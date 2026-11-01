@@ -234,6 +234,65 @@ export const CNDC_STEP = 0.55
  */
 export const CNDC_EXTRA = 1
 
+/**
+ * A card done at a station of several (CNDC) where the station's cards stand: each either where
+ * its own card would stand, or further along the station's line of cards from there (its
+ * exercise keeps clear of its own card as on its own, and the station's line goes on away from
+ * the team) — within `OWN_PLACE` of that line — or `CNDC_ROOM` from where it is done: after a
+ * turn the station's stand is no longer where the exercise has its card, and a handler going
+ * round the dog came within 0.2 m of it (walked through in animation). Not along the line for
+ * the cards whose dog works between the handler and the card (`ROOM_BEFORE`).
+ */
+export const CNDC_ROOM = 1.5
+const OWN_PLACE = 0.3
+export function clearOfStation(
+  card: Placed & Pick<Card, 'code'>,
+  at: Pose,
+  stands: Point[],
+): boolean {
+  const near = ROOM_BEFORE.has(card.code) ? () => false : alongOwnCard(card, at)
+  return stands.every((p) => distance(p, at) >= CNDC_ROOM || near(p))
+}
+
+/**
+ * Whether a card of a station of several (CNDC) stands where `card`, done at `at`, has its own
+ * card, or further along the station's line of cards from there, away from the team
+ * (`OWN_PLACE` either way) — its exercise and the way on keep clear of such a stand as of its
+ * own card; of any other the way on keeps clear like of another station's.
+ */
+export function alongOwnCard(card: Placed, at: Pose): (p: Point) => boolean {
+  const own = walkOf(at, { ...signOf(card, at), heading: at.heading }) as Walk
+  return (p) => {
+    const stand = walkOf(at, { ...p, heading: at.heading }) as Walk
+    return Math.abs(stand.ahead - own.ahead) <= OWN_PLACE && stand.across >= own.across - OWN_PLACE
+  }
+}
+type Walk = { ahead: number; across: number }
+
+/**
+ * The cards whose animation stops the handler further from the card than usual, the dog working
+ * between them — in front (Z-014, 1-124, 1-125, …) or round them (3-315, 3-318): done where the
+ * exercise before ends, the station's cards stood too close (walked through in animation; the
+ * animations' `stopAt`, kept in step by a test).
+ */
+export const ROOM_BEFORE = new Set([
+  'Z-014',
+  'Z-025',
+  'Z-032',
+  '1-108',
+  '1-114',
+  '1-115',
+  '1-116',
+  '1-121',
+  '1-122',
+  '1-124',
+  '1-125',
+  '2-221',
+  '2-222',
+  '3-315',
+  '3-318',
+])
+
 /** The approach to the next station after a CNDC with a dynamic exercise (`CNDC_EXTRA`). */
 export function afterDynamicStation(approach: Approach): Approach {
   // A follow-up stands where its leave card says.

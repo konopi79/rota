@@ -20,7 +20,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'cndc-plan'
+export const LATEST_FEATURE_ID = 'cndc-walkthrough'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -100,6 +100,11 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
         id: 'cndc-plan',
         title: 'CNDC na plánku',
         desc: 'Karty jednoho stanoviště stojí na plánku vedle sebe a další cvik začíná tam, kde skončil předchozí – po dynamickém cviku o krok dál. Za CNDC s dynamickým cvikem je další stanoviště o metr dál, jak chtějí směrnice.',
+      },
+      {
+        id: 'cndc-walkthrough',
+        title: 'CNDC v animaci',
+        desc: 'Tréninkový parkur s CNDC projdeš v animaci celý: na stanovišti tým navazuje dalším cvikem hned, po dynamickém cviku krokem vpřed. Stanoviště aplikace skládá tak, aby tým ani pes nezavadil o stojan s kartami.',
       },
       {
         id: 'national-field-plan',
