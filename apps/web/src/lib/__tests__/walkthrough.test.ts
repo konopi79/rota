@@ -10,8 +10,8 @@ import { jointFrames, lowestPoint } from '../figures/rig'
 import { canWalkThrough, walkthroughOf } from '../figures/walkthrough'
 import { onField } from '../figures/team'
 
-/** A dealt course, the start "R" every third one. */
-const courseOf = (classId: ClassId, seed: number) => {
+/** A dealt course, the start "R" every third one — with several cards at one station (CNDC). */
+const courseOf = (classId: ClassId, seed: number, cndc = false) => {
   const cls = getClass(classId)!
   const deck = dealDeck({
     classId,
@@ -21,6 +21,7 @@ const courseOf = (classId: ClassId, seed: number) => {
     startSide: seed % 3 ? 'left' : 'right',
     competition: true,
     seed,
+    cndc,
   })
   return { cls, deck }
 }
@@ -66,24 +67,32 @@ function overBar(
 }
 
 /** The first `n` courses of a class that can be walked through (some need a card not animated yet on the right). */
-const walkable = (classId: ClassId, n: number) => {
+const walkable = (classId: ClassId, n: number, cndc = false) => {
   const seeds: number[] = []
   for (let seed = 0; seeds.length < n && seed < 30; seed++)
-    if (canWalkThrough(courseOf(classId, seed).deck)) seeds.push(seed)
+    if (canWalkThrough(courseOf(classId, seed, cndc).deck)) seeds.push(seed)
   return seeds
 }
 
 describe('a course walked through in animation (R16, R17)', () => {
-  const courses = (['RO-Z', 'RO1', 'RO2', 'RO3', 'RO-V'] as const).flatMap((classId) =>
-    walkable(classId, classId === 'RO3' ? 3 : 4).map(
-      (seed) => [`${classId} seed ${seed}`, classId, seed] as const,
+  const courses = [
+    ...(['RO-Z', 'RO1', 'RO2', 'RO3', 'RO-V'] as const).flatMap((classId) =>
+      walkable(classId, classId === 'RO3' ? 3 : 4).map(
+        (seed) => [`${classId} seed ${seed}`, classId, seed, false] as const,
+      ),
     ),
-  )
+    // Several cards at one station (CNDC, R18).
+    ...(['RO1', 'RO2', 'RO3', 'RO-V'] as const).flatMap((classId) =>
+      walkable(classId, 2, true).map(
+        (seed) => [`${classId} seed ${seed} with CNDC`, classId, seed, true] as const,
+      ),
+    ),
+  ]
 
   test.each(courses)(
     '%s: goes card by card to the finish',
-    (_, classId, seed) => {
-      const { cls, deck } = courseOf(classId, seed)
+    (_, classId, seed, cndc) => {
+      const { cls, deck } = courseOf(classId, seed, cndc)
       expect(canWalkThrough(deck)).toBe(true)
       const w = walkthroughOf(deck, cls)
       const player = new ExercisePlayer(w.exercise)
@@ -137,8 +146,13 @@ describe('a course walked through in animation (R16, R17)', () => {
       expect(next).toBe(deck.entries.length)
       for (const low of cleared) expect(low).toBeGreaterThan(BAR_HEIGHT + 0.02)
       for (const low of cleared) expect(low).toBeLessThan(Infinity)
-      // Within a short step: steps out of the walk on a set foot (1-102) start where it lands.
-      for (const [i, miss] of nearest.entries()) expect([i, miss < 0.15]).toEqual([i, true])
+      // Within a short step: steps out of the walk on a set foot (1-102) start where it lands. A
+      // card at the station of the one before (CNDC) starts where that exercise really ends —
+      // as near the plan as its geometry is to the animation (a turning team: 0.7 m).
+      for (const [i, miss] of nearest.entries()) {
+        const near = w.stations[i]!.withPrevious ? 0.7 : 0.15
+        expect([i, miss < near]).toEqual([i, true])
+      }
     },
     60_000,
   )

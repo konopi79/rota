@@ -2,10 +2,12 @@ import type { Card } from '../schema'
 import {
   MAX_JUMPS,
   afterDynamicStation,
+  alongOwnCard,
   angleDiff,
   approachOf,
   bearing,
   CARD_SPACING,
+  clearOfStation,
   distance,
   distanceToSegment,
   distanceToWay,
@@ -320,10 +322,16 @@ export class FieldPlanner {
       const turn = pick(turns, this.random) as number
       turns.splice(turns.indexOf(turn), 1)
       const at: Placement = { ...from, turn }
-      const { sign, d0 } = standsOf([...this.station, { card, at }]).at(-1) as {
-        sign: Point
-        d0?: Point
-      }
+      const stands = standsOf([...this.station, { card, at }])
+      const { sign, d0 } = stands.at(-1) as { sign: Point; d0?: Point }
+      if (
+        !clearOfStation(
+          card,
+          at,
+          stands.flatMap((s) => (s.d0 ? [s.sign, s.d0] : [s.sign])),
+        )
+      )
+        continue
       if (!this.freeAtStation(at, sign, d0)) continue
       const shape = shapeOf(card, at, side, false)
       if (!this.fits(card, at, shape, this.props, { sign, d0 })) continue
@@ -436,6 +444,23 @@ export class FieldPlanner {
     )
   }
 
+  /**
+   * The cards of the station laid out last that its last exercise does not have where its own
+   * card would stand (`alongOwnCard`): a CNDC turned about twice walks on back past its stand,
+   * and the way on keeps clear of it like of another station's. (Of one card: none.)
+   */
+  private inTheWay(
+    last = this.previous,
+    own: Point[] = [
+      ...this.signs.slice(this.stationStart),
+      ...this.d0s.filter((d) => d.of >= this.stationStart).map((d) => d.p),
+    ],
+  ): Point[] {
+    if (!last || this.station.length < 2) return []
+    const along = alongOwnCard(last.card, last.at)
+    return own.filter((p) => !along(p))
+  }
+
   /** Clear of the steps back and the ways walked so far (a card's stand: `STAND_SPACING`). */
   private clearOfBacks = (p: Point, aside = WALK_SPACING) =>
     this.backs.every(([a, b]) => distanceToSegment(p, a, b) >= PROP_SPACING) &&
@@ -451,6 +476,7 @@ export class FieldPlanner {
       ...this.signs.slice(0, before),
       ...this.d0sBefore(before),
       ...this.props.flatMap(propPoints),
+      ...this.inTheWay(),
     ]
     return clearOf(this.stations.slice(0, before), aisle) && clearOf(stands, aisle, STAND_SPACING)
   }
@@ -480,10 +506,24 @@ export class FieldPlanner {
       const signs = this.signs.slice(0, keep)
       if (![...stations, ...signs, ...this.d0sBefore(keep), ...props].every(clear)) return false
     }
-    // The way walked inside a national exercise, like the way between two cards.
+    // The way walked inside a national exercise, like the way between two cards — joining a
+    // station, past its cards but where its own would stand too.
     const others = joined ? this.stationStart : this.stations.length
     const stations = this.stations.slice(0, others)
-    const stands = [...this.signs.slice(0, others), ...this.d0sBefore(others)]
+    const ownStands = joined
+      ? [
+          ...this.signs.slice(others),
+          ...this.d0s.filter((d) => d.of >= others).map((d) => d.p),
+          joined.sign,
+          ...(joined.d0 ? [joined.d0] : []),
+        ]
+      : []
+    const along = alongOwnCard(card, at)
+    const stands = [
+      ...this.signs.slice(0, others),
+      ...this.d0sBefore(others),
+      ...ownStands.filter((p) => !along(p)),
+    ]
     const all = [...this.stations, ...this.signs, ...this.d0sBut(0)]
     if (
       shape.walk &&

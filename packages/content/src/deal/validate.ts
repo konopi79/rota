@@ -2,10 +2,12 @@ import { getCard, getClass } from '../registry'
 import type { Card, RoClass } from '../schema'
 import {
   afterDynamicStation,
+  alongOwnCard,
   angleDiff,
   approachOf,
   CARD_SPACING,
   CNDC_STEP,
+  clearOfStation,
   distance,
   distanceToSegment,
   distanceToWay,
@@ -565,6 +567,13 @@ function validateRound(
     if (!walk || Math.abs(walk.ahead - step) > EPS || Math.abs(walk.across) > EPS) {
       errors.push(`${label(i)}: not where the exercise before it ends`)
     }
+    const station = stations[stationOf[i] as number] as [number, number]
+    const own = stands
+      .slice(station[0], station[1] + 1)
+      .flatMap((s) => (s ? (s.d0 ? [s.sign, s.d0] : [s.sign]) : []))
+    if (!clearOfStation(cards[i] as Card, to, own)) {
+      errors.push(`${label(i)}: done too close to its station's cards`)
+    }
   }
 
   entries.forEach((entry, i) => {
@@ -671,6 +680,17 @@ function validateRound(
   )
   const standsAt = new Set([...signs, ...d0s, ...equipment].map((s) => s.p))
   const aside = (p: Point) => (standsAt.has(p) ? STAND_SPACING : WALK_SPACING)
+  // A station's own cards the way from card `i` on keeps clear of (CNDC: those not where its own
+  // card would stand, `alongOwnCard` — a group turned about twice walks back past its stand).
+  const inTheWay = (i: number) => {
+    const at = entries[i]?.at
+    const station = stationOf[i]
+    const [from, to] = station === undefined ? [i, i] : (stations[station] as [number, number])
+    if (!at || to === from) return () => false
+    const along = alongOwnCard(cards[i] as Card, at)
+    return (o: { station: number; p: Point }) =>
+      o.station === station && standsAt.has(o.p) && !along(o.p)
+  }
   if (cls.ruleset === 'CZ') {
     const targets = [
       ...entries.map((e, i) => ({ label: label(i), i, to: e.withPrevious ? undefined : e.at })),
@@ -683,8 +703,9 @@ function validateRound(
       const here = i < entries.length ? (stationOf[i] as number) : FINISH
       const aisle = wayTo(before, before?.exit ?? start, at, to === 'finish')
       const near = (p: Point) => distanceToWay(p, aisle) < aside(p) - EPS
+      const past = inTheWay(i - 1)
       for (const o of [...spots, ...equipment]) {
-        if (o.station !== here && o.station !== from && near(o.p)) {
+        if (((o.station !== here && o.station !== from) || past(o)) && near(o.p)) {
           errors.push(`${to}: the way to it passes too close to ${o.label}`)
         }
       }
@@ -696,7 +717,7 @@ function validateRound(
     const walk = shape?.walk
     if (!walk) return
     const others = [
-      ...spots.filter((s) => s.station !== stationOf[i]),
+      ...spots.filter((s) => s.station !== stationOf[i] || inTheWay(i)(s)),
       ...equipment.filter((q) => q.station !== stationOf[i]),
     ]
     for (const o of others) {
