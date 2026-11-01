@@ -40,6 +40,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cardHref, classSlug } from '@/lib/classes'
 import { canWalkThrough } from '@/lib/figures/animated'
+import { cn } from '@/lib/utils'
 import { countedMessages, issueMessage } from '@/lib/course-issues'
 import { shareLink } from '@/lib/share'
 import { decodeDeckParams, deckOf, encodeDeckParams, type DeckParams } from '@/lib/deck-url'
@@ -261,6 +262,7 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
             card={card(entry.code)}
             supplementary={entry.supplementary ? card(entry.supplementary) : undefined}
             sideChanged={i > 0 && deck.entries[i - 1]?.side !== entry.side}
+            station={stationMark(deck.entries, i)}
             warnings={issues
               .filter((issue) => isCardIssue(issue) && issue.index === i)
               .map((issue) => issueMessage(issue, cls, t))}
@@ -294,12 +296,20 @@ function Row({ label, card, dogRight }: { label: string; card: Card; dogRight?: 
   )
 }
 
+/**
+ * Where a card is in a group of several at one station (CNDC): the first of it, one after
+ * it, or none.
+ */
+const stationMark = (entries: DeckEntry[], i: number): 'first' | 'next' | undefined =>
+  entries[i]?.withPrevious ? 'next' : entries[i + 1]?.withPrevious ? 'first' : undefined
+
 function CourseRow({
   number,
   entry,
   card,
   supplementary,
   sideChanged,
+  station,
   warnings,
 }: {
   number: number
@@ -307,12 +317,21 @@ function CourseRow({
   card: Card
   supplementary?: Card
   sideChanged: boolean
+  /** In a group at one station (CNDC): its first card or one after it. */
+  station?: 'first' | 'next'
   /** Broken sequencing rules of a hand-made course. */
   warnings: string[]
 }) {
   const { t } = useTranslation()
   return (
-    <li className="flex break-inside-avoid items-center gap-3 p-2">
+    <li
+      className={cn(
+        'flex break-inside-avoid items-center gap-3 p-2',
+        // A group at one station: one bar along its cards, no line between them.
+        station && 'border-l-primary border-l-4',
+        station === 'next' && 'border-t-0',
+      )}
+    >
       <span className="w-8 text-center text-lg font-bold tabular-nums">{number}</span>
       <Thumb card={card} />
       <div className="min-w-0 flex-1 space-y-1 text-sm">
@@ -330,6 +349,7 @@ function CourseRow({
             + {supplementary.code} {supplementary.name}
           </p>
         )}
+        {station === 'first' && <Badge variant="outline">{t('course.cndc')}</Badge>}
         {(entry.pace !== 'normal' || sideChanged || entry.side === 'right') && (
           <div className="flex flex-wrap gap-1">
             {entry.pace === 'slow' && <Badge variant="secondary">{t('deck.paceSlow')}</Badge>}

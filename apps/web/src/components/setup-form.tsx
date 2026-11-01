@@ -86,6 +86,8 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
   // FCI: the field the deck is laid out on — the class's first unless another one is chosen.
   const fields = cls.course.fields ?? []
   const field = fields.find((f) => setup.field && fieldKey(f) === fieldKey(setup.field))
+  // Several cards at one station, where the class has them (CNDC, plan R18).
+  const cndc = !!cls.course.cndc && setup.cndc
 
   const start = () => {
     saveSetup(classId, setup)
@@ -99,6 +101,7 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
         startSide,
         seed: randomSeed(),
         ...(field && { field }),
+        ...(cndc && { cndc: true }),
       },
       showDescription: setup.showDescription,
       speak: setup.speak,
@@ -122,6 +125,7 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
         seed: randomSeed(),
         competition: true,
         ...(field && { field }),
+        ...(cndc && { cndc: true }),
       },
       showDescription: setup.showDescription,
       speak: setup.speak,
@@ -250,6 +254,22 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
             ))}
           </ToggleGroup>
         </Field>
+      )}
+
+      {cls.course.cndc && (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between gap-4">
+            <Label htmlFor="cndc" className="text-base">
+              {t('setup.cndc')}
+            </Label>
+            <Switch
+              id="cndc"
+              checked={setup.cndc}
+              onCheckedChange={(checked) => update({ cndc: checked })}
+            />
+          </div>
+          <p className="text-muted-foreground text-sm">{t('setup.cndcHint')}</p>
+        </div>
       )}
 
       <div className="flex items-center justify-between gap-4">

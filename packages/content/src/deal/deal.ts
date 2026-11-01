@@ -5,6 +5,7 @@ import { normalize, turnsOf } from './geometry'
 import { FieldPlanner, type PlannerState } from './layout'
 import { NationalCourse, type CourseState } from './course'
 import { cardOf, endsStatic, fieldKey, fieldOf, hasEquipment, paceAfter, sideAfter } from './rules'
+import { groupStations } from './cndc'
 import type { Deck, DeckEntry, DealOptions, Layout, Pace, Side } from './types'
 
 const ATTEMPTS = 100
@@ -103,7 +104,8 @@ export function dealDeck(options: DealOptions): Deck {
       usage,
       field,
     )
-    if (dealt.entries.length === options.count && complete !== false) return { options, ...dealt }
+    if (dealt.entries.length === options.count && complete !== false)
+      return withStations(cls, { options, ...dealt })
     if (dealt.entries.length > best.entries.length) best = dealt
   }
   // A training deck that fits on no field goes without a plan.
@@ -111,8 +113,21 @@ export function dealDeck(options: DealOptions): Deck {
     const { complete: _, ...dealt } = attemptDeal(cls, options, mainPool, inClass, random, usage)
     if (dealt.entries.length > best.entries.length) best = dealt
   }
-  return { options, ...best }
+  return withStations(cls, { options, ...best })
 }
+
+/**
+ * Some cards of a dealt deck grouped at one station where asked (`cndc`), the order as it
+ * was — the same deck as without: the groups are drawn from a stream of their own. Not laid
+ * out yet: the planner places each card at a station of its own.
+ */
+function withStations(cls: RoClass, deck: Deck): Deck {
+  if (!deck.options.cndc || !cls.course.cndc) return deck
+  const random = mulberry32(deck.options.seed ^ CNDC_STREAM)
+  const entries = deck.entries.map(({ at: _, ...entry }) => entry)
+  return { options: deck.options, entries: groupStations(cls, entries, random) }
+}
+const CNDC_STREAM = 0x5eed_cdc
 
 /**
  * A competition course's weight per card (FCI): between an even deal (1) and the card's

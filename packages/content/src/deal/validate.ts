@@ -22,6 +22,7 @@ import {
   wayTo,
   type Shape,
 } from './geometry'
+import { cndcAllowed, stationsOf } from './cndc'
 import { endsStatic, fieldOf, followUpsOf, hasEquipment, paceAfter, sideAfter } from './rules'
 import type { Deck, DeckEntry, Layout, Pace, Point, Pose, Round, Side } from './types'
 
@@ -90,6 +91,7 @@ export function validateDeck(deck: Deck): string[] {
   const cls = getClass(deck.options.classId)
   if (!cls) return [`unknown class ${deck.options.classId}`]
   const errors = deckIssues(cls, deck).map((issue) => describeIssue(cls, issue))
+  errors.push(...cndcIssues(cls, deck))
   if (cls.course.fields) errors.push(...validateLayout(cls, deck))
   else if (deck.layout || deck.entries.some((e) => e.at)) errors.push(`${cls.id} is not laid out`)
   return errors
@@ -121,6 +123,25 @@ export function customDeckIssues(deck: Deck, { guidelines = false } = {}): DeckI
       issue.rule !== 'points-mix' &&
       issue.rule !== 'twice-in-row',
   )
+}
+
+/**
+ * Several cards at one station (CNDC, plan R18): only in a deck dealt with them, each group
+ * one the class allows (`cndcAllowed`), as many groups as it allows.
+ */
+function cndcIssues(cls: RoClass, deck: Deck): string[] {
+  const groups = stationsOf(deck.entries).filter(([from, to]) => to > from)
+  if (!groups.length) return []
+  if (!deck.options.cndc) return ['cards grouped at one station in a deck dealt without CNDC']
+  const errors = groups.flatMap(([from, to]) =>
+    cndcAllowed(cls, deck.entries.slice(from, to + 1))
+      ? []
+      : [`#${from + 1}–${to + 1}: not a CNDC the class allows`],
+  )
+  const most = cls.course.cndc?.groups[1] ?? 0
+  if (groups.length > most) errors.push(`${groups.length} CNDC, at most ${most}`)
+  if (deck.layout) errors.push('a deck with CNDC laid out')
+  return errors
 }
 
 function deckIssues(cls: RoClass, deck: Deck): DeckIssue[] {

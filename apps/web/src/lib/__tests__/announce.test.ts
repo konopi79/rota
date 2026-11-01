@@ -38,6 +38,23 @@ describe('announcement', () => {
     ).toBe('Karta 3. Předsednutí. S doplňkovou kartou: Přiřazení okolo - vpřed.')
   })
 
+  test('the cards done at the same station after it (CNDC)', () => {
+    expect(
+      announcement(
+        {
+          kind: 'card',
+          number: 4,
+          entry: entry('1-124'),
+          card: card('1-124'),
+          following: [{ number: 5, card: card('3-305') }],
+        },
+        t,
+      ),
+    ).toBe(
+      'Karta 4. Stop – změna za psovodem – stop. Na stejném stanovišti karta 5. Stop – lehni – vstaň.',
+    )
+  })
+
   test('pace and side only when they change', () => {
     const previous = entry('Z-015')
     expect(

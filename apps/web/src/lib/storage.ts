@@ -16,6 +16,8 @@ const setupSchema = z.object({
   startSide: z.enum(['left', 'right', 'random']),
   showDescription: z.boolean(),
   speak: z.boolean().default(false),
+  /** Several cards at one station where the class allows it (CNDC, plan R18). */
+  cndc: z.boolean().default(false),
   /** The field a deck is laid out on; missing = the class's first. */
   field: z.object({ width: z.number(), height: z.number() }).optional(),
 })
@@ -51,6 +53,7 @@ export const defaultSetup = (cls: RoClass): Setup => ({
   startSide: 'left',
   showDescription: false,
   speak: false,
+  cndc: false,
 })
 
 /** `localStorage` can be missing (server render) or throw (private mode, quota). */

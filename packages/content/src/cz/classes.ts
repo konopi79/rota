@@ -112,6 +112,14 @@ const MAX_JUMPS = 3
  * cumulative: "Rozhodčí může vybírat cviky určené pro kategorii RO-Z a RO1 (karty číslo
  * 001–125)" etc.
  */
+/**
+ * CNDC (plan R18): "Ve třídách RO-V a RO1 smí být postaveny maximálně 3 CNDC (dvoukartové)
+ * složené ze dvou cviků" (Směrnice §1.1.1, p. 2). RO2 and RO3 have no limit but the
+ * regulation's three cards to a group (řád p. 16); real RO3 courses (2024–2025) have 4–8
+ * groups — fewer here, to be on the safe side.
+ */
+const CNDC_SMALL = { groups: [1, 3] as [number, number], cards: 2 as const }
+
 export const CZ_CLASSES: RoClass[] = [
   {
     id: 'RO-Z',
@@ -147,6 +155,7 @@ export const CZ_CLASSES: RoClass[] = [
       repeats: REPEATS,
       required: RO1_REQUIRED,
       rightHand: RO1_RIGHT_HAND,
+      cndc: CNDC_SMALL,
     },
     cardCodes: codes([...RO_Z_CARDS, ...RO1_CARDS]),
     newCardCodes: codes(RO1_CARDS),
@@ -166,6 +175,7 @@ export const CZ_CLASSES: RoClass[] = [
       repeats: REPEATS,
       required: RO2_REQUIRED,
       rightHand: RO2_RIGHT_HAND,
+      cndc: { groups: [2, 4], cards: 3 },
     },
     cardCodes: codes([...RO_Z_CARDS, ...RO1_CARDS, ...RO2_CARDS]),
     newCardCodes: codes(RO2_CARDS),
@@ -185,6 +195,7 @@ export const CZ_CLASSES: RoClass[] = [
       repeats: REPEATS,
       required: RO3_REQUIRED,
       rightHand: RO3_RIGHT_HAND,
+      cndc: { groups: [3, 6], cards: 3 },
     },
     cardCodes: codes([...RO_Z_CARDS, ...RO1_CARDS, ...RO2_CARDS, ...RO3_CARDS]),
     newCardCodes: codes(RO3_CARDS),
@@ -205,6 +216,7 @@ export const CZ_CLASSES: RoClass[] = [
       maxJumps: MAX_JUMPS,
       repeats: REPEATS,
       required: RO_V_REQUIRED,
+      cndc: CNDC_SMALL,
     },
     cardCodes: [
       ...[1, 2, 4, 5, 6, 7, 8, 10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]

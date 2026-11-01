@@ -45,6 +45,8 @@
     "course": "Sestavit tréninkový parkur",
     "quiz": "Kvíz – poznáš karty?",
     "speak": "Číst karty nahlas",
+    "cndc": "Více karet na jednom stanovišti (CNDC)",
+    "cndcHint": "Některé karty stojí vedle sebe a cviky z nich uděláš na jednom stanovišti za sebou. Zatím bez plánku a animace průchodu. Aplikace skládá raději přísněji – jen kombinace, které pravidla jistě dovolují.",
     "custom": "Vlastní parkur",
     "field": "Plocha",
     "fieldHint": "Na plochu této velikosti se karty rozmístí v plánku parkuru. Řád žádá aspoň 20 × 20 m; na větší se častěji vejdou odložení, slalomy a skoky – jako na parkurech rozhodčích.",
@@ -134,6 +136,7 @@
   "deck": {
     "close": "Zpět na nastavení",
     "progress": "{{current}} / {{total}}",
+    "progressStation": "{{from}}–{{to}} / {{total}}",
     "dogLeft": "Pes vlevo",
     "dogRight": "Pes vpravo",
     "paceSlow": "Pomalé tempo",
@@ -286,6 +289,7 @@
     "finish": "Cíl",
     "dogLeft": "pes vlevo",
     "dogRight": "pes vpravo",
+    "cndc": "Na jednom stanovišti s dalšími",
     "new": "Nový parkur",
     "print": "Vytisknout",
     "share": "Sdílet",
@@ -346,6 +350,7 @@
   "speech": {
     "card": "Karta {{number}}. {{name}}.",
     "supplementary": "S doplňkovou kartou: {{name}}.",
+    "sameStation": "Na stejném stanovišti karta {{number}}. {{name}}.",
     "pace": {
       "slow": "Pomalé tempo.",
       "fast": "Rychlé tempo.",

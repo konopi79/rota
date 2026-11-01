@@ -16,6 +16,8 @@ export type Screen =
       supplementary?: Card
       /** The previous card's entry — pace and side are only announced when they change. */
       previous?: DeckEntry
+      /** The cards done at the same station after it (a CNDC, plan R18). */
+      following?: { number: number; card: Card; supplementary?: Card }[]
     }
   | { kind: 'finish'; side: Side }
 
@@ -33,5 +35,11 @@ export function announcement(screen: Screen, t: T): string {
   const pacePrevious = previous?.pace ?? 'normal'
   if (entry.pace !== pacePrevious) parts.push(t(`speech.pace.${entry.pace}`))
   if (previous && entry.side !== previous.side) parts.push(t(`speech.side.${entry.side}`))
+  for (const next of screen.following ?? []) {
+    parts.push(t('speech.sameStation', { number: next.number, name: next.card.name }))
+    if (next.supplementary) {
+      parts.push(t('speech.supplementary', { name: next.supplementary.name }))
+    }
+  }
   return parts.join(' ')
 }
