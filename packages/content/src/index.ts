@@ -28,6 +28,7 @@ export {
   paceAfter,
   randomSeed,
   stationsOf,
+  stepForwardAfter,
   validateDeck,
   geometry,
   type CardIssue,

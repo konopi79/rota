@@ -83,6 +83,14 @@ export function cndcAllowed(cls: RoClass, entries: DeckEntry[]): boolean {
   return entries.slice(1).every((e, i) => !forbiddenPair(cls, entries[i] as DeckEntry, e))
 }
 
+/**
+ * Whether the next card at the same station comes after a step forward: "po všech ¨B¨
+ * (dynamických) cvicích je nutné provést krok dopředu pro ukončení cviku. Teprve poté se psovod
+ * může rozhodnout, zda udělá ještě jeden mezikrok" (řád p. 16).
+ */
+export const stepForwardAfter = (cls: RoClass, entry: DeckEntry): boolean =>
+  !endsStatic(cls, cardOf(cls, entry.code), entry.supplementary)
+
 /** The stations of a deck: runs of entries, each next one `withPrevious`, as index ranges. */
 export function stationsOf(entries: DeckEntry[]): [number, number][] {
   const stations: [number, number][] = []

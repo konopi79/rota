@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 
 import { getClass } from '../registry'
-import { cndcAllowed, stationsOf } from '../deal/cndc'
+import { cndcAllowed, stationsOf, stepForwardAfter } from '../deal/cndc'
 import { dealDeck, validateDeck } from '../deal'
 import type { DeckEntry } from '../deal'
 import { EQUIPMENT } from '../schema'
@@ -34,6 +34,15 @@ describe('CNDC — several cards at one station (R18)', () => {
     expect(allowed('1-105', 'Z-030')).toBe(false)
     // A position after a static exercise: "Stop – vstaň – sedni".
     expect(allowed('2-209', 'Z-001')).toBe(false)
+  })
+
+  test('after a dynamic exercise a step forward (řád p. 16)', () => {
+    const step = (code: string) => stepForwardAfter(ro3, group(code)[0] as DeckEntry)
+    expect(step('3-326')).toBe(true)
+    expect(step('3-317')).toBe(false)
+    // "A nebo B": the D0 card decides.
+    expect(step('3-302+D0c')).toBe(true)
+    expect(step('3-302+D0a')).toBe(false)
   })
 
   test('a change of direction first, a leave card last, a follow-up first', () => {

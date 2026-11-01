@@ -7,6 +7,7 @@ import {
   getCard,
   getClass,
   randomSeed,
+  stepForwardAfter,
   type Card,
   type DeckEntry,
   type RoClass,
@@ -263,6 +264,7 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
             supplementary={entry.supplementary ? card(entry.supplementary) : undefined}
             sideChanged={i > 0 && deck.entries[i - 1]?.side !== entry.side}
             station={stationMark(deck.entries, i)}
+            stepAfter={!!deck.entries[i + 1]?.withPrevious && stepForwardAfter(cls, entry)}
             warnings={issues
               .filter((issue) => isCardIssue(issue) && issue.index === i)
               .map((issue) => issueMessage(issue, cls, t))}
@@ -310,6 +312,7 @@ function CourseRow({
   supplementary,
   sideChanged,
   station,
+  stepAfter,
   warnings,
 }: {
   number: number
@@ -319,6 +322,8 @@ function CourseRow({
   sideChanged: boolean
   /** In a group at one station (CNDC): its first card or one after it. */
   station?: 'first' | 'next'
+  /** A dynamic exercise with another card after it at the station: a step forward first. */
+  stepAfter?: boolean
   /** Broken sequencing rules of a hand-made course. */
   warnings: string[]
 }) {
@@ -360,6 +365,9 @@ function CourseRow({
               </Badge>
             )}
           </div>
+        )}
+        {stepAfter && (
+          <p className="text-muted-foreground leading-tight">{t('course.stepAfter')}</p>
         )}
         {warnings.map((warning) => (
           <p key={warning} className="text-destructive flex gap-1.5 leading-tight">

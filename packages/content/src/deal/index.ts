@@ -1,4 +1,4 @@
-export { cndcAllowed, stationsOf } from './cndc'
+export { cndcAllowed, stationsOf, stepForwardAfter } from './cndc'
 export { customDeck, type CustomCard } from './custom'
 export { dealDeck } from './deal'
 export { randomSeed } from './prng'

@@ -6,6 +6,7 @@ import {
   getClass,
   randomSeed,
   stationsOf,
+  stepForwardAfter,
   type Card,
   type DeckEntry,
   type RoClass,
@@ -102,6 +103,7 @@ function Deck({ params, cls }: { params: DeckParams; cls: RoClass }) {
         number: pos + 1 + i,
         card: getCard(cls.ruleset, e.code) as Card,
         ...(e.supplementary && { supplementary: getCard(cls.ruleset, e.supplementary) }),
+        ...(stepForwardAfter(cls, deck.entries[pos - 1 + i] as DeckEntry) && { stepFirst: true }),
       }))
       return {
         kind: 'card',
@@ -113,7 +115,7 @@ function Deck({ params, cls }: { params: DeckParams; cls: RoClass }) {
         ...(following.length && { following }),
       }
     },
-    [deck, cls.ruleset, params.options.startSide, stationAt],
+    [deck, cls, params.options.startSide, stationAt],
   )
 
   // Position changes replace the URL instead of pushing: the back button should leave the
@@ -385,11 +387,18 @@ function StationCards({
   entries: DeckEntry[]
   first: number
 }) {
+  const { t } = useTranslation()
   return (
     <div className="flex h-full w-full flex-col gap-2 landscape:flex-row">
       {entries.map((entry, i) => (
         <div key={i} className="flex min-h-0 min-w-0 flex-1 flex-col items-center gap-1">
-          <span className="text-sm font-semibold tabular-nums">{first + i}</span>
+          <span className="text-sm font-semibold tabular-nums">
+            {first + i}
+            {/* After a dynamic exercise the next one starts with a step forward (řád p. 16). */}
+            {i > 0 && stepForwardAfter(cls, entries[i - 1] as DeckEntry) && (
+              <span className="text-muted-foreground font-normal"> · {t('deck.stepFirst')}</span>
+            )}
+          </span>
           <div className="min-h-0 w-full flex-1">
             <EntryCards cls={cls} entry={entry} />
           </div>

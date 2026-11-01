@@ -55,6 +55,23 @@ describe('announcement', () => {
     )
   })
 
+  test('after a dynamic exercise, a step forward first', () => {
+    expect(
+      announcement(
+        {
+          kind: 'card',
+          number: 17,
+          entry: entry('3-326'),
+          card: card('3-326'),
+          following: [{ number: 18, card: card('1-103'), stepFirst: true }],
+        },
+        t,
+      ),
+    ).toBe(
+      'Karta 17. Výměna při obratu o 180° vlevo. Na stejném stanovišti po kroku vpřed karta 18. Stop – obrat vpravo o 90° – vpřed.',
+    )
+  })
+
   test('pace and side only when they change', () => {
     const previous = entry('Z-015')
     expect(
