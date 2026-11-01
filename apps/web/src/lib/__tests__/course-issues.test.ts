@@ -57,6 +57,29 @@ describe('issueMessage', () => {
       { rule: 'right-mid-course' },
       { rule: 'right-mid-too-long', max: 0 },
       { rule: 'right-mid-too-long', max: 1 },
+      // Several cards at one station (CNDC), every reason at every level it comes at.
+      ...(
+        [
+          ['no-cndc', 'rules'],
+          ['too-many', 'rules', 3],
+          ['too-many', 'guidelines', 2],
+          ['turn-first', 'guidelines'],
+          ['higher-class', 'guidelines'],
+          ['higher-class', 'strict'],
+          ['equipment', 'strict'],
+          ['pace', 'strict'],
+          ['long', 'strict'],
+          ['leave-last', 'strict'],
+          ['follow-up-first', 'strict'],
+          ['side-step-first', 'strict'],
+          ['ends-behind', 'strict'],
+        ] as const
+      ).map(([reason, level, max]): CardProblem => ({
+        rule: 'cndc',
+        reason,
+        level,
+        ...(max !== undefined && { max }),
+      })),
     ]
     const courseIssues: DeckIssue[] = [
       { rule: 'required-missing', oneOf: ['2-217', '2-218'], label: 'skok' },
@@ -66,6 +89,8 @@ describe('issueMessage', () => {
       { rule: 'right-pattern' },
       { rule: 'course-size', count: 3, min: 20, max: 22 },
       { rule: 'points-mix', points: 4, have: 2, min: 7 },
+      { rule: 'cndc-stations', count: 4, max: 3, level: 'guidelines' },
+      { rule: 'cndc-stations', count: 7, max: 6, level: 'strict' },
     ]
     const all = [
       ...problems.map((problem): DeckIssue => ({ index: 0, code: 'Z-001', ...problem })),

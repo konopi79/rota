@@ -18,7 +18,8 @@ import { z } from 'zod/v4'
  * The deck lives in the URL (plan §6): class + options + seed reproduce the same order,
  * and `karta` keeps the position, so a reload or a shared link lands on the same card.
  * A course put together by hand (plan §12) carries its cards instead of a seed
- * (`poradi=Z-003,Z-014.D0a,2-211`). Keys are Czech because the URL is visible to the user.
+ * (`poradi=Z-003,Z-014.D0a,2-211`; the cards of one station joined by `_`, `2-216_2-201`).
+ * Keys are Czech because the URL is visible to the user.
  */
 export type DeckParams = {
   options: DealOptions
@@ -26,6 +27,11 @@ export type DeckParams = {
   order?: CustomCard[]
   /** A hand-made course is checked against the judges' guidelines too (`smernice=1`). */
   guidelines?: boolean
+  /**
+   * …and against the safe side the dealer keeps to as well (`kontrola=prisne`): the CNDC rules
+   * ROTA keeps to beyond the regulation and the guidelines (plan R18).
+   */
+  strict?: boolean
   /** A hand-made course is not checked at all — a short sequence from a trainer (`kontrola=0`). */
   unchecked?: boolean
   showDescription: boolean
@@ -70,17 +76,25 @@ const customSchema = paramsSchema
   .extend({
     poradi: z.string().min(1),
     smernice: z.enum(['0', '1']).default('0'),
-    kontrola: z.enum(['0', '1']).default('1'),
+    kontrola: z.enum(['0', '1', 'prisne']).default('1'),
   })
 
-/** `Z-014.D0a` — a card and its D0 card. */
+/** `Z-014.D0a` — a card and its D0 card; `_` before a card at the station of the one before. */
 export const encodeOrder = (order: CustomCard[]) =>
-  order.map((c) => (c.supplementary ? `${c.code}.${c.supplementary}` : c.code)).join(',')
+  order
+    .map((c, i) => {
+      const card = c.supplementary ? `${c.code}.${c.supplementary}` : c.code
+      return i === 0 ? card : `${c.withPrevious ? STATION : ','}${card}`
+    })
+    .join('')
+/** Joins the cards of one station (CNDC) in `poradi`. */
+const STATION = '_'
 
 export function encodeDeckParams({
   options,
   order,
   guidelines,
+  strict,
   unchecked,
   showDescription,
   speak,
@@ -113,6 +127,7 @@ export function encodeDeckParams({
   if (field) params.set('pole', fieldKey(field))
   if (options.cndc && !order) params.set('cndc', '1')
   if (order && unchecked) params.set('kontrola', '0')
+  else if (order && strict) params.set('kontrola', 'prisne')
   else if (order && guidelines) params.set('smernice', '1')
   if (speak) params.set('hlas', '1')
   return params.toString()
@@ -166,19 +181,29 @@ function decodeCustom(entries: Record<string, string>): DeckParams | null {
   const ruleset = getClass(p.trida)?.ruleset
   if (!ruleset) return null
   const order: CustomCard[] = []
-  for (const item of p.poradi.split(',')) {
-    const [code = '', supplementary, ...rest] = item.split('.')
-    if (rest.length || getCard(ruleset, code)?.kind !== 'exercise') return null
-    if (supplementary === undefined) order.push({ code })
-    else if (getCard(ruleset, supplementary)?.kind === 'supplementary') {
-      order.push({ code, supplementary })
-    } else return null
+  for (const station of p.poradi.split(',')) {
+    for (const [k, item] of station.split(STATION).entries()) {
+      const [code = '', supplementary, ...rest] = item.split('.')
+      if (rest.length || getCard(ruleset, code)?.kind !== 'exercise') return null
+      const withPrevious = k > 0 && order.length > 0
+      if (supplementary !== undefined && getCard(ruleset, supplementary)?.kind !== 'supplementary')
+        return null
+      order.push({
+        code,
+        ...(supplementary !== undefined && { supplementary }),
+        ...(withPrevious && { withPrevious: true as const }),
+      })
+    }
   }
   if (order.length > MAX_CUSTOM_CARDS) return null
   return {
     options: customDeck(p.trida, p.strana === 'P' ? 'right' : 'left', order).options,
     order,
-    ...(p.kontrola === '0' ? { unchecked: true } : p.smernice === '1' && { guidelines: true }),
+    ...(p.kontrola === '0'
+      ? { unchecked: true }
+      : p.kontrola === 'prisne'
+        ? { guidelines: true, strict: true }
+        : p.smernice === '1' && { guidelines: true }),
     showDescription: p.popis === '1',
     ...(p.hlas === '1' && { speak: true }),
     position: p.karta,

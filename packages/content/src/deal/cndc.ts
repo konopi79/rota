@@ -70,26 +70,109 @@ export function forbiddenPair(cls: RoClass, first: DeckEntry, second: DeckEntry)
 }
 
 /**
- * Whether `entries` may stand at one station, in this order: the class has CNDC, as many
- * cards as it allows, each one eligible; a leave card only last (its follow-up is the next
- * station's), a follow-up only first, a card ending behind where it starts only last, a side
- * step only first; a turn only if the group starts with one; no forbidden pair.
+ * How sure a CNDC rule is (a hand-made course is checked up to one, plan §12): the regulation's,
+ * the judges' guidelines', or one of ROTA's own safe-side choices the dealer keeps to.
+ */
+export type CndcLevel = 'rules' | 'guidelines' | 'strict'
+
+/** What is wrong with a card at a station of several. */
+export type CndcReason =
+  /** The class has no CNDC (RO-Z: řád p. 11; FCI). */
+  | 'no-cndc'
+  /** More cards than `max` at one station: 3 (řád p. 16), RO1 and RO-V 2 (Směrnice §1.1.1). */
+  | 'too-many'
+  /** A change of direction, but not first (Směrnice §1.1.6). */
+  | 'turn-first'
+  /**
+   * The pair "by ve svém provádění představoval cvik z vyšší třídy" (Směrnice §1.1.6): the
+   * guidelines' own example 105/112, or one derived from the cards (`forbiddenPair`, strict).
+   */
+  | 'higher-class'
+  // ROTA's safe side (strict):
+  | 'equipment'
+  | 'pace'
+  | 'long'
+  | 'leave-last'
+  | 'follow-up-first'
+  | 'side-step-first'
+  | 'ends-behind'
+
+/** A problem at the card `at` of a station (index into it). */
+export type CndcProblem = { at: number; reason: CndcReason; level: CndcLevel; max?: number }
+
+/** The guidelines' example: "např. 105/112 představuje 105/205" (Směrnice §1.1.6). */
+const HIGHER_CLASS_PAIRS = [['1-105', '1-112']]
+
+/** "mohou zahrnovat až 3 cviky" (řád p. 16). */
+const MOST_CARDS = 3
+
+/**
+ * Everything wrong with `entries` standing at one station, in this order, each with how sure
+ * the rule is (`CndcLevel`): the class has CNDC (rules); as many cards as allowed (rules: 3,
+ * guidelines: the class's `cards`); a change of direction first, not 105/112 (guidelines); and
+ * the safe side (strict) — each card eligible (`cndcEligible`), a leave card only last (its
+ * follow-up is the next station's), a follow-up only first, a card ending behind where it starts
+ * only last, a side step only first, no pair derived as a higher class's (`forbiddenPair`).
+ */
+export function stationProblems(cls: RoClass, entries: DeckEntry[]): CndcProblem[] {
+  const limits = cls.course.cndc
+  if (entries.length < 2) return []
+  if (!limits) {
+    return entries.slice(1).map((_, i) => ({ at: i + 1, reason: 'no-cndc', level: 'rules' }))
+  }
+  const problems: CndcProblem[] = []
+  const cards = entries.map((e) => cardOf(cls, e.code))
+  const add = (at: number, reason: CndcReason, level: CndcLevel, max?: number) =>
+    problems.push({ at, reason, level, ...(max !== undefined && { max }) })
+  cards.forEach((card, i) => {
+    if (i >= MOST_CARDS) add(i, 'too-many', 'rules', MOST_CARDS)
+    else if (i >= limits.cards) add(i, 'too-many', 'guidelines', limits.cards)
+    if ((card.sequencing.equipment ?? []).length) add(i, 'equipment', 'strict')
+    if (card.sequencing.pace) add(i, 'pace', 'strict')
+    if (NEEDS_ROOM.has(card.code)) add(i, 'long', 'strict')
+    const last = i === cards.length - 1
+    if (!last && card.sequencing.nextOneOf) add(i, 'leave-last', 'strict')
+    // Nor one that ends back where the handler stepped to (`geometry.exit` < 0: steps back,
+    // turns done backwards): the next exercise would start there, where the plan has no place
+    // for it.
+    if (!last && (card.geometry?.exit ?? 0) < 0) add(i, 'ends-behind', 'strict')
+    if (i > 0 && card.sequencing.onlyAfterLeave) add(i, 'follow-up-first', 'strict')
+    // A side step only first: its card stands right before it (§5.3.1), and further on in a
+    // group the station's cards stand where the step goes (walked through in animation).
+    if (i > 0 && stepsAside(card)) add(i, 'side-step-first', 'strict')
+    if (i > 0) {
+      const pair = [cards[i - 1]?.code, card.code]
+      if (HIGHER_CLASS_PAIRS.some(([a, b]) => a === pair[0] && b === pair[1])) {
+        add(i, 'higher-class', 'guidelines')
+      } else if (forbiddenPair(cls, entries[i - 1] as DeckEntry, entries[i] as DeckEntry)) {
+        add(i, 'higher-class', 'strict')
+      }
+    }
+  })
+  const turning = cards.findIndex(turns)
+  if (turning > 0) add(turning, 'turn-first', 'guidelines')
+  return problems
+}
+
+/**
+ * Whether `entries` may stand at one station, in this order, by every rule — the safe side
+ * included (`stationProblems`): what the dealer groups.
  */
 export function cndcAllowed(cls: RoClass, entries: DeckEntry[]): boolean {
+  return !!cls.course.cndc && entries.length >= 2 && !stationProblems(cls, entries).length
+}
+
+/**
+ * How many CNDC a course may have at most, by the guidelines (RO1, RO-V: "maximálně 3 CNDC",
+ * Směrnice §1.1.1) and by the safe side the dealer keeps to (`course.cndc.groups`).
+ */
+export function mostStations(cls: RoClass): { guidelines?: number; strict?: number } {
   const limits = cls.course.cndc
-  if (!limits || entries.length < 2 || entries.length > limits.cards) return false
-  const cards = entries.map((e) => cardOf(cls, e.code))
-  if (!cards.every(cndcEligible)) return false
-  if (cards.slice(0, -1).some((c) => c.sequencing.nextOneOf)) return false
-  // Nor one that ends back where the handler stepped to (`geometry.exit` < 0: steps back, turns
-  // done backwards): the next exercise would start there, where the plan has no place for it.
-  if (cards.slice(0, -1).some((c) => (c.geometry?.exit ?? 0) < 0)) return false
-  if (cards.slice(1).some((c) => c.sequencing.onlyAfterLeave)) return false
-  // A side step only first: its card stands right before it (§5.3.1), and further on in a group
-  // the station's cards stand where the step goes (walked through in animation).
-  if (cards.slice(1).some(stepsAside)) return false
-  if (cards.some(turns) && !turns(cards[0] as Card)) return false
-  return entries.slice(1).every((e, i) => !forbiddenPair(cls, entries[i] as DeckEntry, e))
+  if (!limits) return {}
+  return {
+    ...(limits.guidelinesGroups !== undefined && { guidelines: limits.guidelinesGroups }),
+    strict: limits.groups[1],
+  }
 }
 
 /**

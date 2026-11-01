@@ -306,6 +306,8 @@ export const roClassSchema = z
           .object({
             groups: z.tuple([z.number().int().positive(), z.number().int().positive()]),
             cards: z.union([z.literal(2), z.literal(3)]),
+            /** At most this many groups by the judges' guidelines (RO1, RO-V: 3). */
+            guidelinesGroups: z.number().int().positive().optional(),
           })
           .strict()
           .optional(),

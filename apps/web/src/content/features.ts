@@ -20,7 +20,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'cndc-walkthrough'
+export const LATEST_FEATURE_ID = 'cndc-editor'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -100,6 +100,11 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
         id: 'cndc-plan',
         title: 'CNDC na plánku',
         desc: 'Karty jednoho stanoviště stojí na plánku vedle sebe a další cvik začíná tam, kde skončil předchozí – po dynamickém cviku o krok dál. Za CNDC s dynamickým cvikem je další stanoviště o metr dál, jak chtějí směrnice.',
+      },
+      {
+        id: 'cndc-editor',
+        title: 'CNDC ve vlastním parkuru',
+        desc: 'Ve vlastním parkuru dáš kartu na stejné stanoviště jako předchozí a kontrolu pořadí zvolíš ve čtyřech stupních: vypnutá, řád, směrnice, nebo přísně – navíc opatrná pravidla, podle kterých skládá CNDC aplikace.',
       },
       {
         id: 'cndc-walkthrough',

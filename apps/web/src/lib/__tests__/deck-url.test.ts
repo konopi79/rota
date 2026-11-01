@@ -125,6 +125,38 @@ describe('hand-made course URL', () => {
     expect(decodeDeckParams(new URLSearchParams(encoded))).toEqual(unchecked)
   })
 
+  test('marks a course checked strictly (the guidelines with it)', () => {
+    const strict = { ...custom, guidelines: true, strict: true }
+    const encoded = encodeDeckParams(strict)
+    expect(encoded).toContain('&kontrola=prisne')
+    expect(encoded).not.toContain('smernice')
+    expect(decodeDeckParams(new URLSearchParams(encoded))).toEqual(strict)
+  })
+
+  test('carries several cards at one station (CNDC), joined by _', () => {
+    const order = [
+      { code: '2-216' },
+      { code: '2-201', withPrevious: true as const },
+      { code: '2-206', withPrevious: true as const },
+      { code: 'Z-014', supplementary: 'D0a' },
+      { code: '1-105', withPrevious: true as const },
+    ]
+    const params = { ...custom, order, options: customDeck('RO2', 'right', order).options }
+    const encoded = encodeDeckParams(params)
+    expect(new URLSearchParams(encoded).get('poradi')).toBe('2-216_2-201_2-206,Z-014.D0a_1-105')
+    expect(decodeDeckParams(new URLSearchParams(encoded))).toEqual(params)
+    expect(deckOf(params).entries.map((e) => !!e.withPrevious)).toEqual([
+      false,
+      true,
+      true,
+      false,
+      true,
+    ])
+    // A station without a card is no list.
+    for (const bad of ['_2-201', '2-216__2-201', '2-216_'])
+      expect(decodeDeckParams(new URLSearchParams(`trida=RO2&poradi=${bad}`))).toBeNull()
+  })
+
   test('keeps an order that breaks the rules — the warnings say so, not the URL', () => {
     const decoded = decodeDeckParams(new URLSearchParams('trida=RO1&poradi=2-213,2-213'))
     expect(decoded?.order).toEqual([{ code: '2-213' }, { code: '2-213' }])

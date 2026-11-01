@@ -100,12 +100,18 @@ describe('custom course storage', () => {
       cards: [],
       checks: true,
       guidelines: false,
+      strict: false,
     })
     const course = {
       startSide: 'right' as const,
-      cards: [{ code: 'Z-014', supplementary: 'D0a' }, { code: 'Z-001' }],
+      // The second card at the station of the first (CNDC).
+      cards: [
+        { code: 'Z-014', supplementary: 'D0a' },
+        { code: 'Z-001', withPrevious: true as const },
+      ],
       checks: false,
       guidelines: true,
+      strict: true,
     }
     saveSetup('RO1', { ...defaultSetup(ro1), count: 5 })
     saveCustomCourse('RO1', course)
@@ -115,7 +121,7 @@ describe('custom course storage', () => {
   })
 
   test('adopting a course asks before replacing a different one in progress', () => {
-    const off = { checks: true, guidelines: false }
+    const off = { checks: true, guidelines: false, strict: false }
     const a = { startSide: 'left' as const, cards: [{ code: 'Z-001' }], ...off }
     const b = { startSide: 'left' as const, cards: [{ code: 'Z-006' }], ...off }
     let asked = 0
@@ -145,6 +151,7 @@ describe('custom course storage', () => {
       cards: [{ code: 'Z-001' }, { code: 'Z-999' }, { code: 'Z-014', supplementary: 'D0x' }],
       checks: true,
       guidelines: false,
+      strict: false,
     })
     expect(loadCustomCourse(ro1).cards).toEqual([{ code: 'Z-001' }])
   })

@@ -118,7 +118,7 @@ const MAX_JUMPS = 3
  * regulation's three cards to a group (řád p. 16); real RO3 courses (2024–2025) have 4–8
  * groups — fewer here, to be on the safe side.
  */
-const CNDC_SMALL = { groups: [1, 3] as [number, number], cards: 2 as const }
+const CNDC_SMALL = { groups: [1, 3] as [number, number], cards: 2 as const, guidelinesGroups: 3 }
 
 export const CZ_CLASSES: RoClass[] = [
   {
