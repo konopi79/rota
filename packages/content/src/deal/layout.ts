@@ -11,6 +11,7 @@ import {
   distance,
   distanceToSegment,
   distanceToWay,
+  dogWayOf,
   EDGE,
   GAP_MAX,
   GAP_MIN,
@@ -266,7 +267,8 @@ export class FieldPlanner {
       })),
     )
     // Of the places that fit, the first with room to go on (see `runway`), else the roomiest.
-    let best: { at: Placement; shape: Shape; room: number; aisle: Point[] } | undefined
+    let best:
+      { at: Placement; shape: Shape; room: number; aisle: Point[]; dogWay?: Point[] } | undefined
     const others = [...this.stations, ...this.signs, ...this.d0sBut(0)]
     while (options.length) {
       const option = pickWeighted(options, (o) => o.weight, this.random)
@@ -277,14 +279,20 @@ export class FieldPlanner {
       if (!this.free(at, card, this.signs, props)) continue
       const aisle = wayTo(previousShape, exit, at)
       if (card.ruleset === 'CZ' && !this.aisleClear(aisle)) continue
+      // The dog called to it runs its own way there, clear like a way walked.
+      const dogWay =
+        card.ruleset === 'CZ' && recallFollows && this.previous && previousShape
+          ? dogWayOf(this.previous.at, previousShape, at)
+          : undefined
+      if (dogWay && !this.aisleClear(dogWay)) continue
       const shape = shapeOf(card, at, side, false)
       if (!this.fits(card, at, shape, props)) continue
       const room = this.roomAfter(shape, others)
-      if (!best || room > best.room) best = { at, shape, room, aisle }
+      if (!best || room > best.room) best = { at, shape, room, aisle, dogWay }
       if (room >= ROOM) break
     }
     if (!best) return undefined
-    const { at, shape, aisle } = best
+    const { at, shape, aisle, dogWay } = best
     this.props = props
     const sign = signOf(card, at)
     const d0 = d0StandOf(card, at)
@@ -304,6 +312,7 @@ export class FieldPlanner {
     if (shape.back) this.backs.push([at, shape.back])
     if (shape.walk) this.aisles.push(shape.walk)
     if (card.ruleset === 'CZ') this.aisles.push(aisle)
+    if (dogWay) this.aisles.push(dogWay)
     this.previous = { card, at, side }
     return at
   }
@@ -324,14 +333,8 @@ export class FieldPlanner {
       const at: Placement = { ...from, turn }
       const stands = standsOf([...this.station, { card, at }])
       const { sign, d0 } = stands.at(-1) as { sign: Point; d0?: Point }
-      if (
-        !clearOfStation(
-          card,
-          at,
-          stands.flatMap((s) => (s.d0 ? [s.sign, s.d0] : [s.sign])),
-        )
-      )
-        continue
+      const all = stands.flatMap((s) => (s.d0 ? [s.sign, s.d0] : [s.sign]))
+      if (!clearOfStation(card, at, all, side)) continue
       if (!this.freeAtStation(at, sign, d0)) continue
       const shape = shapeOf(card, at, side, false)
       if (!this.fits(card, at, shape, this.props, { sign, d0 })) continue

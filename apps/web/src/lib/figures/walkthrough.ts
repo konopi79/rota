@@ -93,9 +93,6 @@ const within = (base: Pose, p: Pose): Pose => {
   return { x: c * dx - s * dz, z: s * dx + c * dz, heading: p.heading - base.heading }
 }
 
-/** Going on past a jump, the handler is this far past it before turning off, metres. */
-const PAST_THE_JUMP = 1
-
 /** Where the team sets off: this far before the start line, metres, walking in. */
 const RUN_UP = 2
 /**
@@ -302,7 +299,7 @@ export function walkthroughOf(deck: Deck, cls: RoClass, start = 0): Walkthrough 
     const aside =
       before && LEAVE_PARTS.includes(before) && !!card(before.code).geometry?.followUp?.sides
     const jump = aside ? before.jumps?.[0] : undefined
-    if (jump) steps.push({ walk: jump.z + PAST_THE_JUMP, caption: leaving ?? 'toCard' })
+    if (jump) steps.push({ walk: jump.z + geometry.PAST_THE_JUMP, caption: leaving ?? 'toCard' })
     steps.push({
       walkTo: local(at),
       ...(aside ? { slant: true as const } : { along: local(plans[i]!) }),

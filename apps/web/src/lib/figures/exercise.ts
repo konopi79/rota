@@ -1124,13 +1124,20 @@ export class ExercisePlayer {
   }
 
   /** The jump ahead of a team at `team`, its bar across the team's way. */
-  private barAheadOf(team: Pose): Bar | undefined {
-    // Across the team's way and beside it — not another card's jump further off on a course.
+  private barAheadOf(team: Pose, within: number): Bar | undefined {
+    // Across the team's way and beside it — not another card's jump further off on a course,
+    // nor one past where the dog is back at heel (`within` metres on: a later card's, on the
+    // same line, a walkthrough's dog went over instead).
     return (
       this.bars
         .filter((b) => Math.abs(Math.cos(b.heading - team.heading)) > 0.9)
         .map((b) => ({ ...b, heading: team.heading }))
-        .filter((b) => alongBar(b, team) < 0 && Math.abs(acrossBar(b, team)) < JUMP_BESIDE)
+        .filter(
+          (b) =>
+            alongBar(b, team) < 0 &&
+            -alongBar(b, team) < within &&
+            Math.abs(acrossBar(b, team)) < JUMP_BESIDE,
+        )
         // The one nearest the team's way.
         .sort((a, b) => Math.abs(acrossBar(a, team)) - Math.abs(acrossBar(b, team)))[0]
     )
@@ -1823,7 +1830,7 @@ export class ExercisePlayer {
     ) {
       this.jumpStep = this.index
       const from = onField(this.team, this.dogAt)
-      const bar = this.barAheadOf(this.team)!
+      const bar = this.barAheadOf(this.team, current.dogJumps)!
       const end = onField(forward(this.team, current.dogJumps), PLACES[this.dogPlace])
       const route = overBar(from, { ...bar, heading: this.team.heading }, (past) =>
         runToPlace(past, end, end.heading),
