@@ -249,8 +249,9 @@ export function clearOfStation(
   card: Placed & Pick<Card, 'code'>,
   at: Pose,
   stands: Point[],
+  side: Side,
 ): boolean {
-  const near = ROOM_BEFORE.has(card.code) ? () => false : alongOwnCard(card, at)
+  const near = ROOM_BEFORE[side].has(card.code) ? () => false : alongOwnCard(card, at)
   return stands.every((p) => distance(p, at) >= CNDC_ROOM || near(p))
 }
 
@@ -271,11 +272,12 @@ type Walk = { ahead: number; across: number }
 
 /**
  * The cards whose animation stops the handler further from the card than usual, the dog working
- * between them — in front (Z-014, 1-124, 1-125, …) or round them (3-315, 3-318): done where the
- * exercise before ends, the station's cards stood too close (walked through in animation; the
- * animations' `stopAt`, kept in step by a test).
+ * between them — in front (Z-014, 1-124, 1-125, …) or round them (3-315, 3-318), with the dog on
+ * the right also the handler round the dog (Z-004, Z-005, 3-303) and its spin ahead (2-219):
+ * done where the exercise before ends, the station's cards stood too close (walked through in
+ * animation; the animations' `stopAt`, kept in step by a test).
  */
-export const ROOM_BEFORE = new Set([
+const ROOM_BEFORE_LEFT = [
   'Z-014',
   'Z-025',
   'Z-032',
@@ -291,7 +293,11 @@ export const ROOM_BEFORE = new Set([
   '2-222',
   '3-315',
   '3-318',
-])
+]
+export const ROOM_BEFORE: Record<Side, Set<string>> = {
+  left: new Set(ROOM_BEFORE_LEFT),
+  right: new Set([...ROOM_BEFORE_LEFT, 'Z-004', 'Z-005', '2-219', '3-303']),
+}
 
 /** The approach to the next station after a CNDC with a dynamic exercise (`CNDC_EXTRA`). */
 export function afterDynamicStation(approach: Approach): Approach {
@@ -386,6 +392,9 @@ export function approachOf(previous: Shape | undefined, next: Card | undefined):
   return { min, max: Math.max(GAP_MAX, min + GAP_MAX - GAP_MIN), shifts, hairpin }
 }
 
+/** Going on past a leave card's jump, the handler is this far past it before turning off, metres. */
+export const PAST_THE_JUMP = 1
+
 /**
  * After a turn about the team gets over beside its way in within this far, and as far again
  * as it goes aside, metres — as it is walked through in animation (R16).
@@ -409,6 +418,13 @@ export function wayTo(
   to: Point,
   toFinish = false,
 ): Point[] {
+  // From a leave card with a jump to a follow-up set aside (3-314): on past the jump first,
+  // along it, then over at a slant — as walked through in animation (a card stood on that way).
+  const jump = previous?.followUp?.shifts && previous.props.find((p) => p.kind === 'jump')
+  if (jump) {
+    const ahead = (walkOf(from, { ...jump, heading: from.heading }) as { ahead: number }).ahead
+    return [from, offset(from, from.heading, ahead + PAST_THE_JUMP), to]
+  }
   if (!previous?.hairpin) return [from, to]
   const walk = walkOf(from, { ...to, heading: from.heading })
   if (!walk) return [from, to]
@@ -417,6 +433,18 @@ export function wayTo(
     Math.max(0, walk.ahead - (toFinish ? FINISH_STRAIGHT : 0.5)),
   )
   return [from, offset(from, from.heading, join, walk.across), to]
+}
+
+/**
+ * The dog's way when a national follow-up calls it (2-213–2-216, 3-302, 3-308, …): from where
+ * it was left — about where the leave card was done — over the leave card's jump if it has one
+ * (2-218, 3-314), to the handler at the follow-up. It runs straight there, not along the
+ * handler's way (at a slant to a card set aside, 3-301, 3-314): it is kept clear like a way
+ * walked (walked through in animation, a dog ran past another station's card).
+ */
+export function dogWayOf(leave: Placement, leaveShape: Shape, to: Point): Point[] {
+  const jump = leaveShape.props.find((p) => p.kind === 'jump')
+  return [leave, ...(jump ? [jump] : []), to]
 }
 
 /** Where the team comes walking `ahead` m straight on from `from`, `across` m to the side. */

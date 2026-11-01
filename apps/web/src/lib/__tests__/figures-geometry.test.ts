@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test'
 import { geometry as layout, getCard, type Card } from '@rota/content'
 
 import { ExercisePlayer, type Exercise } from '../figures/exercise'
-import { EXERCISES } from '../figures/exercises'
+import { EXERCISES, RIGHT_EXERCISES } from '../figures/exercises'
 
 /**
  * What an exercise does on the field, read off its script: where the team is when it walks
@@ -92,9 +92,12 @@ describe('course plan geometry matches the animations (R14)', () => {
 
   test('the cards that need room before their card at a CNDC are those stopped further off (R18)', () => {
     // The animation stops the handler at least 30 cm further from the card, the dog working
-    // between them (`stopAt`, the dog on the left).
-    const roomy = exercises.filter((e) => (e.stopAt?.z ?? 0) <= -0.3).map((e) => e.code)
-    expect([...layout.ROOM_BEFORE].sort()).toEqual([...new Set(roomy)].sort())
+    // between them (`stopAt`), on either side.
+    const roomy = (list: Exercise[]) => [
+      ...new Set(list.filter((e) => (e.stopAt?.z ?? 0) <= -0.3).map((e) => e.code)),
+    ]
+    expect([...layout.ROOM_BEFORE.left].sort()).toEqual(roomy(EXERCISES).sort())
+    expect([...layout.ROOM_BEFORE.right].sort()).toEqual(roomy(RIGHT_EXERCISES).sort())
   })
 
   test('the same cones and bowls in the same places', () => {

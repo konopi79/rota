@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test'
 import { CZ_CARDS } from '../cz'
 import { CZ_CLASSES } from '../cz/classes'
 import { dealDeck, validateDeck, type Deck, type DealOptions, type DeckEntry } from '../deal'
-import { approachOf, shapeOf, signOf, turnsOf } from '../deal/geometry'
+import { approachOf, dogWayOf, shapeOf, signOf, turnsOf, wayTo } from '../deal/geometry'
 import { FCI_CARDS } from '../fci'
 import { getCard } from '../registry'
 import { EQUIPMENT, type Card, type Equipment } from '../schema'
@@ -418,6 +418,42 @@ describe('national field layout (R14)', () => {
     expect(validateDeck(deck)).toContain(
       `#2 ${second.code}: the way to it passes too close to #3 ${third.code}`,
     )
+  })
+
+  test('the dog called by a follow-up runs clear of the other cards (walked through in animation)', () => {
+    let checked = 0
+    for (let seed = 0; seed < 40 && checked < 3; seed++) {
+      const deck = dealDeck({ ...base, classId: 'RO3', count: 24, seed, competition: true })
+      const i = deck.entries.findIndex((e, k) => k > 2 && cz(e.code).sequencing.onlyAfterLeave)
+      const [leave, follow] = [deck.entries[i - 1], deck.entries[i]]
+      if (i < 0 || !leave?.at || !follow?.at) continue
+      expect(validateDeck(deck)).toEqual([])
+      // From where the dog was left (over the leave card's jump) to the handler.
+      const leaveShape = shapeOf(cz(leave.code), leave.at, leave.side, true)
+      const way = dogWayOf(leave.at, leaveShape, follow.at)
+      const jump = leaveShape.props.find((p) => p.kind === 'jump')
+      expect(way.length).toBe(jump ? 3 : 2)
+      // Another card moved onto it is caught.
+      const [a, b] = way.slice(-2) as [{ x: number; y: number }, { x: number; y: number }]
+      const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+      const j = i > 3 ? 1 : i + 2
+      const other = deck.entries[j]!
+      const sign = signOf(cz(other.code), other.at!)
+      other.at = { ...other.at!, x: other.at!.x + mid.x - sign.x, y: other.at!.y + mid.y - sign.y }
+      expect(validateDeck(deck).some((e) => e.includes("the dog's way to it"))).toBe(true)
+      checked++
+    }
+    expect(checked).toBe(3)
+  })
+
+  test('the way from 3-314 to a follow-up set aside goes on past the jump first, as walked', () => {
+    const at = { x: 10, y: 25, heading: 0, turn: 0 }
+    const shape = shapeOf(cz('3-314'), at, 'left', true)
+    const jump = shape.props.find((p) => p.kind === 'jump')!
+    const [, past, to] = wayTo(shape, shape.exit, { x: 11.8, y: 15 })
+    expect(past!.x).toBeCloseTo(10, 6)
+    expect(past!.y).toBeCloseTo(jump.y - 1, 6)
+    expect(to).toEqual({ x: 11.8, y: 15 })
   })
 
   test('nothing within 3 m of the 3-324 cone (Směrnice §1.1.3)', () => {

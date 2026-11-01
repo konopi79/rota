@@ -118,6 +118,15 @@ export function FieldPlan({
       const [, join] = wayTo(before.shape, from, to, i === items.length)
       slants.push([from, join!])
       walks.push([join!, to])
+    } else if (
+      before?.card.ruleset === 'CZ' &&
+      !before.shape.hairpin &&
+      wayTo(before.shape, from, to).length > 2
+    ) {
+      // On past a leave card's jump before over to a follow-up set aside (3-314), as walked.
+      const [, past] = wayTo(before.shape, from, to)
+      slants.push([from, past!])
+      walks.push([past!, to])
     } else if (before?.shape.hairpin && Math.abs(across) > 0.05) {
       const beside = offset(from, from.heading, 0, across)
       hairpins.push({ from, beside })

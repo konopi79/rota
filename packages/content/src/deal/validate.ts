@@ -11,6 +11,7 @@ import {
   distance,
   distanceToSegment,
   distanceToWay,
+  dogWayOf,
   EDGE,
   MAX_JUMPS,
   PROP_SPACING,
@@ -571,7 +572,7 @@ function validateRound(
     const own = stands
       .slice(station[0], station[1] + 1)
       .flatMap((s) => (s ? (s.d0 ? [s.sign, s.d0] : [s.sign]) : []))
-    if (!clearOfStation(cards[i] as Card, to, own)) {
+    if (!clearOfStation(cards[i] as Card, to, own, entries[i]?.side ?? 'left')) {
       errors.push(`${label(i)}: done too close to its station's cards`)
     }
   }
@@ -710,6 +711,23 @@ function validateRound(
         }
       }
     }
+  }
+
+  // The dog called by a national follow-up runs straight from where it was left (over the
+  // leave card's jump), clear like a way walked.
+  if (cls.ruleset === 'CZ') {
+    entries.forEach((entry, i) => {
+      const leave = entries[i - 1]?.at
+      const leaveShape = shapes[i - 1]
+      if (!cards[i]?.sequencing.onlyAfterLeave || !entry.at || !leave || !leaveShape) return
+      const way = dogWayOf(leave, leaveShape, entry.at)
+      const own = [stationOf[i], stationOf[i - 1]]
+      for (const o of [...spots, ...equipment]) {
+        if (!own.includes(o.station) && distanceToWay(o.p, way) < aside(o.p) - EPS) {
+          errors.push(`${label(i)}: the dog's way to it passes too close to ${o.label}`)
+        }
+      }
+    })
   }
 
   // The way walked inside a national exercise, like the way between two cards.
