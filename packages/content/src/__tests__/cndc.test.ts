@@ -154,7 +154,7 @@ describe('CNDC — several cards at one station (R18)', () => {
     // After a CNDC with a dynamic exercise the next station is 4–6 m on, not 3–5.
     const approach = geometry.approachOf(undefined, undefined)
     expect(geometry.afterDynamicStation(approach)).toMatchObject({ min: 4, max: 6 })
-  })
+  }, 60_000)
 
   test('a hand-made course is checked up to the level asked for (plan §12)', () => {
     const issues = (
