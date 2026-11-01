@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 
 import { getCard, type Card } from '@rota/content'
 
-import { ANIMATED_CARDS, animationFor } from '../figures/animated'
+import { ANIMATED_CARDS, FCI_ANIMATED_CARDS, animationFor } from '../figures/animated'
 import { DOG, DOG_POSTURES, type DogPosture } from '../figures/dog'
 import {
   ExercisePlayer,
@@ -12,7 +12,7 @@ import {
   standsOf,
   exerciseSpace,
   spacesOf,
-  SPACE_SIDE,
+  spaceSide,
   type Exercise,
   type ExerciseFrame,
 } from '../figures/exercise'
@@ -21,6 +21,7 @@ import { BAR_HEIGHT, JUMP_WIDTH } from '../figures/leap'
 import { apply } from '../figures/math'
 import { jointFrames, jointNames, lowestPoint, type Joint, type Pose } from '../figures/rig'
 import { EXERCISES, RIGHT_EXERCISES } from '../figures/exercises'
+import { FCI_EXERCISES } from '../figures/fci-exercises'
 import { PAIRS_SHOWN } from '../figures/leave-exercises'
 import {
   Z001,
@@ -46,6 +47,7 @@ import { TeamAnimator, onField } from '../figures/team'
 const PLAYED = [
   ...EXERCISES.map((e) => [e.code, e] as const),
   ...RIGHT_EXERCISES.map((e) => [`${e.code} (pes vpravo)`, e] as const),
+  ...FCI_EXERCISES.map((e) => [`FCI ${e.code}`, e] as const),
 ]
 
 /** The figure with only the named limbs: no other boxes, the joints they hang from kept. */
@@ -527,7 +529,26 @@ describe('every exercise', () => {
     expect(frames.length / 60).toBeLessThan(40)
   })
 
-  test.each(PLAYED)(
+  // FCI asks less (§4.3): "alespoň v jednom okamžiku musí část týmu nacházet v prostoru".
+  test.each(PLAYED.filter(([, e]) => e.ruleset === 'FCI'))(
+    '%s: part of the team is in the exercise space at some moment',
+    (_, exercise) => {
+      const station = stationOf(exercise)
+      const space = exerciseSpace(exercise)
+      const half = spaceSide(exercise) / 2
+      const inside = (p: { x: number; z: number }) =>
+        Math.abs(p.x - space.x) <= half && Math.abs(p.z - station - space.z) <= half
+      expect(
+        playAll(exercise).some(
+          (f) =>
+            inside(onField(f.team, f.handler.x, f.handler.z)) ||
+            inside(onField(f.team, f.dog.x, f.dog.z)),
+        ),
+      ).toBe(true)
+    },
+  )
+
+  test.each(PLAYED.filter(([, e]) => e.ruleset !== 'FCI'))(
     '%s: standing to begin, the handler has both shoes in the exercise space',
     (_, exercise) => {
       // §5.3.1: the exercise starts in its space, "rozhodující zde jsou nohy psovoda" (2-222's
@@ -548,8 +569,8 @@ describe('every exercise', () => {
             // The shoe's edges, 11 cm wide.
             const x = q.x + side * 0.055 * Math.cos(foot.yaw) - space.x
             const z = q.z - station - space.z
-            expect(Math.abs(x)).toBeLessThanOrEqual(SPACE_SIDE / 2)
-            expect(Math.abs(z)).toBeLessThanOrEqual(SPACE_SIDE / 2)
+            expect(Math.abs(x)).toBeLessThanOrEqual(spaceSide(exercise) / 2)
+            expect(Math.abs(z)).toBeLessThanOrEqual(spaceSide(exercise) / 2)
           }
       }
     },
@@ -574,8 +595,8 @@ describe('every exercise', () => {
           for (const side of [-1, 1]) {
             const x = q.x + side * 0.055 * Math.cos(foot.yaw) - space.x
             const z = q.z - station - space.z
-            expect(Math.abs(x)).toBeLessThanOrEqual(SPACE_SIDE / 2)
-            expect(Math.abs(z)).toBeLessThanOrEqual(SPACE_SIDE / 2)
+            expect(Math.abs(x)).toBeLessThanOrEqual(space.side / 2)
+            expect(Math.abs(z)).toBeLessThanOrEqual(space.side / 2)
           }
       }
     },
@@ -843,12 +864,25 @@ describe('animations in the card details', () => {
 
   test('every scripted card is listed as animated, and nothing else', () => {
     expect([...ANIMATED_CARDS].sort()).toEqual([...new Set(EXERCISES.map((e) => e.code))].sort())
+    expect([...FCI_ANIMATED_CARDS].sort()).toEqual(
+      [...new Set(FCI_EXERCISES.map((e) => e.code))].sort(),
+    )
+  })
+
+  test('an FCI card plays with its card ahead for a change of direction or a side step (§4.3)', () => {
+    for (const e of FCI_EXERCISES) {
+      const card = getCard('FCI', e.code) as Card
+      // B: before the card — also the figures round cones, whose card stands before them.
+      const before = e.card === 'ahead' || !!e.cardAt
+      expect([e.code, before]).toEqual([e.code, card.placement === 'B'])
+    }
   })
 
   test('a supplementary card plays Z-014 ending with it; others have none', () => {
-    expect(animationFor('D0c')).toEqual({ code: 'Z-014', variant: 'D0c' })
-    expect(animationFor('Z-022')).toEqual({ code: 'Z-022' })
+    expect(animationFor('D0c')).toEqual({ code: 'Z-014', variant: 'D0c', ruleset: 'CZ' })
+    expect(animationFor('Z-022')).toEqual({ code: 'Z-022', ruleset: 'CZ' })
     expect(animationFor('101')).toBeNull()
+    expect(animationFor('101', 'FCI')).toEqual({ code: '101', ruleset: 'FCI' })
     for (const d0 of ['D0a', 'D0b', 'D0c', 'D0d'])
       expect(EXERCISES.some((e) => e.code === 'Z-014' && e.supplementary === d0)).toBe(true)
   })

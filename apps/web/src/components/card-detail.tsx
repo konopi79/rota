@@ -85,7 +85,7 @@ export function CardDetail({ card }: { card: Card }) {
         </section>
       )}
 
-      {card.ruleset === 'CZ' && <CardAnimation code={card.code} />}
+      <CardAnimation code={card.code} ruleset={card.ruleset} />
 
       {card.subParts && (
         <section className="space-y-2">

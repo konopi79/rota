@@ -1,6 +1,6 @@
 'use client'
 
-import { CZ_CARDS } from '@rota/content'
+import { CZ_CARDS, FCI_CARDS } from '@rota/content'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { SRGBColorSpace, TextureLoader, TOUCH, type Group } from 'three'
@@ -15,7 +15,6 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { DOG } from '@/lib/figures/dog'
 import {
   ExercisePlayer,
-  SPACE_SIDE,
   conesOf,
   jumpsOf,
   marksOf,
@@ -26,6 +25,7 @@ import {
   type Exercise,
 } from '@/lib/figures/exercise'
 import { EXERCISES, RIGHT_EXERCISES, RIGHT_SIDE_CARDS } from '@/lib/figures/exercises'
+import { FCI_EXERCISES } from '@/lib/figures/fci-exercises'
 import { HANDLER } from '@/lib/figures/handler'
 import { BAR_HEIGHT, JUMP_WIDTH, UPRIGHT_HEIGHT } from '@/lib/figures/leap'
 import { onField } from '@/lib/figures/team'
@@ -59,12 +59,24 @@ const CARD_HALF = 0.18
  * most 120 cm "vlevo před kartou" (regulation §5.3.1, p. 14): the card stands right of the
  * team, a little ahead.
  */
-export function CardStand({ code, x, z }: { code: string; x: number; z: number }) {
+export function CardStand({
+  code,
+  x,
+  z,
+  ruleset = 'CZ',
+}: {
+  code: string
+  x: number
+  z: number
+  ruleset?: 'CZ' | 'FCI'
+}) {
   const texture = useMemo(() => {
-    const map = new TextureLoader().load(`/cards/cz/${code.toLowerCase()}.webp`)
+    const map = new TextureLoader().load(
+      `/cards/${ruleset.toLowerCase()}/${code.toLowerCase()}.webp`,
+    )
     map.colorSpace = SRGBColorSpace
     return map
-  }, [code])
+  }, [code, ruleset])
   useEffect(() => () => texture.dispose(), [texture])
 
   // Facing the team that comes from −z, the top tilted back, the bottom edge on the
@@ -148,18 +160,18 @@ export function Jump({ x, z, heading = 0 }: { x: number; z: number; heading?: nu
 
 const SPACE_LINE = 0.025
 
-function ExerciseSpace({ x, z }: { x: number; z: number }) {
-  const half = SPACE_SIDE / 2
+function ExerciseSpace({ x, z, side }: { x: number; z: number; side: number }) {
+  const half = side / 2
   const edges: [number, number, number, number][] = [
-    [0, half, SPACE_SIDE + SPACE_LINE, SPACE_LINE],
-    [0, -half, SPACE_SIDE + SPACE_LINE, SPACE_LINE],
-    [half, 0, SPACE_LINE, SPACE_SIDE],
-    [-half, 0, SPACE_LINE, SPACE_SIDE],
+    [0, half, side + SPACE_LINE, SPACE_LINE],
+    [0, -half, side + SPACE_LINE, SPACE_LINE],
+    [half, 0, SPACE_LINE, side],
+    [-half, 0, SPACE_LINE, side],
   ]
   return (
     <group position={[x, 0.004, z]}>
       <mesh rotation-x={-Math.PI / 2}>
-        <planeGeometry args={[SPACE_SIDE, SPACE_SIDE]} />
+        <planeGeometry args={[side, side]} />
         <meshBasicMaterial color="#fff6b0" transparent opacity={0.3} depthWrite={false} />
       </mesh>
       {edges.map(([ex, ez, w, d]) => (
@@ -232,12 +244,22 @@ const focusOn = (team: Focus, dog: { x: number; z: number }): Focus => {
 }
 
 /** The cards the page can play, once each (Z-014 has a variant per supplementary card). */
-const CODES = [...new Set(EXERCISES.map((e) => e.code))]
-/** The card series, by the code's prefix — the class whose cards they are new in. */
-const SERIES = ['Z', '1', '2', '3'] as const
+const CODES = [...new Set([...EXERCISES, ...FCI_EXERCISES].map((e) => e.code))]
+/**
+ * The card series, by the code's prefix — the class whose cards they are new in; FCI's codes
+ * have no prefix (`101`).
+ */
+const SERIES = ['Z', '1', '2', '3', 'FCI'] as const
 type Series = (typeof SERIES)[number]
-const SERIES_CLASS: Record<Series, string> = { Z: 'RO-Z', 1: 'RO1', 2: 'RO2', 3: 'RO3' }
-const seriesOf = (code: string) => code.split('-')[0] as Series
+const SERIES_CLASS: Record<Series, string> = {
+  Z: 'RO-Z',
+  1: 'RO1',
+  2: 'RO2',
+  3: 'RO3',
+  FCI: 'FCI-ROB',
+}
+const seriesOf = (code: string) => (code.includes('-') ? code.split('-')[0] : 'FCI') as Series
+const rulesetOf = (code: string) => (seriesOf(code) === 'FCI' ? 'FCI' : 'CZ')
 /**
  * A caption as the frame says it: its key, and whether the dog is at the other leg than the
  * script was written for — then it reads with left and right swapped, where it names a side.
@@ -305,9 +327,16 @@ function ExerciseTeam({
       </group>
       {/* The card, and as on a course the supplementary card right next to it; a pair's both. */}
       {standsOf(exercise).map((s) => (
-        <CardStand key={`${s.code} ${s.z}`} code={s.code} x={s.x} z={s.z} />
+        <CardStand
+          key={`${s.code} ${s.z}`}
+          code={s.code}
+          x={s.x}
+          z={s.z}
+          ruleset={exercise.ruleset ?? 'CZ'}
+        />
       ))}
-      {showSpace && spacesOf(exercise).map((s) => <ExerciseSpace key={s.z} x={s.x} z={s.z} />)}
+      {showSpace &&
+        spacesOf(exercise).map((s) => <ExerciseSpace key={s.z} x={s.x} z={s.z} side={s.side} />)}
       {marksOf(exercise).map((m) => (
         <GroundMark key={`${m.x} ${m.z}`} x={m.x} z={m.z} lengthwise={m.lengthwise} />
       ))}
@@ -385,7 +414,8 @@ export function CameraRig({ view, focusRef }: { view: CameraView; focusRef: RefO
   return null
 }
 
-const cardName = (code: string) => CZ_CARDS.find((c) => c.code === code)?.name ?? ''
+const cardName = (code: string, ruleset: 'CZ' | 'FCI' = rulesetOf(code)) =>
+  (ruleset === 'FCI' ? FCI_CARDS : CZ_CARDS).find((c) => c.code === code)?.name ?? ''
 
 /**
  * One card's animation: the scene, its caption, and the controls — the dog's side and the
@@ -396,11 +426,14 @@ const cardName = (code: string) => CZ_CARDS.find((c) => c.code === code)?.name ?
  */
 export function AnimationPlayer({
   code,
+  ruleset = 'CZ',
   initialVariant,
   keyboard = false,
   inline = false,
 }: {
   code: string
+  /** FCI's card `code` (plan R19), or a national one. */
+  ruleset?: 'CZ' | 'FCI'
   initialVariant?: string
   keyboard?: boolean
   inline?: boolean
@@ -417,9 +450,13 @@ export function AnimationPlayer({
   const focusRef = useRef<Focus>({ x: 0, z: 0 })
   const press = useRef<{ x: number; y: number; time: number } | null>(null)
   // The dog on the right: after a start "R" (every RO-Z card) or a change of side (R15).
-  const bothSides = RIGHT_SIDE_CARDS.includes(code)
+  // (FCI's cards with the dog on the right come later.)
+  const fci = ruleset === 'FCI'
+  const bothSides = !fci && RIGHT_SIDE_CARDS.includes(code)
   const side = bothSides ? dogSide : 'left'
-  const variants = (side === 'right' ? RIGHT_EXERCISES : EXERCISES).filter((e) => e.code === code)
+  const variants = (fci ? FCI_EXERCISES : side === 'right' ? RIGHT_EXERCISES : EXERCISES).filter(
+    (e) => e.code === code,
+  )
   const exercise = variants.find((e) => variantOf(e) === variant) ?? variants[0]!
   const variantGroup = isLeavePair(variants[0]!)
     ? 'followUp'
@@ -465,7 +502,9 @@ export function AnimationPlayer({
               value={variantOf(exercise)!}
               options={variants.map((e) => variantOf(e)!)}
               onChange={setVariant}
-              label={variantGroup === 'fromPace' ? undefined : (o) => `${o} ${cardName(o)}`}
+              label={
+                variantGroup === 'fromPace' ? undefined : (o) => `${o} ${cardName(o, ruleset)}`
+              }
             />
           )}
         </div>
@@ -561,7 +600,9 @@ export function AnimationPlayer({
           </div>
           {showSpace && (
             <p className="text-muted-foreground text-sm">
-              {t(`figures.space.${passesCard(own) ?? own.card ?? 'side'}`)}
+              {t(
+                `figures.space.${own.ruleset === 'FCI' ? 'fci.' : ''}${passesCard(own) ?? own.card ?? 'side'}`,
+              )}
             </p>
           )}
         </div>
@@ -631,7 +672,7 @@ export function ExerciseAnimation() {
           label={(o) => `${o} ${cardName(o)}`}
         />
       </div>
-      <AnimationPlayer key={code} code={code} keyboard />
+      <AnimationPlayer key={code} code={code} ruleset={rulesetOf(code)} keyboard />
     </div>
   )
 }

@@ -408,6 +408,11 @@ export type Exercise = {
   code: string
   steps: ExerciseStep[]
   /**
+   * An FCI card (plan R19): its card stands where the FCI rules put it, by a smaller exercise
+   * space (`FCI_CARD_PLACE`, `spaceSide`). Missing: a national card.
+   */
+  ruleset?: 'FCI'
+  /**
    * Where the card stands (regulation §5.3.1, p. 14): `side` (default) — the exercise
    * starts in a square "vlevo před kartou"; `ahead` — a change of direction starts "cca
    * 120 cm přímo před příslušnou kartou".
@@ -460,10 +465,22 @@ export type Exercise = {
  */
 const CARD_PLACE = { side: { x: -0.75, z: 0.45 }, ahead: { x: 0, z: 1.2 } }
 
+/**
+ * FCI (§4.3, p. 15, the pictures A and B): the exercise space is a square of 1 × 1 m; the card
+ * stands right of it at its front edge (A), or straight in front of it (B). The handler stops
+ * in the middle of the square (A) — the card then as far aside as nationally. Before a card
+ * ahead (B) the handler turns where the national exercise does, 1.2 m before it, just behind
+ * the square: FCI asks only "alespoň v jednom okamžiku musí část týmu nacházet v prostoru",
+ * and the dog swinging round the outside of a right turn came within 0.3 m of the card from
+ * the square's middle.
+ */
+const FCI_CARD_PLACE = { side: { x: -0.75, z: 0.5 }, ahead: { x: 0, z: 1.2 } }
+const FCI_SPACE = { side: { x: 0, z: 0 }, ahead: { x: 0, z: 0.65 } }
+
 /** Where the card stands from where the handler stops in `exercise` (the station). */
 export const cardPlace = (exercise: Exercise) => {
   if (exercise.cardAt) return exercise.cardAt
-  const card = CARD_PLACE[exercise.card ?? 'side']
+  const card = (exercise.ruleset === 'FCI' ? FCI_CARD_PLACE : CARD_PLACE)[exercise.card ?? 'side']
   const stop = exercise.stopAt ?? { x: 0, z: 0 }
   return { x: card.x - stop.x, z: card.z - stop.z }
 }
@@ -477,6 +494,8 @@ export const cardPlace = (exercise: Exercise) => {
  */
 const SPACE = { side: { x: 0.15, z: -0.15 }, ahead: { x: 0, z: 0 } }
 export const SPACE_SIDE = 1.2
+/** The side of an exercise's square: nationally 1.2 m, FCI 1 m ("1 x 1 meters", §4.3). */
+export const spaceSide = (exercise: Exercise) => (exercise.ruleset === 'FCI' ? 1 : SPACE_SIDE)
 
 /**
  * Which side of the team the card stands on, where the exercise's description says so — "Není-li
@@ -497,14 +516,16 @@ export const exerciseSpace = (exercise: Exercise) => {
   const card = cardPlace(exercise)
   const passes = passesCard(exercise)
   if (passes) {
-    const usual = CARD_PLACE.side
-    const side = SPACE.side.x - usual.x
+    const fci = exercise.ruleset === 'FCI'
+    const usual = (fci ? FCI_CARD_PLACE : CARD_PLACE).side
+    const space = (fci ? FCI_SPACE : SPACE).side
+    const side = space.x - usual.x
     return {
       x: card.x + (passes === 'right' ? side : -side),
-      z: card.z + SPACE.side.z - usual.z,
+      z: card.z + space.z - usual.z,
     }
   }
-  const space = SPACE[exercise.card ?? 'side']
+  const space = (exercise.ruleset === 'FCI' ? FCI_SPACE : SPACE)[exercise.card ?? 'side']
   const stop = exercise.stopAt ?? { x: 0, z: 0 }
   return { x: space.x - stop.x, z: space.z - stop.z }
 }
@@ -605,11 +626,14 @@ export const standsOf = (exercise: Exercise): { code: string; x: number; z: numb
   ]
 }
 
-/** Where each exercise space is (`exerciseSpace`), in the frame of the exercise's station. */
-export const spacesOf = (exercise: Exercise): { x: number; z: number }[] =>
+/**
+ * Where each exercise space is (`exerciseSpace`) and how big (`spaceSide`), in the frame of the
+ * exercise's station.
+ */
+export const spacesOf = (exercise: Exercise): { x: number; z: number; side: number }[] =>
   exercise.parts
     ? exercise.parts.flatMap((part) => spacesOf(part.exercise).map((s) => inPair(s, part)))
-    : [exerciseSpace(exercise)]
+    : [{ ...exerciseSpace(exercise), side: spaceSide(exercise) }]
 
 /** The marks on the ground (`marks`), in the frame of the exercise's station — a pair's too. */
 export const marksOf = (exercise: Exercise): { x: number; z: number; lengthwise?: true }[] =>

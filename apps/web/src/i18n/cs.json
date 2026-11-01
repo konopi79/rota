@@ -414,7 +414,13 @@
       "side": "Cvik začíná ve čtverci o straně nejvýš 120 cm vlevo před kartou. Za ukončený se považuje, když noha psovoda překročí zadní linii stojanu karty (řád, 5.3.1).",
       "ahead": "Cvik se změnou směru začíná asi 120 cm přímo před kartou (řád, 5.3.1).",
       "right": "Kartu tým podle popisu cviku míjí po své pravé straně: cvik začíná ve čtverci vlevo před kartou, jako obvykle (řád, 5.3.1).",
-      "left": "Kartu tým podle popisu cviku míjí po své levé straně: cvik začíná ve čtverci vpravo před kartou, stejně daleko od ní jako obvykle (řád, 5.3.1 – „není-li v popisu cviku uvedeno jinak“)."
+      "left": "Kartu tým podle popisu cviku míjí po své levé straně: cvik začíná ve čtverci vpravo před kartou, stejně daleko od ní jako obvykle (řád, 5.3.1 – „není-li v popisu cviku uvedeno jinak“).",
+      "fci": {
+        "side": "FCI: cvik se provádí na levé straně karty, v prostoru 1 × 1 m vlevo od ní. Aspoň část týmu v něm musí v nějakou chvíli být (FCI, 4.3).",
+        "ahead": "FCI: změna směru nebo úkroky se provádějí před kartou, v prostoru 1 × 1 m přímo před ní. Aspoň část týmu v něm musí v nějakou chvíli být (FCI, 4.3).",
+        "right": "FCI: figury se provádějí před kartou (FCI, 4.3).",
+        "left": "FCI: figury se provádějí před kartou (FCI, 4.3)."
+      }
     },
     "view": {
       "label": "Kamera",
@@ -527,6 +533,7 @@
       "twoStepsStand": "Dva kroky vpřed, pes zůstane stát",
       "threeStepsStand": "Tři kroky vpřed, pes zůstane stát",
       "twoStepsOn": "Dva kroky vpřed",
+      "onBetweenTurns": "Tým jde 1–2 m dál a obrací se znovu",
       "turnRight90OnSpot": "Tým se na místě otočí vpravo o 90°",
       "turnLeft90OnSpot": "Tým se na místě otočí vlevo o 90°",
       "turnRight180OnSpot": "Tým se na místě otočí vpravo o 180° – nejvýš 4 kroky",

@@ -20,7 +20,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'cndc-editor'
+export const LATEST_FEATURE_ID = 'fci-animations'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -45,6 +45,11 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
         id: 'main-parts',
         title: 'Hlavní a vedlejší části cviku',
         desc: 'U národních karet vidíš, která část cviku je hlavní a která vedlejší – v detailu karty i v popisu pod kartou v balíčku. Chybí-li hlavní část, vyplatí se cvik zopakovat; u vedlejší opakováním nic nezískáš.',
+      },
+      {
+        id: 'fci-animations',
+        title: 'Animace i pro karty FCI',
+        desc: 'Animaci cviku má i 52 karet FCI-ROB – ty, které FCI popisuje stejně jako národní řád, s kartou a prostorem 1 × 1 m podle pravidel FCI. Zbylé karty, pes vpravo a průchod parkurem FCI přijdou.',
       },
       {
         id: 'animations',

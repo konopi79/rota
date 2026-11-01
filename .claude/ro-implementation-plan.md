@@ -725,7 +725,11 @@ mirrored while the dog is (`figures.captionRight`).
 
 ### R19 — FCI animations + walkthrough
 
-- [ ] FCI exercises (~90 cards) from the national building blocks, FCI placements A/B/C/D
+Three batches (2026-11-01): the FCI cards the national animations already play, then the rest
+with the dog on the right too, then the walkthrough on the FCI plan.
+
+- [x] 52 FCI cards from the national animations (2026-11-01, `fci-exercises.ts`): those FCI describes as a national card does — positions, turns, paces, slaloms, the dog in front, side steps, side changes, steps back — mapped card by card with the FCI text (101 = 1-109 "pes ulehá přímo", 209/210 = Z-014 with D0a/D0b, 306/416 finishing straight to the left leg, …); put together where FCI differs: 201–203 walk "1 - 2 m" between the two turns, 208 sits before the stand. The FCI card and space (`ruleset`, §4.3 and its pictures A/B): a 1 × 1 m square, the card right of it at its front edge (A) or straight before it (B); the handler stops in its middle (A), turns 1.2 m before a card ahead as nationally — FCI asks only that "alespoň v jednom okamžiku musí část týmu nacházet v prostoru" (in its middle the dog swinging round a right turn came within 0.3 m of the card) — and three turns that never come into it turn 25 cm nearer (304, 310, 314); a national stop off the square's middle at most 30 cm off in FCI's (`MOST_OFF`). Every frame checked like the national ones (feet, joints, nobody through the card), part of the team in the space, the card ahead exactly for FCI's B (416's letter is A, unlike 2-222's place). In the card detail, the catalogue's badge and `/animace` (FCI-ROB); feature item `fci-animations`
+- [ ] The rest of the FCI cards (leave cards with the recall cone, recall cards, jumps, sending to a cone, backing away, 221 distractions, 312 between the legs, 405 turning apart, 414/415, 417/418 round a cone, 107/108 loops, 119/120 FCI spirals, 401–404, 305, 412, 413), and every FCI card with the dog on the right
 - [ ] Walkthrough on the existing FCI field plan
 
 Each phase ends green on `bun run format && bun run typecheck && bun run lint` plus its
