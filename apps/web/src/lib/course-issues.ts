@@ -1,4 +1,4 @@
-import type { DeckIssue, RoClass } from '@rota/content'
+import type { CndcReason, DeckIssue, RoClass } from '@rota/content'
 import type { TFunction } from 'i18next'
 
 /** A card code that does not wrap at its hyphen ("2-‑215" on two lines reads as two codes). */
@@ -10,6 +10,21 @@ const codeList = (codes: string[], t: TFunction) => {
   return all.length > 1
     ? `${all.slice(0, -1).join(', ')} ${t('issues.or')} ${all.at(-1)}`
     : (all[0] ?? '')
+}
+
+/** The message of each CNDC reason with one message (`issues.cndc.*`). */
+const CNDC_KEYS: Record<CndcReason, string> = {
+  'no-cndc': 'noCndc',
+  'too-many': 'tooMany',
+  'turn-first': 'turnFirst',
+  'higher-class': 'higherClass',
+  equipment: 'equipment',
+  pace: 'pace',
+  long: 'long',
+  'leave-last': 'leaveLast',
+  'follow-up-first': 'followUpFirst',
+  'side-step-first': 'sideStepFirst',
+  'ends-behind': 'endsBehind',
 }
 
 /** Required exercises with more cards than this are named by their label only. */
@@ -95,6 +110,26 @@ export function issueMessage(issue: DeckIssue, cls: RoClass, t: TFunction): stri
           : 'issues.rightPattern.withMid',
         { cls: cl },
       )
+    // Several cards at one station (CNDC): the regulation's, the guidelines', the safe side's.
+    case 'cndc':
+      if (issue.reason === 'too-many') {
+        return t(issue.level === 'rules' ? 'issues.cndc.tooMany' : 'issues.cndc.tooManyClass', {
+          max: issue.max,
+          cls: cl,
+        })
+      }
+      if (issue.reason === 'higher-class') {
+        return t(
+          issue.level === 'strict' ? 'issues.cndc.higherClassStrict' : 'issues.cndc.higherClass',
+        )
+      }
+      return t(`issues.cndc.${CNDC_KEYS[issue.reason]}`, { cls: cl })
+    case 'cndc-stations':
+      return t(issue.level === 'strict' ? 'issues.cndc.stationsStrict' : 'issues.cndc.stations', {
+        count: issue.count,
+        max: issue.max,
+        cls: cl,
+      })
     case 'course-size':
       return t('issues.courseSize', { min: issue.min, max: issue.max })
     case 'points-mix':

@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 
 import { getClass } from '../registry'
 import { cndcAllowed, stationsOf, stepForwardAfter } from '../deal/cndc'
-import { dealDeck, geometry, validateDeck } from '../deal'
+import { customDeck, customDeckIssues, dealDeck, geometry, validateDeck } from '../deal'
 import { cardOf } from '../deal/rules'
 import type { DeckEntry } from '../deal'
 import { EQUIPMENT } from '../schema'
@@ -154,6 +154,82 @@ describe('CNDC — several cards at one station (R18)', () => {
     // After a CNDC with a dynamic exercise the next station is 4–6 m on, not 3–5.
     const approach = geometry.approachOf(undefined, undefined)
     expect(geometry.afterDynamicStation(approach)).toMatchObject({ min: 4, max: 6 })
+  }, 60_000)
+
+  test('a hand-made course is checked up to the level asked for (plan §12)', () => {
+    const issues = (
+      classId: 'RO-Z' | 'RO1' | 'RO3',
+      codes: string[],
+      level: { guidelines?: boolean; strict?: boolean } = {},
+    ) =>
+      customDeckIssues(
+        customDeck(
+          classId,
+          'left',
+          codes.map((c) => {
+            const [code, supplementary] = c.replace(/^\+/, '').split('.') as [string, string?]
+            return {
+              code,
+              ...(supplementary && { supplementary }),
+              ...(c.startsWith('+') && { withPrevious: true as const }),
+            }
+          }),
+        ),
+        level,
+      ).flatMap((i) =>
+        i.rule === 'cndc'
+          ? [`${i.index}:${i.reason}:${i.level}`]
+          : i.rule === 'cndc-stations'
+            ? [`stations:${i.max}`]
+            : [],
+      )
+    // The regulation: no CNDC in RO-Z, at most three cards to a station.
+    expect(issues('RO-Z', ['Z-001', '+Z-003'])).toEqual(['1:no-cndc:rules'])
+    expect(issues('RO3', ['3-305', '+3-304', '+Z-003', '+Z-002'])).toContain('3:too-many:rules')
+    // The guidelines: RO1 two cards, a change of direction first, 105/112.
+    expect(issues('RO1', ['Z-001', '+Z-003', '+1-109'])).toEqual([])
+    expect(issues('RO1', ['Z-001', '+Z-003', '+1-109'], { guidelines: true })).toEqual([
+      '2:too-many:guidelines',
+    ])
+    expect(issues('RO1', ['Z-003', '+Z-006'], { guidelines: true })).toEqual([
+      '1:turn-first:guidelines',
+    ])
+    expect(issues('RO1', ['1-105', '+1-112'], { guidelines: true })).toEqual([
+      '1:higher-class:guidelines',
+    ])
+    // RO1: at most three such stations by the guidelines.
+    const four = ['Z-003', '+Z-004', 'Z-006', 'Z-003', '+Z-004', 'Z-006', 'Z-003', '+Z-004']
+    expect(issues('RO1', [...four, 'Z-006', 'Z-003', '+Z-004'], { guidelines: true })).toEqual([
+      'stations:3',
+    ])
+    // The safe side only when strict: a leave card last, no equipment.
+    expect(issues('RO3', ['2-211', '+3-305', '2-213'], { guidelines: true })).toEqual([])
+    expect(issues('RO3', ['2-211', '+3-305', '2-213'], { strict: true })).toEqual([
+      '0:leave-last:strict',
+    ])
+    expect(issues('RO3', ['Z-018', '+3-305'], { strict: true })).toContain('0:equipment:strict')
+    // A course dealt with CNDC passes the strictest check.
+    const deck = dealDeck({
+      classId: 'RO3',
+      scope: 'all',
+      count: 24,
+      equipment: [...EQUIPMENT],
+      startSide: 'left',
+      seed: 3,
+      competition: true,
+      cndc: true,
+    })
+    const order = deck.entries.map(({ code, supplementary, withPrevious }) => ({
+      code,
+      ...(supplementary && { supplementary }),
+      ...(withPrevious && { withPrevious }),
+    }))
+    expect(deck.entries.some((e) => e.withPrevious)).toBe(true)
+    expect(
+      customDeckIssues(customDeck('RO3', 'left', order), { strict: true }).filter((i) =>
+        i.rule.startsWith('cndc'),
+      ),
+    ).toEqual([])
   })
 
   test('a group in a deck dealt without CNDC, or one the class does not allow, is caught', () => {

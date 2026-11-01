@@ -25,11 +25,20 @@ export type Setup = z.infer<typeof setupSchema>
 
 const customCourseSchema = z.object({
   startSide: z.enum(['left', 'right']),
-  cards: z.array(z.object({ code: z.string(), supplementary: z.string().optional() })),
+  cards: z.array(
+    z.object({
+      code: z.string(),
+      supplementary: z.string().optional(),
+      /** Done at the station of the card before (CNDC, plan R18). */
+      withPrevious: z.literal(true).optional(),
+    }),
+  ),
   /** Check the order at all — off for a short sequence where the rules don't matter. */
   checks: z.boolean().default(true),
   /** Check against the judges' guidelines too (national classes). */
   guidelines: z.boolean().default(false),
+  /** …and against the safe side the dealer keeps to (CNDC, plan R18). */
+  strict: z.boolean().default(false),
 })
 /** A course put together by hand (plan §12), being edited. */
 export type CustomCourse = z.infer<typeof customCourseSchema>
@@ -104,6 +113,7 @@ export const emptyCustomCourse = (): CustomCourse => ({
   cards: [],
   checks: true,
   guidelines: false,
+  strict: false,
 })
 
 /**

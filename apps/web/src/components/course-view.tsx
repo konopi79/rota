@@ -75,11 +75,12 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
   const layout = deck.layout
   const custom = params.order !== undefined
   const guidelines = params.guidelines ?? false
+  const strict = params.strict ?? false
   // A hand-made course is checked unless whoever made it switched the checks off.
   const checked = custom && !params.unchecked
   const issues = useMemo(
-    () => (checked ? customDeckIssues(deck, { guidelines }) : []),
-    [checked, deck, guidelines],
+    () => (checked ? customDeckIssues(deck, { guidelines, strict }) : []),
+    [checked, deck, guidelines, strict],
   )
   // Rules of the whole course (the guidelines), listed above the cards.
   const courseMessages = countedMessages(

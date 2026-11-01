@@ -342,7 +342,9 @@ describe('competition courses (R7)', () => {
         expect(validateDeck(deck)).toEqual([])
       }
     },
-    60_000,
+    // RO3's hundred courses take over a minute on CI since the dog's way at a recall is kept
+    // clear (R17).
+    180_000,
   )
 
   test('the validator catches a missing point mix and a wrong course size', () => {

@@ -32,6 +32,8 @@ export {
   validateDeck,
   geometry,
   type CardIssue,
+  type CndcLevel,
+  type CndcReason,
   type CardProblem,
   type CourseIssue,
   type DeckIssue,

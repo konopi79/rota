@@ -57,11 +57,21 @@
     "title": "Vlastní parkur – {{cls}}",
     "back": "Nastavení",
     "intro": "Poskládej karty v pořadí parkuru – třeba podle plánku z tréninku nebo ze závodu – nebo jen krátkou sekvenci cviků. Hotové pořadí můžeš poslat odkazem.",
-    "checks": "Kontrolovat pořadí",
-    "checksHint": "Pravidla řazení z řádu – navazující karty, tempo, strana psa. Upozornění tě nezastaví; u krátké sekvence je můžeš vypnout.",
+    "checks": "Kontrola pořadí",
+    "check": {
+      "off": "Vypnutá",
+      "rules": "Řád",
+      "guidelines": "Směrnice",
+      "strict": "Přísně"
+    },
+    "checkHint": {
+      "off": "Bez upozornění – třeba pro krátkou sekvenci cviků.",
+      "rules": "Pravidla řazení z řádu – navazující karty, tempo, strana psa, nejvýš 3 cviky na jednom stanovišti. Upozornění tě nezastaví.",
+      "guidelines": "Navíc směrnice pro posuzování RO 2025: povinné cviky třídy, kolikrát smí být karta v parkuru, kdy smí jít pes vpravo, cviky na jednom stanovišti (CNDC).",
+      "strict": "Navíc opatrnější pravidla pro CNDC, podle kterých skládá parkury aplikace – nejsou z řádu ani ze směrnic."
+    },
+    "withPrevious": "Na stejném stanovišti jako předchozí karta (CNDC)",
     "startSide": "Pes na startu",
-    "guidelines": "Kontrolovat dle směrnic",
-    "guidelinesHint": "Směrnice pro posuzování RO 2025: povinné cviky třídy, kolikrát smí být karta v parkuru a kdy smí jít pes vpravo.",
     "empty": "Zatím žádná karta. První najdeš podle čísla nebo názvu.",
     "add": "Přidat kartu – číslo nebo název",
     "noMatch": "Žádná karta třídy neodpovídá.",
@@ -129,6 +139,23 @@
     "rightPattern": {
       "single": "Ve třídě {{cls}} směrnice dovolují jen jednu změnu strany: od startu „R“ k první kartě, nebo od poslední karty do cíle.",
       "withMid": "Strana psa neodpovídá směrnicím pro {{cls}}: pes jde vpravo buď od startu „R“, nebo do cíle, k tomu jednou krátce uprostřed parkuru; anebo od startu „R“ i do cíle."
+    },
+    "cndc": {
+      "noCndc": "Ve třídě {{cls}} se cviky na jednom stanovišti nestaví.",
+      "tooMany": "Na jednom stanovišti smí být nejvýš {{max}} cviky.",
+      "tooManyClass": "Ve třídě {{cls}} dovolují směrnice na jednom stanovišti jen {{max}} cviky.",
+      "turnFirst": "Je-li na stanovišti změna směru, musí být první.",
+      "higherClass": "S předchozí kartou dává cvik z vyšší třídy (jako 105/112 – 205), to směrnice nedovolují.",
+      "higherClassStrict": "Přísně: s předchozí kartou by mohl vzniknout cvik z vyšší třídy.",
+      "equipment": "Přísně: cvik s pomůckami jen na vlastním stanovišti.",
+      "pace": "Přísně: změna tempa jen na vlastním stanovišti.",
+      "long": "Přísně: cvik potřebuje víc místa, jen na vlastním stanovišti.",
+      "leaveLast": "Přísně: odložení jen jako poslední karta stanoviště.",
+      "followUpFirst": "Přísně: přivolání nebo návrat ke psu jen jako první karta stanoviště.",
+      "sideStepFirst": "Přísně: úkrok jen jako první karta stanoviště.",
+      "endsBehind": "Přísně: cvik končí za místem, kde začal – na stanovišti jen jako poslední.",
+      "stations": "Stanovišť s více kartami je {{count}}, směrnice dovolují ve třídě {{cls}} nejvýš {{max}}.",
+      "stationsStrict": "Přísně: stanovišť s více kartami je {{count}}, aplikace jich staví nejvýš {{max}}."
     },
     "courseSize": "Parkur má mít {{min}}–{{max}} karet.",
     "pointsMix": "Málo karet za {{points}} b. – potřeba aspoň {{min}}."

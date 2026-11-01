@@ -27,7 +27,14 @@ import {
   wayTo,
   type Shape,
 } from './geometry'
-import { cndcAllowed, stationsOf } from './cndc'
+import {
+  cndcAllowed,
+  mostStations,
+  stationProblems,
+  stationsOf,
+  type CndcLevel,
+  type CndcReason,
+} from './cndc'
 import { endsStatic, fieldOf, followUpsOf, hasEquipment, paceAfter, sideAfter } from './rules'
 import type { Deck, DeckEntry, Layout, Pace, Point, Pose, Round, Side } from './types'
 
@@ -66,6 +73,8 @@ export type CardProblem =
   | { rule: 'right-mid-course' }
   /** The mid-course stretch on the right starting here is longer than `max` exercises. */
   | { rule: 'right-mid-too-long'; max: number }
+  /** At the station of the card before (CNDC), against a rule of `stationProblems`. */
+  | { rule: 'cndc'; reason: CndcReason; level: CndcLevel; max?: number }
 
 /** A broken rule at one card: `index` into the deck's entries. */
 export type CardIssue = { index: number; code: string } & CardProblem
@@ -80,6 +89,8 @@ export type CourseIssue =
   | { rule: 'static-share'; statics: number; count: number }
   /** From a start "R" the side must change by card `by`. */
   | { rule: 'right-start-late'; by: number }
+  /** `count` stations of several cards (CNDC), `max` allowed — by the guidelines or strict. */
+  | { rule: 'cndc-stations'; count: number; max: number; level: CndcLevel }
   /** The side changes do not form one of the class's patterns. */
   | { rule: 'right-pattern' }
 
@@ -117,17 +128,66 @@ export function validateDeck(deck: Deck): string[] {
  * exercises, RO-Z's balance, right-hand stretches. Course size and the FCI point mix stay
  * out — a course for training can be any length.
  */
-export function customDeckIssues(deck: Deck, { guidelines = false } = {}): DeckIssue[] {
+export function customDeckIssues(
+  deck: Deck,
+  { guidelines = false, strict = false } = {},
+): DeckIssue[] {
   const cls = getClass(deck.options.classId)
   if (!cls) throw new Error(`No content for class ${deck.options.classId}`)
-  const checked = guidelines ? { ...deck, options: { ...deck.options, competition: true } } : deck
-  return deckIssues(cls, checked).filter(
-    (issue) =>
-      issue.rule !== 'dealt-twice' &&
-      issue.rule !== 'course-size' &&
-      issue.rule !== 'points-mix' &&
-      issue.rule !== 'twice-in-row',
+  const withGuidelines = guidelines || strict
+  const checked = withGuidelines
+    ? { ...deck, options: { ...deck.options, competition: true } }
+    : deck
+  const levels: CndcLevel[] = [
+    'rules',
+    ...(withGuidelines ? (['guidelines'] as const) : []),
+    ...(strict ? (['strict'] as const) : []),
+  ]
+  return [
+    ...deckIssues(cls, checked).filter(
+      (issue) =>
+        issue.rule !== 'dealt-twice' &&
+        issue.rule !== 'course-size' &&
+        issue.rule !== 'points-mix' &&
+        issue.rule !== 'twice-in-row',
+    ),
+    ...customStationIssues(cls, deck, levels),
+  ]
+}
+
+/**
+ * Several cards at one station in a hand-made course (CNDC, plan R18), checked up to the
+ * levels asked for: the regulation's rules always, the guidelines', and the safe side the
+ * dealer keeps to (`stationProblems`) — each at the card it concerns; and how many such
+ * stations there are.
+ */
+function customStationIssues(cls: RoClass, deck: Deck, levels: CndcLevel[]): DeckIssue[] {
+  const groups = stationsOf(deck.entries).filter(([from, to]) => to > from)
+  const issues: DeckIssue[] = groups.flatMap(([from, to]) =>
+    stationProblems(cls, deck.entries.slice(from, to + 1))
+      .filter((p) => levels.includes(p.level))
+      .map((p): DeckIssue => ({
+        index: from + p.at,
+        code: deck.entries[from + p.at]?.code ?? '',
+        rule: 'cndc',
+        reason: p.reason,
+        level: p.level,
+        ...(p.max !== undefined && { max: p.max }),
+      })),
   )
+  // The guidelines' limit first; the safe side's where it is lower.
+  const most = mostStations(cls)
+  const limits = [
+    ...(levels.includes('guidelines') && most.guidelines !== undefined
+      ? [{ max: most.guidelines, level: 'guidelines' as const }]
+      : []),
+    ...(levels.includes('strict') && most.strict !== undefined
+      ? [{ max: most.strict, level: 'strict' as const }]
+      : []),
+  ]
+  const broken = limits.find(({ max }) => groups.length > max)
+  if (broken) issues.push({ rule: 'cndc-stations', count: groups.length, ...broken })
+  return issues
 }
 
 /**
@@ -270,6 +330,8 @@ function describeIssue(cls: RoClass, issue: DeckIssue): string {
       return `${issue.statics} static of ${issue.count}, about half needed`
     case 'right-start-late':
       return `start "R": the side must change by card ${issue.by}`
+    case 'cndc-stations':
+      return `${issue.count} CNDC, at most ${issue.max}`
     case 'right-pattern':
       return `side changes do not follow the ${cls.id} pattern`
     case 'too-often':
@@ -325,6 +387,8 @@ function describeIssue(cls: RoClass, issue: DeckIssue): string {
       return `${at}: pace should be ${issue.expected}`
     case 'supplementary-changes-side':
       return `${at}: its D0 card changes the side`
+    case 'cndc':
+      return `${at}: at one station — ${issue.reason}`
   }
 }
 

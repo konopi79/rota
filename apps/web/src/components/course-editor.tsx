@@ -45,6 +45,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { filterCards, NO_FILTERS } from '@/lib/catalogue'
 import { classSlug, customCourseHref } from '@/lib/classes'
 import { countedMessages, issueMessage } from '@/lib/course-issues'
+import { cn } from '@/lib/utils'
 import { encodeDeckParams, MAX_CUSTOM_CARDS, type DeckParams } from '@/lib/deck-url'
 import { shareLink } from '@/lib/share'
 import { navigate } from '@/lib/stale-page'
@@ -84,14 +85,20 @@ export function CourseEditor({ classId }: { classId: ClassId }) {
 export function useOpenInEditor(cls: RoClass) {
   const { t } = useTranslation()
   const router = useRouter()
-  return (deck: Deck, { guidelines, unchecked }: Pick<DeckParams, 'guidelines' | 'unchecked'>) => {
+  return (
+    deck: Deck,
+    { guidelines, strict, unchecked }: Pick<DeckParams, 'guidelines' | 'strict' | 'unchecked'>,
+  ) => {
     const course: CustomCourse = {
       startSide: deck.options.startSide,
-      cards: deck.entries.map(({ code, supplementary }) =>
-        supplementary ? { code, supplementary } : { code },
-      ),
+      cards: deck.entries.map(({ code, supplementary, withPrevious }) => ({
+        code,
+        ...(supplementary && { supplementary }),
+        ...(withPrevious && { withPrevious }),
+      })),
       checks: !unchecked,
       guidelines: guidelines ?? false,
+      strict: strict ?? false,
     }
     if (adoptCustomCourse(cls, course, () => window.confirm(t('custom.replaceConfirm')))) {
       navigate(router.push, customCourseHref(cls.id))
@@ -123,20 +130,51 @@ function Editor({ cls, initial }: { cls: RoClass; initial: CustomCourse }) {
     setQuery('')
     search.current?.focus()
   }
+  // The stations stay where they are (`withPrevious` goes with the place): a card moved within
+  // or out of a station of several (CNDC) trades places with its neighbour.
   const move = (i: number, by: number) => {
     const cards = [...course.cards]
-    const [card] = cards.splice(i, 1)
-    if (card) cards.splice(i + by, 0, card)
+    const [a, b] = [cards[i], cards[i + by]]
+    if (!a || !b) return
+    const card = ({ code, supplementary }: CustomCard, at: CustomCard): CustomCard => ({
+      code,
+      ...(supplementary && { supplementary }),
+      ...(at.withPrevious && { withPrevious: true }),
+    })
+    cards[i] = card(b, a)
+    cards[i + by] = card(a, b)
     setCards(cards)
   }
+  // A station's first card removed: the next one starts it.
+  const remove = (i: number) => {
+    const cards = [...course.cards]
+    const next = cards[i + 1]
+    if (!cards[i]?.withPrevious && next?.withPrevious) {
+      const { withPrevious: _, ...rest } = next
+      cards[i + 1] = rest
+    }
+    setCards(cards.filter((_, j) => j !== i))
+  }
+  const setStation = (i: number, withPrevious: boolean) =>
+    setCards(
+      course.cards.map((c, j) => {
+        if (j !== i) return c
+        const { withPrevious: _, ...rest } = c
+        return withPrevious ? { ...rest, withPrevious: true } : rest
+      }),
+    )
 
   const deck = useMemo(() => customDeck(cls.id, course.startSide, course.cards), [cls.id, course])
-  // The judges' guidelines exist for the national classes only.
+  // The judges' guidelines exist for the national classes only, the safe side of CNDC where
+  // the class has them.
   const hasGuidelines = cls.ruleset === 'CZ'
-  const guidelines = course.checks && hasGuidelines && course.guidelines
+  const hasCndc = !!cls.course.cndc
+  const level = checkLevel(course, hasGuidelines, hasCndc)
+  const guidelines = level === 'guidelines' || level === 'strict'
+  const strict = level === 'strict'
   const issues = useMemo(
-    () => (course.checks ? customDeckIssues(deck, { guidelines }) : []),
-    [deck, course.checks, guidelines],
+    () => (level !== 'off' ? customDeckIssues(deck, { guidelines, strict }) : []),
+    [deck, level, guidelines, strict],
   )
   const courseMessages = countedMessages(
     issues.filter((issue) => !isCardIssue(issue)).map((issue) => issueMessage(issue, cls, t)),
@@ -165,7 +203,8 @@ function Editor({ cls, initial }: { cls: RoClass; initial: CustomCourse }) {
       options: deck.options,
       order: course.cards,
       guidelines,
-      unchecked: !course.checks,
+      strict,
+      unchecked: level === 'off',
       ...setup,
       position: 0,
     })
@@ -219,37 +258,29 @@ function Editor({ cls, initial }: { cls: RoClass; initial: CustomCourse }) {
         </ToggleGroup>
       </section>
 
-      <section className="space-y-1">
-        <div className="flex items-center justify-between gap-4">
-          <Label htmlFor="checks" className="text-base">
-            {t('custom.checks')}
-          </Label>
-          <Switch
-            id="checks"
-            checked={course.checks}
-            onCheckedChange={(checked) => change({ ...course, checks: checked })}
-          />
-        </div>
-        <p className="text-muted-foreground text-sm">{t('custom.checksHint')}</p>
+      {/* How strictly the order is checked: not at all, the regulation, the judges' guidelines,
+          or the safe side the dealer keeps to as well (CNDC). */}
+      <section className="space-y-2">
+        <h2 className="text-base font-medium">{t('custom.checks')}</h2>
+        <ToggleGroup
+          variant="outline"
+          size="lg"
+          className="flex-wrap *:h-11 *:px-3 *:text-base"
+          value={[level]}
+          onValueChange={(v) => v[0] && change({ ...course, ...levelFlags(v[0] as CheckLevel) })}
+        >
+          {CHECK_LEVELS.filter(
+            (l) => (l !== 'guidelines' || hasGuidelines) && (l !== 'strict' || hasCndc),
+          ).map((l) => (
+            <ToggleGroupItem key={l} value={l}>
+              {t(`custom.check.${l}`)}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+        <p className="text-muted-foreground text-sm">{t(`custom.checkHint.${level}`)}</p>
       </section>
 
-      {course.checks && hasGuidelines && (
-        <section className="space-y-1">
-          <div className="flex items-center justify-between gap-4">
-            <Label htmlFor="guidelines" className="text-base">
-              {t('custom.guidelines')}
-            </Label>
-            <Switch
-              id="guidelines"
-              checked={course.guidelines}
-              onCheckedChange={(checked) => change({ ...course, guidelines: checked })}
-            />
-          </div>
-          <p className="text-muted-foreground text-sm">{t('custom.guidelinesHint')}</p>
-        </section>
-      )}
-
-      {!empty && course.checks && (
+      {!empty && level !== 'off' && (
         <div className="space-y-2">
           <p
             className={
@@ -292,8 +323,17 @@ function Editor({ cls, initial }: { cls: RoClass; initial: CustomCourse }) {
               issues={issues.filter((issue) => isCardIssue(issue) && issue.index === i)}
               isFirst={i === 0}
               isLast={i === deck.entries.length - 1}
+              station={
+                entry.withPrevious
+                  ? 'next'
+                  : deck.entries[i + 1]?.withPrevious
+                    ? 'first'
+                    : undefined
+              }
+              // Several cards at one station (CNDC) where the class has them.
+              onStation={hasCndc && i > 0 ? (on) => setStation(i, on) : undefined}
               onMove={(by) => move(i, by)}
-              onRemove={() => setCards(course.cards.filter((_, j) => j !== i))}
+              onRemove={() => remove(i)}
               onSupplementary={(supplementary) =>
                 setCards(course.cards.map((c, j) => (j === i ? { ...c, supplementary } : c)))
               }
@@ -418,6 +458,8 @@ function EditorRow({
   issues,
   isFirst,
   isLast,
+  station,
+  onStation,
   onMove,
   onRemove,
   onSupplementary,
@@ -429,6 +471,10 @@ function EditorRow({
   issues: DeckIssue[]
   isFirst: boolean
   isLast: boolean
+  /** In a group at one station (CNDC): its first card or one after it. */
+  station?: 'first' | 'next'
+  /** Done at the station of the card before, or not (CNDC; missing: not offered). */
+  onStation?: (withPrevious: boolean) => void
   onMove: (by: number) => void
   onRemove: () => void
   onSupplementary: (code: string) => void
@@ -436,7 +482,14 @@ function EditorRow({
   const { t } = useTranslation()
   const card = getCard(cls.ruleset, entry.code) as Card
   return (
-    <li className="space-y-2 p-2">
+    <li
+      className={cn(
+        'space-y-2 p-2',
+        // A group at one station: one bar along its cards, no line between them.
+        station && 'border-l-primary border-l-4',
+        station === 'next' && 'border-t-0',
+      )}
+    >
       <div className="flex items-center gap-3">
         <span className="w-7 text-center text-lg font-bold tabular-nums">{number}</span>
         <Thumb card={card} />
@@ -497,6 +550,18 @@ function EditorRow({
           </ToggleGroup>
         </div>
       )}
+      {onStation && (
+        <div className="flex items-center gap-2 pl-10 text-sm">
+          <Switch
+            id={`station-${number}`}
+            checked={!!entry.withPrevious}
+            onCheckedChange={(checked) => onStation(checked)}
+          />
+          <Label htmlFor={`station-${number}`} className="text-muted-foreground font-normal">
+            {t('custom.withPrevious')}
+          </Label>
+        </div>
+      )}
       {issues.length > 0 && (
         <ul className="text-destructive space-y-1 pl-10 text-sm">
           {issues.map((issue, j) => (
@@ -510,6 +575,24 @@ function EditorRow({
     </li>
   )
 }
+
+/** How strictly a hand-made course is checked (plan §12, R18). */
+const CHECK_LEVELS = ['off', 'rules', 'guidelines', 'strict'] as const
+type CheckLevel = (typeof CHECK_LEVELS)[number]
+
+/** The level the stored switches say — none above what the class has. */
+function checkLevel(course: CustomCourse, hasGuidelines: boolean, hasCndc: boolean): CheckLevel {
+  if (!course.checks) return 'off'
+  if (course.strict && hasCndc) return 'strict'
+  if ((course.guidelines || course.strict) && hasGuidelines) return 'guidelines'
+  return 'rules'
+}
+
+const levelFlags = (level: CheckLevel): Pick<CustomCourse, 'checks' | 'guidelines' | 'strict'> => ({
+  checks: level !== 'off',
+  guidelines: level === 'guidelines' || level === 'strict',
+  strict: level === 'strict',
+})
 
 function Thumb({ card }: { card: Card }) {
   return (
