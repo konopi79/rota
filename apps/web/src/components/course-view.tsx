@@ -108,6 +108,13 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
   const deckHref = `/balicek?${encodeDeckParams({ ...params, position: 0 })}`
   const side = (s: 'left' | 'right') => t(s === 'right' ? 'course.right' : 'course.left')
 
+  // Several cards at one station (CNDC) say so under the plan.
+  const caption =
+    cls.ruleset !== 'CZ'
+      ? 'plan.caption'
+      : deck.entries.some((e) => e.withPrevious)
+        ? 'plan.captionCzCndc'
+        : 'plan.captionCz'
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 px-4 py-6 print:max-w-none print:py-0">
       <header className="space-y-2">
@@ -230,7 +237,7 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
             />
           </button>
           <figcaption className="text-muted-foreground text-center text-xs">
-            {t(cls.ruleset === 'CZ' ? 'plan.captionCz' : 'plan.caption', {
+            {t(caption, {
               width: layout.width,
               height: layout.height,
             })}

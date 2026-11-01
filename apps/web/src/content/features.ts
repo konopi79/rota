@@ -20,7 +20,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'cndc'
+export const LATEST_FEATURE_ID = 'cndc-plan'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -94,7 +94,12 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
       {
         id: 'cndc',
         title: 'Více karet na jednom stanovišti (CNDC)',
-        desc: 'V RO1 až RO3 a RO-V dá balíček i tréninkový parkur na přání několik karet na jedno stanoviště, jako na skutečných parkurech – cviky z nich uděláš za sebou. Zatím bez plánku a animace průchodu a raději přísněji: jen kombinace, které pravidla jistě dovolují.',
+        desc: 'V RO1 až RO3 a RO-V dá balíček i tréninkový parkur na přání několik karet na jedno stanoviště, jako na skutečných parkurech – cviky z nich uděláš za sebou. Raději přísněji: jen kombinace, které pravidla jistě dovolují.',
+      },
+      {
+        id: 'cndc-plan',
+        title: 'CNDC na plánku',
+        desc: 'Karty jednoho stanoviště stojí na plánku vedle sebe a další cvik začíná tam, kde skončil předchozí – po dynamickém cviku o krok dál. Za CNDC s dynamickým cvikem je další stanoviště o metr dál, jak chtějí směrnice.',
       },
       {
         id: 'national-field-plan',

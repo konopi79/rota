@@ -1,9 +1,11 @@
 import { getCard, getClass } from '../registry'
 import type { Card, RoClass } from '../schema'
 import {
+  afterDynamicStation,
   angleDiff,
   approachOf,
   CARD_SPACING,
+  CNDC_STEP,
   distance,
   distanceToSegment,
   distanceToWay,
@@ -12,9 +14,9 @@ import {
   PROP_SPACING,
   propPoints,
   shapeOf,
-  d0StandOf,
   D0_BESIDE,
   signOf,
+  standsOf,
   STAND_SPACING,
   turnsOf,
   WALK_SPACING,
@@ -140,7 +142,6 @@ function cndcIssues(cls: RoClass, deck: Deck): string[] {
   )
   const most = cls.course.cndc?.groups[1] ?? 0
   if (groups.length > most) errors.push(`${groups.length} CNDC, at most ${most}`)
-  if (deck.layout) errors.push('a deck with CNDC laid out')
   return errors
 }
 
@@ -493,14 +494,43 @@ function validateRound(
       entry.at &&
       shapeOf(cards[i] as Card, entry.at, entry.side, !!cards[i + 1]?.sequencing.onlyAfterLeave),
   )
+  // Several cards at one station (CNDC, plan R18): which station each card is done at, where
+  // its card stands on the station's stand, and whether the station needs more room after it
+  // (a CNDC with a dynamic exercise). Things of one station are not checked against each
+  // other; the start and the finish are stations of their own.
+  const stations = stationsOf(entries)
+  const stationOf: number[] = []
+  stations.forEach(([from, to], s) => {
+    for (let i = from; i <= to; i++) stationOf[i] = s
+  })
+  const START = -1
+  const FINISH = -2
+  const stands: ({ sign: Point; d0?: Point } | undefined)[] = []
+  const roomier = new Set<number>()
+  stations.forEach(([from, to], s) => {
+    const members = entries.slice(from, to + 1).map((e, k) => {
+      const card = cards[from + k] as Card
+      return e.at && { card, at: e.at }
+    })
+    const placed = members.flatMap((m) => (m ? [m] : []))
+    if (placed.length === members.length) stands.push(...standsOf(placed))
+    else stands.push(...members.map(() => undefined))
+    const dynamic = entries
+      .slice(from, to + 1)
+      .some((e, k) => !endsStatic(cls, cards[from + k] as Card, e.supplementary))
+    if (to > from && dynamic) roomier.add(s)
+  })
 
-  /** The step from the end of the previous exercise to a card (or the finish). */
-  const checkStep = (at: string, previous: Shape | undefined, card: Card | undefined, to: Pose) => {
+  /** The step from the end of the previous station to a card (or the finish). */
+  const checkStep = (at: string, i: number, card: Card | undefined, to: Pose) => {
+    const previous = shapes[i - 1]
     if (card?.sequencing.onlyAfterLeave && !previous) {
       errors.push(`${at}: recall card without its leave card on the field`)
     }
     const from = previous?.exit ?? start
-    const { min, max, shifts, hairpin } = approachOf(previous, card)
+    const plain = approachOf(previous, card)
+    const after = i > 0 && roomier.has(stationOf[i - 1] as number)
+    const { min, max, shifts, hairpin } = after ? afterDynamicStation(plain) : plain
     // Straight on from the exercise; only a turn about brings the team back beside its way
     // in, and a recall card may stand to the side of its leave card.
     const walk = walkOf(from, to)
@@ -518,6 +548,25 @@ function validateRound(
     if (!inside(to)) errors.push(`${at}: outside the field`)
   }
 
+  /**
+   * A card done at the station of the one before: where that exercise ends, a step on after a
+   * dynamic one ("krok dopředu pro ukončení cviku", řád p. 16).
+   */
+  const checkJoined = (i: number, to: Pose) => {
+    const previous = shapes[i - 1]
+    const before = entries[i - 1]
+    if (!previous || !before) {
+      errors.push(`${label(i)}: at one station without a card before it`)
+      return
+    }
+    const static_ = endsStatic(cls, cards[i - 1] as Card, before.supplementary)
+    const walk = walkOf(previous.exit, to)
+    const step = static_ ? 0 : CNDC_STEP
+    if (!walk || Math.abs(walk.ahead - step) > EPS || Math.abs(walk.across) > EPS) {
+      errors.push(`${label(i)}: not where the exercise before it ends`)
+    }
+  }
+
   entries.forEach((entry, i) => {
     const card = cards[i] as Card
     const shape = shapes[i]
@@ -528,66 +577,68 @@ function validateRound(
     if (!turnsOf(card).includes(entry.at.turn)) {
       errors.push(`${label(i)}: turn ${entry.at.turn}° not allowed`)
     }
-    checkStep(label(i), shapes[i - 1], card, entry.at)
+    if (entry.withPrevious) checkJoined(i, entry.at)
+    else checkStep(label(i), i, card, entry.at)
     if (!inside(shape.exit)) errors.push(`${label(i)}: leaves the field`)
     for (const p of shape.props) {
       if (!inside(p)) errors.push(`${label(i)}: ${p.kind} outside the field`)
     }
   })
-  checkStep(
-    `finish after #${first + entries.length}`,
-    shapes[entries.length - 1],
-    undefined,
-    finish,
-  )
+  checkStep(`finish after #${first + entries.length}`, entries.length, undefined, finish)
 
   // Clearances: cards (where they stand) from cards; equipment from the other exercises —
   // where they are done, their cards and their equipment. A card may stand over the edge
   // of the field (`EDGE`), the course may not.
-  const signs: { label: string; p: Point }[] = [
-    { label: 'start', p: signOf(undefined, start) },
-    ...entries.flatMap((e, i) => (e.at ? [{ label: label(i), p: signOf(cards[i], e.at) }] : [])),
-    { label: 'finish', p: signOf(undefined, finish) },
+  type Spot = { label: string; station: number; p: Point }
+  const signs: Spot[] = [
+    { label: 'start', station: START, p: signOf(undefined, start) },
+    ...entries.flatMap((_, i) => {
+      const stand = stands[i]
+      return stand ? [{ label: label(i), station: stationOf[i] as number, p: stand.sign }] : []
+    }),
+    { label: 'finish', station: FINISH, p: signOf(undefined, finish) },
   ]
   // The D0 cards beside their cards (national): as much nearer the others as they stand aside.
-  const d0s = entries.flatMap((e, i) => {
-    const d0 = e.at && d0StandOf(cards[i] as Card, e.at)
-    return d0 ? [{ label: label(i), p: d0 }] : []
+  const d0s: Spot[] = entries.flatMap((_, i) => {
+    const d0 = stands[i]?.d0
+    return d0 ? [{ label: label(i), station: stationOf[i] as number, p: d0 }] : []
   })
   for (const a of d0s) {
     for (const b of [...signs, ...d0s]) {
-      if (b.label !== a.label && b !== a && distance(a.p, b.p) < CARD_SPACING - D0_BESIDE - EPS) {
+      if (b.station !== a.station && distance(a.p, b.p) < CARD_SPACING - D0_BESIDE - EPS) {
         errors.push(`${a.label}: its D0 card too close to ${b.label}`)
       }
     }
   }
   signs.forEach((a, i) => {
     for (const b of signs.slice(i + 1)) {
-      if (distance(a.p, b.p) < CARD_SPACING - EPS) {
+      if (b.station !== a.station && distance(a.p, b.p) < CARD_SPACING - EPS) {
         errors.push(`${a.label} and ${b.label}: too close`)
       }
     }
   })
-  const spots = [
+  const spots: Spot[] = [
     ...signs,
     ...d0s,
-    { label: 'start', p: start },
-    ...entries.flatMap((e, i) => (e.at ? [{ label: label(i), p: e.at }] : [])),
-    { label: 'finish', p: finish },
+    { label: 'start', station: START, p: start },
+    ...entries.flatMap((e, i) =>
+      e.at ? [{ label: label(i), station: stationOf[i] as number, p: e.at }] : [],
+    ),
+    { label: 'finish', station: FINISH, p: finish },
   ]
   const props = shapes.flatMap((shape, i) =>
-    (shape?.props ?? []).map((p) => ({ owner: label(i), p })),
+    (shape?.props ?? []).map((p) => ({ owner: label(i), station: stationOf[i] as number, p })),
   )
   props.forEach((a, i) => {
     const room = a.p.clear ?? PROP_SPACING
     for (const s of spots) {
-      if (s.label !== a.owner && distance(s.p, a.p) < room - EPS) {
+      if (s.station !== a.station && distance(s.p, a.p) < room - EPS) {
         errors.push(`${a.owner}: ${a.p.kind} too close to ${s.label}`)
       }
     }
     for (const b of props.slice(i + 1)) {
       const both = Math.max(room, b.p.clear ?? PROP_SPACING)
-      if (b.owner !== a.owner && distance(a.p, b.p) < both - EPS) {
+      if (b.station !== a.station && distance(a.p, b.p) < both - EPS) {
         errors.push(`${a.owner}: ${a.p.kind} too close to the ${b.p.kind} of ${b.owner}`)
       }
     }
@@ -599,10 +650,10 @@ function validateRound(
     const back = shape?.back
     if (!at || !back) return
     if (!inside(back)) errors.push(`${label(i)}: steps back off the field`)
-    const own = [label(i), ...(cards[i]?.sequencing.onlyAfterLeave ? [label(i - 1)] : [])]
+    const own = [stationOf[i], ...(cards[i]?.sequencing.onlyAfterLeave ? [stationOf[i - 1]] : [])]
     const others = [
-      ...spots.filter((s) => !own.includes(s.label)),
-      ...props.filter((q) => !own.includes(q.owner)),
+      ...spots.filter((s) => !own.includes(s.station)),
+      ...props.filter((q) => !own.includes(q.station)),
     ]
     for (const o of others) {
       if (distanceToSegment(o.p, at, back) < PROP_SPACING - EPS) {
@@ -611,32 +662,33 @@ function validateRound(
       }
     }
   })
-  // National courses: the way between two cards passes clear of the other exercises,
+  // National courses: the way between two stations passes clear of the other exercises,
   // their cards and equipment (Směrnice §1.1.3: "Dráha v uličce s kartami musí být široká
   // nejméně 1,5 m") — the cards' stands a little further (`STAND_SPACING`).
   // (A jump: its middle and both uprights.)
   const equipment = props.flatMap((q) =>
-    propPoints(q.p).map((p) => ({ label: q.owner, owner: q.owner, kind: q.p.kind, p })),
+    propPoints(q.p).map((p) => ({ label: q.owner, station: q.station, kind: q.p.kind, p })),
   )
   const standsAt = new Set([...signs, ...d0s, ...equipment].map((s) => s.p))
   const aside = (p: Point) => (standsAt.has(p) ? STAND_SPACING : WALK_SPACING)
   if (cls.ruleset === 'CZ') {
     const targets = [
-      ...entries.map((e, i) => ({ label: label(i), to: e.at })),
-      { label: 'finish', to: finish },
+      ...entries.map((e, i) => ({ label: label(i), i, to: e.withPrevious ? undefined : e.at })),
+      { label: 'finish', i: entries.length, to: finish },
     ]
-    targets.forEach(({ label: to, to: at }, i) => {
-      if (!at) return
+    for (const { label: to, i, to: at } of targets) {
+      if (!at) continue
       const before = shapes[i - 1]
-      const from = i ? label(i - 1) : 'start'
+      const from = i ? (stationOf[i - 1] as number) : START
+      const here = i < entries.length ? (stationOf[i] as number) : FINISH
       const aisle = wayTo(before, before?.exit ?? start, at, to === 'finish')
       const near = (p: Point) => distanceToWay(p, aisle) < aside(p) - EPS
       for (const o of [...spots, ...equipment]) {
-        if (o.label !== to && o.label !== from && near(o.p)) {
+        if (o.station !== here && o.station !== from && near(o.p)) {
           errors.push(`${to}: the way to it passes too close to ${o.label}`)
         }
       }
-    })
+    }
   }
 
   // The way walked inside a national exercise, like the way between two cards.
@@ -644,8 +696,8 @@ function validateRound(
     const walk = shape?.walk
     if (!walk) return
     const others = [
-      ...spots.filter((s) => s.label !== label(i)),
-      ...equipment.filter((q) => q.owner !== label(i)),
+      ...spots.filter((s) => s.station !== stationOf[i]),
+      ...equipment.filter((q) => q.station !== stationOf[i]),
     ]
     for (const o of others) {
       if (distanceToWay(o.p, walk) < aside(o.p) - EPS) {

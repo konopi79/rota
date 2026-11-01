@@ -195,6 +195,52 @@ export function d0StandOf(card: Placed & Pick<Card, 'sequencing'>, at: Pose): Po
   return offset(signOf(card, at), at.heading, 0, D0_BESIDE)
 }
 
+/**
+ * Several cards at one station (CNDC, plan R18): "Cviky s několika dílčími cviky … mohou
+ * zahrnovat až 3 cviky umístěné přímo vedle sebe" (řád p. 16). The first card stands where its
+ * own placement puts it — a group with a change of direction starts with one (Směrnice §1.1.6),
+ * so its cards stand in the team's way then — each next one beside the one before, its D0
+ * card in between ("302 + D0c + 031" on a real plan), on one line facing the team as it comes
+ * in to the first.
+ */
+export function standsOf(
+  station: { card: Placed & Pick<Card, 'sequencing'>; at: Pose }[],
+): { sign: Point; d0?: Point }[] {
+  const first = station[0]
+  if (!first) return []
+  const heading = first.at.heading
+  let next = signOf(first.card, first.at)
+  return station.map(({ card }) => {
+    const sign = next
+    const d0 =
+      card.ruleset === 'CZ' && card.sequencing.requiresSupplementary
+        ? offset(sign, heading, 0, D0_BESIDE)
+        : undefined
+    next = offset(d0 ?? sign, heading, 0, D0_BESIDE)
+    return { sign, ...(d0 && { d0 }) }
+  })
+}
+
+/**
+ * The next exercise of a CNDC starts where the one before ends — "bezprostředně za sebou nebo s
+ * mezikrokem" — after a dynamic one past "krok dopředu pro ukončení cviku" (řád p. 16): a
+ * step this long, metres (as animated, `SCRIPTED_STEP`). The optional step between is left out.
+ */
+export const CNDC_STEP = 0.55
+/**
+ * After a CNDC with a dynamic exercise the next station stands further: "Při stavbě CNDC s
+ * dynamickými cviky (B) … se minimální vzdálenost zvyšuje o 1 m" (Směrnice §1.1.2) — the
+ * steps forward and between shorten the way to it. Metres, onto the 3–5 m of `approachOf`.
+ */
+export const CNDC_EXTRA = 1
+
+/** The approach to the next station after a CNDC with a dynamic exercise (`CNDC_EXTRA`). */
+export function afterDynamicStation(approach: Approach): Approach {
+  // A follow-up stands where its leave card says.
+  if (approach.min === approach.max) return approach
+  return { ...approach, min: approach.min + CNDC_EXTRA, max: approach.max + CNDC_EXTRA }
+}
+
 /** The turns a card allows (0 for cards done without turning). */
 export function turnsOf(card: Card): number[] {
   const turn = card.geometry?.turn ?? 0

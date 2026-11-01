@@ -145,6 +145,8 @@ export const canWalkThrough = (deck: Deck): boolean =>
   deck.entries.every(
     (e) =>
       e.at &&
+      // Not yet several cards at one station (CNDC).
+      !e.withPrevious &&
       ANIMATED_CARDS.includes(e.code) &&
       (e.side === 'left' || RIGHT_SIDE_CARDS.includes(e.code)),
   )

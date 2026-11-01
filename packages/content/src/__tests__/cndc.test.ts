@@ -2,7 +2,8 @@ import { describe, expect, test } from 'bun:test'
 
 import { getClass } from '../registry'
 import { cndcAllowed, stationsOf, stepForwardAfter } from '../deal/cndc'
-import { dealDeck, validateDeck } from '../deal'
+import { dealDeck, geometry, validateDeck } from '../deal'
+import { cardOf } from '../deal/rules'
 import type { DeckEntry } from '../deal'
 import { EQUIPMENT } from '../schema'
 
@@ -64,32 +65,95 @@ describe('CNDC — several cards at one station (R18)', () => {
   })
 
   test.each(['RO1', 'RO2', 'RO3', 'RO-V'] as const)(
-    '%s: dealt with CNDC, the same deck grouped, valid, within the limits',
+    '%s: a course dealt with CNDC laid out with its groups, valid, within the limits',
     (classId) => {
       const cls = getClass(classId)!
-      const [least, most] = cls.course.cndc!.groups
-      for (let seed = 0; seed < 60; seed++) {
+      const most = cls.course.cndc!.groups[1]
+      let groups = 0
+      const seeds = 40
+      for (let seed = 0; seed < seeds; seed++) {
+        const deck = dealDeck({
+          classId,
+          scope: 'all',
+          count: cls.course.maxCards,
+          equipment: [...EQUIPMENT],
+          startSide: seed % 2 ? 'left' : 'right',
+          competition: seed % 3 === 0,
+          seed,
+          cndc: true,
+        })
+        expect(validateDeck(deck)).toEqual([])
+        expect(deck.layout).toBeDefined()
+        const grouped = stationsOf(deck.entries).filter(([a, b]) => b > a)
+        expect(grouped.length).toBeLessThanOrEqual(most)
+        groups += grouped.length
+      }
+      // Most of the groups wanted come about (RO3: 3–6, about 3.7 a course).
+      expect(groups / seeds).toBeGreaterThan(1.3)
+    },
+    60_000,
+  )
+
+  test.each(['RO2', 'RO3'] as const)(
+    '%s: a deck longer than a course, not laid out, is the same deck grouped',
+    (classId) => {
+      for (let seed = 0; seed < 20; seed++) {
         const options = {
           classId,
           scope: 'all' as const,
-          count: cls.course.maxCards,
+          count: 40,
           equipment: [...EQUIPMENT],
-          startSide: seed % 2 ? ('left' as const) : ('right' as const),
-          competition: seed % 3 === 0,
+          startSide: 'left' as const,
           seed,
         }
         const plain = dealDeck(options)
         const deck = dealDeck({ ...options, cndc: true })
         expect(validateDeck(deck)).toEqual([])
-        expect(deck.entries.map((e) => e.code)).toEqual(plain.entries.map((e) => e.code))
         expect(deck.layout).toBeUndefined()
-        const groups = stationsOf(deck.entries).filter(([a, b]) => b > a)
-        expect(groups.length).toBeLessThanOrEqual(most)
-        if (seed < 20) expect(groups.length).toBeGreaterThanOrEqual(Math.min(least, 1))
+        expect(deck.entries.map((e) => e.code)).toEqual(plain.entries.map((e) => e.code))
+        expect(stationsOf(deck.entries).some(([a, b]) => b > a)).toBe(true)
       }
     },
     60_000,
   )
+
+  test('a card of a CNDC is done where the exercise before it ends, the next station further', () => {
+    const ro3 = getClass('RO3')!
+    for (let seed = 0; seed < 20; seed++) {
+      const deck = dealDeck({
+        classId: 'RO3',
+        scope: 'all',
+        count: 24,
+        equipment: [...EQUIPMENT],
+        startSide: 'left',
+        seed,
+        competition: true,
+        cndc: true,
+      })
+      const i = deck.entries.findIndex((e) => e.withPrevious)
+      if (i < 0) continue
+      const entry = deck.entries[i]!
+      const before = deck.entries[i - 1]!
+      const exit = geometry.shapeOf(cardOf(ro3, before.code), before.at!, before.side, false).exit
+      const step = stepForwardAfter(ro3, before) ? geometry.CNDC_STEP : 0
+      const walk = geometry.walkOf(exit, entry.at!)!
+      expect(walk.ahead).toBeCloseTo(step, 6)
+      expect(walk.across).toBeCloseTo(0, 6)
+      // Moved off its place, it is caught.
+      const moved = {
+        ...deck,
+        entries: deck.entries.map((e, k) =>
+          k === i ? { ...e, at: { ...e.at!, x: e.at!.x + 0.5 } } : e,
+        ),
+      }
+      expect(validateDeck(moved).some((e) => e.includes('not where the exercise before'))).toBe(
+        true,
+      )
+    }
+    // After a CNDC with a dynamic exercise the next station is 4–6 m on, not 3–5.
+    const approach = geometry.approachOf(undefined, undefined)
+    expect(geometry.afterDynamicStation(approach)).toMatchObject({ min: 4, max: 6 })
+  })
 
   test('a group in a deck dealt without CNDC, or one the class does not allow, is caught', () => {
     const deck = dealDeck({

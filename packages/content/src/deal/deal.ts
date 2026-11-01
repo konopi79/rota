@@ -1,11 +1,11 @@
 import { getClass } from '../registry'
 import type { Card, Field, RoClass } from '../schema'
 import { mulberry32, pick, pickWeighted } from './prng'
-import { normalize, turnsOf } from './geometry'
+import { CNDC_STEP, normalize, turnsOf } from './geometry'
 import { FieldPlanner, type PlannerState } from './layout'
 import { NationalCourse, type CourseState } from './course'
 import { cardOf, endsStatic, fieldKey, fieldOf, hasEquipment, paceAfter, sideAfter } from './rules'
-import { groupStations } from './cndc'
+import { groupStations, grouped, joinable, startGrouping, wantsJoin, type Grouping } from './cndc'
 import type { Deck, DeckEntry, DealOptions, Layout, Pace, Side } from './types'
 
 const ATTEMPTS = 100
@@ -27,6 +27,8 @@ type State = {
   counts: Map<string, number>
   /** Cards dealt per point value (competition point mix). */
   byPoints: Map<number, number>
+  /** Several cards at one station, on a laid-out deck dealt with `cndc` (plan R18). */
+  grouping?: Grouping
 }
 
 /** How much more likely a card is drawn while its point value is still short. */
@@ -76,6 +78,9 @@ const USAGE_LEAN = { min: 0.5, max: 1 }
  * the layout (start, each card's `at`, finish). A longer deck — or a training deck that
  * fits on no field — goes without one: with the direction changed only by the cards, a
  * second field dealt from what the first one left would run short of such cards.
+ *
+ * With `cndc` a laid-out deck groups cards at one station as it is dealt (the planner's
+ * `join`); one without a layout is grouped afterwards (`withStations`).
  */
 export function dealDeck(options: DealOptions): Deck {
   const cls = getClass(options.classId)
@@ -117,15 +122,14 @@ export function dealDeck(options: DealOptions): Deck {
 }
 
 /**
- * Some cards of a dealt deck grouped at one station where asked (`cndc`), the order as it
- * was — the same deck as without: the groups are drawn from a stream of their own. Not laid
- * out yet: the planner places each card at a station of its own.
+ * A deck without a field layout dealt with `cndc`: some of its cards grouped at one station,
+ * the order as it was — the groups drawn from a stream of their own. (A laid-out deck has its
+ * groups already.)
  */
 function withStations(cls: RoClass, deck: Deck): Deck {
-  if (!deck.options.cndc || !cls.course.cndc) return deck
+  if (!deck.options.cndc || !cls.course.cndc || deck.layout) return deck
   const random = mulberry32(deck.options.seed ^ CNDC_STREAM)
-  const entries = deck.entries.map(({ at: _, ...entry }) => entry)
-  return { options: deck.options, entries: groupStations(cls, entries, random) }
+  return { ...deck, entries: groupStations(cls, deck.entries, random) }
 }
 const CNDC_STREAM = 0x5eed_cdc
 
@@ -172,6 +176,7 @@ function attemptDeal(
     used: new Set(),
     counts: new Map(),
     byPoints: new Map(),
+    ...(planner && options.cndc && { grouping: startGrouping(cls, random) }),
   }
   const quota = options.competition ? (cls.course.minByPoints ?? {}) : {}
   // A competition course is dealt like judges set them (FCI): their cards more often
@@ -286,7 +291,29 @@ function attemptDeal(
       }
       return undefined
     }
-    const drawn = draw()
+    // Done at the station dealt last (CNDC): a card that may join it, where it fits there —
+    // or, if none does, a station of its own.
+    const grouping = state.grouping
+    const station = grouping ? entries.slice(entries.length - grouping.size) : []
+    const drawJoined = (): { card: Card; at?: DeckEntry['at'] } | undefined => {
+      const step = state.prevStatic ? 0 : CNDC_STEP
+      let pool = eligible.filter((c) =>
+        joinable(cls, station, c, course ? course.supplementaries(c) : cls.course.supplementary),
+      )
+      while (pool.length && planner) {
+        const card = weighted
+          ? pickWeighted(pool, (c) => weights.get(c) ?? 1, random)
+          : pick(pool, random)
+        if (!card) return undefined
+        const at = planner.join(card, state.side, step)
+        if (at) return { card, at }
+        pool = pool.filter((c) => c !== card)
+      }
+      return undefined
+    }
+    const joining = !!grouping && entries.length > 0 && wantsJoin(grouping, remaining, random)
+    const joined = joining ? drawJoined() : undefined
+    const drawn = joined ?? draw()
     // Nothing fits: take the last card back and try another one in its place.
     const last = entries.at(-1)
     const snapshot = snapshots[entries.length - 1]
@@ -312,9 +339,12 @@ function attemptDeal(
       side: state.side,
       pace: state.pace,
       ...(at && { at }),
+      ...(joined && { withPrevious: true as const }),
     })
 
     const static_ = endsStatic(cls, card, supplementary)
+    planner?.ended(static_)
+    if (grouping) state.grouping = grouped(cls, grouping, !!joined, random)
     course?.record(card, supplementary, static_)
     if (!card.sequencing.onlyAfterLeave) state.used.add(card.code)
     state.counts.set(card.code, (state.counts.get(card.code) ?? 0) + 1)
@@ -343,6 +373,7 @@ function copyState(state: State): State {
     used: new Set(state.used),
     counts: new Map(state.counts),
     byPoints: new Map(state.byPoints),
+    ...(state.grouping && { grouping: { ...state.grouping } }),
   }
 }
 
