@@ -71,10 +71,6 @@ const SAME: [string, string, string?][] = [
   ['205', '2-209'],
   ['206', '2-210'],
   ['207', '3-304'],
-  // 209: "míjí psovoda zepředu po jeho pravé straně a zezadu jej obchází zpět k levé noze" —
-  // Z-014 with D0a; 210 "přiřazení přímo k levé noze" — with D0b.
-  ['209', 'Z-014', 'D0a'],
-  ['210', 'Z-014', 'D0b'],
   ['213', '2-205'],
   ['214', '2-206'],
   ['215', '2-203'],
@@ -161,6 +157,26 @@ const doubleTurn = (code: string, nationalCode: string): Exercise => {
  * (Z-012's way to the dog's side). Not 1-101, whose handler walks a circle round the dog (the
  * author: "u 112 rotuje kolem psa a to … neni spravne").
  */
+/**
+ * 209 / 210 Stop, předsednutí, přiřazení zprava doleva / přímo doleva: "Psovod se zastaví a pes
+ * si sedá u nohy psovoda. Následně je pes velen do předsednutí" — Z-014 with D0a / D0b, but the
+ * dog sits at heel first (the FCI video, 2026-11-02): nationally it goes on into the front
+ * without stopping.
+ */
+const sitThenFront = (code: string, d0: 'D0a' | 'D0b'): Exercise => {
+  const from = national('Z-014', d0)
+  const [approach, ...rest] = from.steps
+  return fci(code, from, {
+    steps: [
+      approach!,
+      { stop: true, caption: 'stop' },
+      { dog: 'sit', caption: 'sit' },
+      { wait: 1, caption: 'basePosition' },
+      ...rest,
+    ],
+  })
+}
+
 const R112: Exercise = {
   ...turnOnTheSpot('112', -360, 'turnLeft360', 'side'),
   ruleset: 'FCI',
@@ -234,5 +250,7 @@ export const FCI_EXERCISES: Exercise[] = [
   doubleTurn('202', '1-121'),
   doubleTurn('203', '1-122'),
   R112,
+  sitThenFront('209', 'D0a'),
+  sitThenFront('210', 'D0b'),
   R208,
 ].sort((a, b) => a.code.localeCompare(b.code))
