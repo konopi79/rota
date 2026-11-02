@@ -99,9 +99,6 @@ const SAME: [string, string, string?][] = [
   ['316', '1-125'],
   ['406', '3-327'],
   ['407', '2-208'],
-  // 416: 2-222's steps aside with the dog in front, then "aby se přiřadil k levé noze a
-  // zaujal pozici vsedě" — straight, as D0b.
-  ['416', '2-222', 'D0b'],
 ]
 
 /** The 1–2 m the team walks between two turns about (201–203: "Po 1 - 2 m"), metres. */
@@ -236,15 +233,27 @@ const INTO_THE_SQUARE: Record<string, number> = {
 }
 
 /**
- * Where FCI's card says the exercise is done left of the card (A) though the national one has
- * it ahead: 416's steps aside with the dog in front (2-222 nationally a side step, before the
- * card — FCI §4.3 too, but the card's letter is A).
+ * 416 Předsednutí, úkrok vlevo, sedni, krok vpravo, sedni: 2-222's steps aside with the dog in
+ * front, then "aby se přiřadil k levé noze a zaujal pozici vsedě" — straight, as D0b. Its card's
+ * letter is A, left of the card (2-222's place is before it): the handler stops in the square
+ * close by the card, 0.5 m left of it and 0.5 m before it, and the team walks away straight on —
+ * 2-222 stops further left and back and bends round the cards ahead (the author: "mohli prijit
+ * blize ke karte a u odchodu jit hned a celou dobu primo rovne").
  */
-const CARD_BESIDE = new Set(['416'])
+const R416 = (() => {
+  const from = fci('416', national('2-222', 'D0b'), { card: 'side' })
+  const round = from.steps.findIndex((s) => 'course' in s)
+  const leaving = from.steps[round]!.caption
+  return {
+    ...from,
+    stopAt: { x: -0.25, z: 0 },
+    steps: [...from.steps.slice(0, round), { walk: 3, caption: leaving }],
+  }
+})()
 
 /** The national exercise as FCI's card, a little nearer its card where it has to be. */
 const same = (code: string, from: string, variant?: string): Exercise => {
-  const e = fci(code, national(from, variant), CARD_BESIDE.has(code) ? { card: 'side' } : {})
+  const e = fci(code, national(from, variant))
   const nearer = INTO_THE_SQUARE[code]
   if (!nearer) return e
   const stop = e.stopAt ?? { x: 0, z: 0 }
@@ -258,6 +267,7 @@ export const FCI_EXERCISES: Exercise[] = [
   doubleTurn('202', '1-121'),
   doubleTurn('203', '1-122'),
   R112,
+  R416,
   sitThenFront('209', 'D0a'),
   sitThenFront('210', 'D0b'),
   R208,
