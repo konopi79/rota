@@ -172,11 +172,30 @@ const R208: Exercise = {
 }
 
 /**
- * Turning or stepping aside without going forward (304, 310, 314), the team turns this much
- * nearer the card than nationally, metres: else nobody came into the square in front of it,
- * and part of the team has to (§4.3).
+ * Before a card ahead (B) the team turns this much nearer the card than nationally, metres —
+ * into the square in front of it, up to its middle (0.65; "na ploše A4", "o průměru maximálně
+ * 50 cm", §4.6), as deep as the card stays clear (measured, the tests' limits plus 5 cm): at
+ * 1.2 m the team only just came into it (110, the author). Turning left the dog keeps inside the
+ * turn; turning right it swings out towards the card, so 105, 113, 114 and 217 stay where they
+ * are, as do the side steps 301 and 303.
  */
-const INTO_THE_SQUARE: Record<string, number> = { '304': 0.25, '310': 0.25, '314': 0.25 }
+const INTO_THE_SQUARE: Record<string, number> = {
+  '106': 0.5,
+  '109': 0.3,
+  '110': 0.3,
+  '115': 0.5,
+  '213': 0.3,
+  '214': 0.55,
+  '215': 0.3,
+  '216': 0.55,
+  '218': 0.5,
+  '304': 0.65,
+  '307': 0.3,
+  '308': 0.65,
+  '310': 0.65,
+  '313': 0.65,
+  '314': 0.65,
+}
 
 /**
  * Where FCI's card says the exercise is done left of the card (A) though the national one has
