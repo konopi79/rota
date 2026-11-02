@@ -220,6 +220,8 @@ const forepawReach = (pose: Pose) => {
   return (frames.get('leftFrontPaw')!.position[2] + frames.get('rightFrontPaw')!.position[2]) / 2
 }
 const STANDING_REACH = forepawReach(DOG_POSTURES.stand)
+/** Getting up folded back (`foldBack`), the dog has unfolded once this near standing, metres. */
+const UNFOLDED = 0.005
 
 const approach = (from: number, to: number, dt: number) =>
   from + (to - from) * (1 - Math.exp(-SETTLE_RATE * dt))
@@ -287,6 +289,8 @@ export class TeamAnimator {
     return this.fold
   }
   private fold = 0
+  /** Lying folded back over its front paws (`foldBack`), the dog gets up the same way. */
+  private foldingBack = false
 
   /** `dogPlace`: where the dog starts, at the handler's left (as a rule) or right leg. */
   constructor(dogPlace: TeamControls['place'] = 'left') {
@@ -406,8 +410,11 @@ export class TeamAnimator {
     // A dog springs up quicker than it settles down.
     const rate = posture === 'stand' ? RISE_RATE : SETTLE_RATE
     this.dogPosture = blendPoses(this.dogPosture, DOG_POSTURES[posture], 1 - Math.exp(-rate * dt))
+    // Getting up from lying folded back (left on the move, then walked on with: FCI 318) it
+    // unfolds over its front paws as it rises — not at once, its hind paws jumping.
+    this.foldingBack = !!controls.foldBack || (this.foldingBack && this.fold > UNFOLDED)
     this.fold =
-      controls.place === 'front' || controls.foldBack
+      controls.place === 'front' || this.foldingBack
         ? Math.max(0, forepawReach(this.dogPosture) - STANDING_REACH)
         : 0
     const standing = posture === 'stand' ? 1 : 0

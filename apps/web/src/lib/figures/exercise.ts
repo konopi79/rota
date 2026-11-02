@@ -105,6 +105,14 @@ export type ExerciseStep = { caption: string } & (
    * about there — the dog at heel again, and it goes on from there with the handler.
    */
   | { backToDog: true; pace?: HandlerPace }
+  /**
+   * Round the dog left on the move and back beside it (FCI 317, 318, 419: "psovod pokračuje bez
+   * zastavení vpřed, obchází psa zepředu, vrací se do výchozí pozice po boku psa a zastaví"):
+   * on from where the handler is, across in front of the dog, down its far side, round behind
+   * it and up to the handler's place at heel — stopping there, the dog still in its position
+   * until the team walks on.
+   */
+  | { roundLeftDog: true; pace?: HandlerPace }
   /** (Worked out from `backToDog`.) The handler beside the dog again: it is at heel. */
   | { dogJoins: true }
   /**
@@ -379,6 +387,12 @@ const RECALL_WALK = 0.7
 const RECALL_BRAKING = 4
 /** Back beside the dog left, the handler stands this much further from it than at heel, metres. */
 const BESIDE_DOG_ROOM = 0.04
+/**
+ * Round a dog left on the move (`roundLeftDog`), from its middle, metres: how far ahead of it
+ * the handler crosses, beside it and behind it they pass (`AROUND_DOG`'s round a dog at heel),
+ * and how far they walk straight up into their place beside it.
+ */
+const ROUND_DOG = { ahead: 0.95, beside: 0.7, behind: 1.2, walkIn: 0.5 }
 /**
  * A jump the dog is sent over stands at most this far to the side of the team's way, metres
  * (3-313: 2.4 m) — another card's, 3 m off, the dog went over instead.
@@ -1237,8 +1251,45 @@ export class ExercisePlayer {
     )
   }
 
+  /**
+   * Round the dog left on the move (`roundLeftDog`): the way round it from where the handler is,
+   * worked out from where the dog stops — still stopping, where it will.
+   */
+  private expandRoundLeftDog() {
+    const step = this.steps[this.index] as Extract<ExerciseStep, { roundLeftDog: true }>
+    const d = this.dropping
+    const dog = d
+      ? forward(d.from, d.went + (d.speed * d.speed) / (2 * DROP_BRAKING))
+      : { ...this.left!, heading: this.leftWay }
+    const heel = PLACES[this.dogPlace]
+    // The dog's side (+1 left of the handler): the way round mirrored for the right.
+    const side = Math.sign(heel.x) || 1
+    const base = { x: -heel.x - side * BESIDE_DOG_ROOM, z: -heel.z }
+    const last = ROUND_DOG.walkIn
+    // In the dog's frame (+x its left, +z ahead): ahead of it, beside it, behind it, in line.
+    const round = [
+      { x: 0, z: ROUND_DOG.ahead, heading: (side * Math.PI) / 2 },
+      { x: side * ROUND_DOG.beside, z: 0, heading: Math.PI },
+      { x: 0, z: -ROUND_DOG.behind, heading: (-side * Math.PI) / 2 },
+      { x: base.x, z: base.z - last, heading: 0 },
+    ].map((p) => inTeam(this.team, onField(dog, p)))
+    const { caption, pace } = step
+    this.origins.splice(this.index, 1, ...Array(5).fill(this.origins[this.index]))
+    this.steps.splice(
+      this.index,
+      1,
+      { course: towards(...round), parts: [0, round.length], caption, ...(pace && { pace }) },
+      { walk: last, caption, ...(pace && { pace }) },
+      { stop: true, caption: 'backAtDog' },
+      { wait: 0.8, caption: 'backAtDog' },
+      { dogJoins: true, caption: 'backAtDog' },
+    )
+  }
+
   step(dt: number): ExerciseFrame {
     if (this.steps[this.index] && 'backToDog' in this.steps[this.index]!) this.expandBackToDog()
+    if (this.steps[this.index] && 'roundLeftDog' in this.steps[this.index]!)
+      this.expandRoundLeftDog()
     // The way to a place, worked out from where the team is as it sets off.
     if (this.steps[this.index] && 'walkTo' in this.steps[this.index]!) this.expandWalkTo()
     // Out of the walk on the other foot: that one closes up level first (`closeUp`).
