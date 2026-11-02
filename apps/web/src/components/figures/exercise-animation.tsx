@@ -70,6 +70,8 @@ export function CardStand({
   z: number
   ruleset?: 'CZ' | 'FCI'
 }) {
+  // An FCI card nearer its real size (`cardFootprint`), its stand as much smaller.
+  const scale = ruleset === 'FCI' ? 0.72 : 1
   const texture = useMemo(() => {
     const map = new TextureLoader().load(
       `/cards/${ruleset.toLowerCase()}/${code.toLowerCase()}.webp`,
@@ -84,7 +86,7 @@ export function CardStand({
   const top = 2 * CARD_HALF * Math.cos(CARD_TILT)
   const back = 0.2
   return (
-    <group position={[x, 0, z]} rotation-y={Math.PI}>
+    <group position={[x, 0, z]} rotation-y={Math.PI} scale={scale}>
       <mesh position={[0, top / 2 + 0.005, 0]} rotation-x={-CARD_TILT} castShadow>
         <boxGeometry args={[0.5, 2 * CARD_HALF, 0.01]} />
         <meshStandardMaterial color="#e8e8e8" />

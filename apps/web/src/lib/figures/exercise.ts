@@ -477,6 +477,17 @@ const CARD_PLACE = { side: { x: -0.75, z: 0.45 }, ahead: { x: 0, z: 1.2 } }
 const FCI_CARD_PLACE = { side: { x: -0.75, z: 0.5 }, ahead: { x: 0, z: 1.2 } }
 const FCI_SPACE = { side: { x: 0, z: 0 }, ahead: { x: 0, z: 0.65 } }
 
+/**
+ * How big a card's stand is on the ground: half its width across the team's way, and how far
+ * its tent reaches back from its face, metres. A national card is drawn larger than life (half
+ * a metre wide); an FCI card nearer its real size — "Karty by měly mít velikost A4" and the
+ * stands "nezabíraly příliš mnoho místa" (FCI §3.4.1) — a fifth over an A4 to stay legible, so
+ * a team turning in front of it comes as near it as in the FCI video. Its height keeps the
+ * card's proportions.
+ */
+export const cardFootprint = (exercise: Pick<Exercise, 'ruleset'>) =>
+  exercise.ruleset === 'FCI' ? { half: 0.18, depth: 0.21 } : { half: 0.25, depth: 0.3 }
+
 /** Where the card stands from where the handler stops in `exercise` (the station). */
 export const cardPlace = (exercise: Exercise) => {
   if (exercise.cardAt) return exercise.cardAt

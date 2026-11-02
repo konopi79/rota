@@ -13,6 +13,7 @@ import {
   exerciseSpace,
   spacesOf,
   spaceSide,
+  cardFootprint,
   type Exercise,
   type ExerciseFrame,
 } from '../figures/exercise'
@@ -613,8 +614,10 @@ describe('every exercise', () => {
       const frames = jointFrames(DOG, f.dog.pose)
       const heading = f.team.heading + f.dog.heading
       for (const card of cards) {
-        expect(Math.hypot(handler.x - card.x, handler.z - card.z)).toBeGreaterThan(0.4)
-        expect(Math.hypot(dog.x - card.x, dog.z - card.z)).toBeGreaterThan(0.35)
+        // A body's middle as far off as half the stand's width and a body's half beside it.
+        const { half, depth } = cardFootprint(exercise)
+        expect(Math.hypot(handler.x - card.x, handler.z - card.z)).toBeGreaterThan(half + 0.15)
+        expect(Math.hypot(dog.x - card.x, dog.z - card.z)).toBeGreaterThan(half + 0.1)
         // The dog's head and paws stay off the stand: 0.5 m wide facing the team, its tent
         // reaching about 0.3 m back (1-116's dog ran through it going round the handler).
         for (const joint of DOG_REACH) {
@@ -623,8 +626,8 @@ describe('every exercise', () => {
             x: dog.x + x * Math.cos(heading) + z * Math.sin(heading),
             z: dog.z - x * Math.sin(heading) + z * Math.cos(heading),
           }
-          const dx = Math.max(0, Math.abs(at.x - card.x) - 0.25)
-          const dz = Math.max(0, card.z - at.z, at.z - card.z - 0.3)
+          const dx = Math.max(0, Math.abs(at.x - card.x) - half)
+          const dz = Math.max(0, card.z - at.z, at.z - card.z - depth)
           expect(Math.hypot(dx, dz)).toBeGreaterThan(0.02)
         }
       }

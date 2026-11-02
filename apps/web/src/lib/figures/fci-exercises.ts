@@ -203,28 +203,36 @@ const R208: Exercise = {
 
 /**
  * Before a card ahead (B) the team turns this much nearer the card than nationally, metres —
- * into the square in front of it, up to its middle (0.65; "na ploše A4", "o průměru maximálně
- * 50 cm", §4.6), as deep as the card stays clear (measured, the tests' limits plus 5 cm): at
- * 1.2 m the team only just came into it (110, the author). Turning left the dog keeps inside the
- * turn; turning right it swings out towards the card, so 105, 113, 114 and 217 stay where they
- * are, as do the side steps 301 and 303.
+ * into the square in front of it (§4.3: no gap between the square and the card), as far as the
+ * card stays clear (measured, the tests' limits plus 5 cm, with FCI's smaller card,
+ * `cardFootprint`), at most to 0.45 m before it, where the teams of the FCI video turn ("Demo of
+ * Signs": the card right at their feet). Turning left the dog keeps inside the turn and the
+ * side steps go aside, so most come that near; turning right the dog swings out round the
+ * front, over where the card stands, so 105, 113, 114 and 217 stay about a metre off (the dog
+ * would have to go round the card, which it does not yet).
  */
 const INTO_THE_SQUARE: Record<string, number> = {
+  '105': 0.15,
   '106': 0.5,
-  '109': 0.3,
-  '110': 0.3,
-  '115': 0.5,
-  '213': 0.3,
-  '214': 0.55,
-  '215': 0.3,
-  '216': 0.55,
-  '218': 0.5,
-  '304': 0.65,
-  '307': 0.3,
-  '308': 0.65,
-  '310': 0.65,
-  '313': 0.65,
-  '314': 0.65,
+  '109': 0.4,
+  '110': 0.4,
+  '113': 0.15,
+  '114': 0.15,
+  '115': 0.6,
+  '213': 0.35,
+  '214': 0.75,
+  '215': 0.35,
+  '216': 0.75,
+  '217': 0.15,
+  '218': 0.6,
+  '301': 0.75,
+  '303': 0.75,
+  '304': 0.75,
+  '307': 0.4,
+  '308': 0.75,
+  '310': 0.75,
+  '313': 0.75,
+  '314': 0.75,
 }
 
 /**
