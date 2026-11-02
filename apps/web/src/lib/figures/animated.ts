@@ -153,11 +153,73 @@ export const canWalkThrough = (deck: Deck): boolean =>
 const SUPPLEMENTARY = ['D0a', 'D0b', 'D0c', 'D0d']
 export const SUPPLEMENTARY_SHOWN_WITH = 'Z-014'
 
-/** What to play for a card: its own animation, or for a D0 card Z-014 ending with it. */
-export type CardAnimation = { code: string; variant?: string }
+/**
+ * The FCI cards with an animation (plan R19) — first the ones the national animations already
+ * play (`fci-exercises.ts`, a test keeps the list in step).
+ */
+export const FCI_ANIMATED_CARDS: readonly string[] = [
+  '101',
+  '102',
+  '103',
+  '104',
+  '105',
+  '106',
+  '109',
+  '110',
+  '111',
+  '112',
+  '113',
+  '114',
+  '115',
+  '116',
+  '117',
+  '118',
+  '121',
+  '122',
+  '201',
+  '202',
+  '203',
+  '204',
+  '205',
+  '206',
+  '207',
+  '208',
+  '209',
+  '210',
+  '213',
+  '214',
+  '215',
+  '216',
+  '217',
+  '218',
+  '219',
+  '220',
+  '301',
+  '303',
+  '304',
+  '306',
+  '307',
+  '308',
+  '309',
+  '310',
+  '311',
+  '313',
+  '314',
+  '315',
+  '316',
+  '406',
+  '407',
+  '416',
+]
 
-export const animationFor = (code: string): CardAnimation | null => {
-  if (ANIMATED_CARDS.includes(code)) return { code }
-  if (SUPPLEMENTARY.includes(code)) return { code: SUPPLEMENTARY_SHOWN_WITH, variant: code }
+/** What to play for a card: its own animation, or for a D0 card Z-014 ending with it. */
+export type CardAnimation = { code: string; variant?: string; ruleset: 'CZ' | 'FCI' }
+
+export const animationFor = (code: string, ruleset: 'CZ' | 'FCI' = 'CZ'): CardAnimation | null => {
+  if (ruleset === 'FCI') return FCI_ANIMATED_CARDS.includes(code) ? { code, ruleset } : null
+  if (ANIMATED_CARDS.includes(code)) return { code, ruleset }
+  if (SUPPLEMENTARY.includes(code)) {
+    return { code: SUPPLEMENTARY_SHOWN_WITH, variant: code, ruleset }
+  }
   return null
 }

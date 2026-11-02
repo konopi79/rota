@@ -25,10 +25,10 @@ function Placeholder({ children }: { children?: React.ReactNode }) {
  * "Jak cvik vypadá" in a card detail: the card's exercise animation (plan R12), started on
  * a tap — until then nothing heavy loads. Cards without an animation show nothing.
  */
-export function CardAnimation({ code }: { code: string }) {
+export function CardAnimation({ code, ruleset }: { code: string; ruleset: 'CZ' | 'FCI' }) {
   const { t } = useTranslation()
   const [playing, setPlaying] = useState(false)
-  const animation = animationFor(code)
+  const animation = animationFor(code, ruleset)
   if (!animation) return null
 
   return (
@@ -40,7 +40,12 @@ export function CardAnimation({ code }: { code: string }) {
         </p>
       )}
       {playing ? (
-        <AnimationPlayer code={animation.code} initialVariant={animation.variant} inline />
+        <AnimationPlayer
+          code={animation.code}
+          ruleset={animation.ruleset}
+          initialVariant={animation.variant}
+          inline
+        />
       ) : (
         <button
           type="button"

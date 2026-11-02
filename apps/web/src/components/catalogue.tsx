@@ -151,7 +151,7 @@ export function Catalogue({
                 <p className="text-sm leading-tight">
                   <span className="font-semibold">{card.code}</span> {card.name}
                 </p>
-                {card.ruleset === 'CZ' && animationFor(card.code) && (
+                {animationFor(card.code, card.ruleset) && (
                   <Badge variant="secondary" className="gap-1">
                     <Play className="size-3 fill-current" />
                     {t('catalogue.animation')}
