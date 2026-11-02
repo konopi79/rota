@@ -1,5 +1,6 @@
 import type { Exercise, ExerciseStep } from './exercise'
 import { EXERCISES } from './exercises'
+import { turnOnTheSpot } from './roz-exercises'
 
 /**
  * FCI exercises (plan R19), from the national ones where the FCI rules describe the same
@@ -55,7 +56,6 @@ const SAME: [string, string, string?][] = [
   ['109', 'Z-011'],
   ['110', 'Z-012'],
   ['111', 'Z-013'],
-  ['112', '1-101'],
   ['113', 'Z-010'],
   // "Psovod provede na místě obrat vpravo v bok o 90° a zůstane stát" — on an A4 (§4.6).
   ['114', '1-105'],
@@ -155,6 +155,20 @@ const doubleTurn = (code: string, nationalCode: string): Exercise => {
  * pozice stůj. Zatímco pes zůstává stát, psovod jej obchází zepředu" — 3-303 stops into the
  * stand without sitting, so its own script: sit, stand, then round the standing dog.
  */
+/**
+ * 112 360° vlevo: "Tým společně provádí těsnou otočku o 360° vlevo", within 50 cm (§4.6) — as 111
+ * the other way, the handler turning on the spot and the dog at heel backing and swinging round
+ * (Z-012's way to the dog's side). Not 1-101, whose handler walks a circle round the dog (the
+ * author: "u 112 rotuje kolem psa a to … neni spravne").
+ */
+const R112: Exercise = {
+  ...turnOnTheSpot('112', -360, 'turnLeft360', 'side'),
+  ruleset: 'FCI',
+  // Swinging round at heel, the dog's head came over the card's stand: the team turns a little
+  // left and back in its square.
+  stopAt: { x: 0.2, z: -0.15 },
+}
+
 const R208: Exercise = {
   code: '208',
   ruleset: 'FCI',
@@ -219,5 +233,6 @@ export const FCI_EXERCISES: Exercise[] = [
   R201,
   doubleTurn('202', '1-121'),
   doubleTurn('203', '1-122'),
+  R112,
   R208,
 ].sort((a, b) => a.code.localeCompare(b.code))
