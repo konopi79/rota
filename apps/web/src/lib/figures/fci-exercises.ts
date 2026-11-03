@@ -1,5 +1,6 @@
 import type { Exercise, ExerciseStep } from './exercise'
 import { EXERCISES } from './exercises'
+import { FCI_LEAVE_EXERCISES } from './fci-leave-exercises'
 import { LEFT, RIGHT, stepAside, stopForSideStep } from './ro123-exercises'
 import { stepsBack, stepsForward, turnOnTheSpot, turnSteps } from './roz-exercises'
 
@@ -523,6 +524,57 @@ const R221 = (() => {
   return { ...from, cones: [left!, right!], bowls: [near!, far!] }
 })()
 
+/**
+ * The jumps (§3.5, the plan's `geometry.props`): "Dva metry před překážkou se nachází karta", the
+ * jump on the dog's side, 1 m off the handler's way (2-217's), the dog sent over "ne dříve než na
+ * její úrovni" while the handler walks on along it (`dogJumps`) — it comes back into heel as the
+ * handler comes up. 320 two jumps "v přímce za sebou … minimálně 4 m" apart.
+ */
+// (2 m past the card, which stands 0.5 m on from where the handler stops — `FCI_CARD_PLACE`.)
+const JUMP = { x: 1, z: 2.5 }
+const SECOND_JUMP = { x: 1, z: 6.5 }
+const R222: Exercise = {
+  code: '222',
+  ruleset: 'FCI',
+  jumps: [JUMP],
+  steps: [
+    { walk: 3.5, caption: 'approach' },
+    { walk: 4, dogJumps: 6, caption: 'sendOverJump' },
+    { walk: 3, caption: 'heelAfterJump' },
+  ],
+}
+const R320: Exercise = {
+  code: '320',
+  ruleset: 'FCI',
+  jumps: [JUMP, SECOND_JUMP],
+  steps: [
+    { walk: 3.5, caption: 'approach' },
+    { walk: 8, dogJumps: 10, caption: 'sendOverTwoJumps' },
+    { walk: 3, caption: 'heelAfterJump' },
+  ],
+}
+
+/**
+ * 420 Stop, přivolání přes překážku: "Psovod zastaví vedle karty, která je umístěna 2 metry před
+ * překážkou a pes zaujímá pozici sedni u nohy psovoda. Následně psovod vychází bez psa vpřed, a
+ * jakmile míjí překážku, psa přivolává. Pes přeskakuje překážku a přiřazuje se na původní straně k
+ * psovodovi … Psovod může uzpůsobit tempo chůze tomu, aby psa dohnal." The dog left sitting, the
+ * handler past the jump, then called while the handler walks on slowly — over the jump between
+ * them, after them into heel (`dogChases`).
+ */
+const R420: Exercise = {
+  code: '420',
+  ruleset: 'FCI',
+  jumps: [JUMP],
+  steps: [
+    ...stopSit(),
+    { dogStays: true, caption: 'staySit' },
+    { walk: JUMP.z + 1, caption: 'pastTheJump' },
+    { walk: 20, pace: 'slow', dogChases: true, caption: 'recallOverJumpWalking' },
+    { walk: 3, pace: 'normal', caption: 'leaveTogether' },
+  ],
+}
+
 /** How much nearer the card the side steps begin than nationally, metres (301, 303, 304's). */
 const SIDE_STEPS_NEARER = 0.75
 
@@ -563,4 +615,8 @@ export const FCI_EXERCISES: Exercise[] = [
   stepTurnStepRecall('211', RIGHT),
   stepTurnStepRecall('212', LEFT),
   R221,
+  ...FCI_LEAVE_EXERCISES,
+  R222,
+  R320,
+  R420,
 ].sort((a, b) => a.code.localeCompare(b.code))

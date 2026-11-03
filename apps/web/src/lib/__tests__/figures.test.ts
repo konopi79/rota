@@ -590,16 +590,21 @@ describe('every exercise', () => {
       const start = frames.find((f) => f.scriptStep > from)!
       const station = stationOf(exercise)
       const space = spacesOf(exercise)[1]!
+      // FCI asks less (§4.3): "musí se psovod alespoň částečně nacházet v místě pro vykonání
+      // cviku" — some of a shoe in it.
+      let inside = 0
+      let points = 0
       for (const foot of start.feet.handler) {
         const toe = { x: foot.x + 0.26 * Math.sin(foot.yaw), z: foot.z + 0.26 * Math.cos(foot.yaw) }
         for (const q of [foot, toe])
           for (const side of [-1, 1]) {
             const x = q.x + side * 0.055 * Math.cos(foot.yaw) - space.x
             const z = q.z - station - space.z
-            expect(Math.abs(x)).toBeLessThanOrEqual(space.side / 2)
-            expect(Math.abs(z)).toBeLessThanOrEqual(space.side / 2)
+            points++
+            if (Math.abs(x) <= space.side / 2 && Math.abs(z) <= space.side / 2) inside++
           }
       }
+      expect(inside).toBeGreaterThanOrEqual(exercise.ruleset === 'FCI' ? 1 : points)
     },
   )
 
@@ -873,7 +878,10 @@ describe('animations in the card details', () => {
   })
 
   test('an FCI card plays with its card ahead for a change of direction or a side step (§4.3)', () => {
-    for (const e of FCI_EXERCISES) {
+    for (const pairOrCard of FCI_EXERCISES) {
+      // (A leave card and its recall card: the part the animation is for.)
+      const e =
+        pairOrCard.parts?.find((p) => p.exercise.code === pairOrCard.code)?.exercise ?? pairOrCard
       const card = getCard('FCI', e.code) as Card
       // B: before the card — also the figures round cones, whose card stands before them.
       const before = e.card === 'ahead' || !!e.cardAt

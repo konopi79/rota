@@ -538,13 +538,15 @@ export const pair = (
   leave: Exercise,
   followUp: Exercise,
   dogRight = false,
+  /** How far on the follow-up's card stands, where the cards don't say (FCI's), metres. */
+  ahead?: number,
 ): Exercise => {
   const leaving = leave.steps.findIndex((s) => 'dogStays' in s || ('walk' in s && s.dropsDog))
   const left = leave.steps[leaving]!
   // Left on the move, the handler is already on the way.
   const onTheWay = 'walk' in left ? left.walk : 0
   const arriving = followUp.steps.findIndex((s) => !('walk' in s))
-  const gap = gapTo(leave.code, followUp.code)
+  const gap = ahead ?? gapTo(leave.code, followUp.code)
   // With the dog on the right the other side: away from the dog (3-301), the jump's (3-314).
   const aside = asideOf(leave.code) * (dogRight ? -1 : 1)
   const jump = leave.jumps?.[0]

@@ -26,6 +26,7 @@ import {
 } from '@/lib/figures/exercise'
 import { EXERCISES, RIGHT_EXERCISES, RIGHT_SIDE_CARDS } from '@/lib/figures/exercises'
 import { FCI_EXERCISES } from '@/lib/figures/fci-exercises'
+import { CONE } from '@/lib/figures/fci-leave-exercises'
 import { HANDLER } from '@/lib/figures/handler'
 import { BAR_HEIGHT, JUMP_WIDTH, UPRIGHT_HEIGHT } from '@/lib/figures/leap'
 import { onField } from '@/lib/figures/team'
@@ -269,7 +270,7 @@ const rulesetOf = (code: string) => (seriesOf(code) === 'FCI' ? 'FCI' : 'CZ')
 type Caption = { key: string; flipped: boolean }
 
 /** A leave card played with one of its follow-ups (plan R17). */
-const isLeavePair = (e: Exercise) => e.parts?.[0]?.exercise.code === e.code
+const isLeavePair = (e: Exercise) => e.parts?.[0]?.exercise.code === e.code || e.pairedWith === CONE
 
 /**
  * Which variant of a card an exercise plays: its supplementary card, the pace before, or —
@@ -505,7 +506,10 @@ export function AnimationPlayer({
               options={variants.map((e) => variantOf(e)!)}
               onChange={setVariant}
               label={
-                variantGroup === 'fromPace' ? undefined : (o) => `${o} ${cardName(o, ruleset)}`
+                variantGroup === 'fromPace'
+                  ? undefined
+                  : (o) =>
+                      o === CONE ? t('figures.followUp.cone') : `${o} ${cardName(o, ruleset)}`
               }
             />
           )}

@@ -20,7 +20,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'fci-animations-more'
+export const LATEST_FEATURE_ID = 'fci-animations-leave'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -45,6 +45,11 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
         id: 'main-parts',
         title: 'Hlavní a vedlejší části cviku',
         desc: 'U národních karet vidíš, která část cviku je hlavní a která vedlejší – v detailu karty i v popisu pod kartou v balíčku. Chybí-li hlavní část, vyplatí se cvik zopakovat; u vedlejší opakováním nic nezískáš.',
+      },
+      {
+        id: 'fci-animations-leave',
+        title: 'Odložení, přivolání a skoky FCI v animaci',
+        desc: 'Animaci mají i odložení 319, 408 a 409 – s kuželem pro přivolání, kde psovod psa přivolá za chůze, i s každou kartou přivolání (321, 322, 323, 421, 422) – a skoky 222, 320 a 420. U odložení si vybereš, co následuje.',
       },
       {
         id: 'fci-animations-more',
