@@ -375,23 +375,32 @@ const sideSteps = (code: string, sign: 1 | -1, count: 1 | 2, walking: boolean): 
  */
 const threeTurns = (code: string, sign: 1 | -1): Exercise => {
   const side = sign === RIGHT ? 'Right' : 'Left'
+  // Turning right, on the spot (the handler pivoting, the dog round outside at heel): in the
+  // three steps the handler drifted aside out of the square (the author). Turning left, the
+  // three steps.
+  const turn = (sign: 1 | -1, caption: string): ExerciseStep[] =>
+    sign === RIGHT
+      ? [
+          { turn: 90, radius: 0, caption },
+          { stop: true, caption },
+        ]
+      : [{ footwork: turnSteps(sign), caption }]
   return {
     code,
     ruleset: 'FCI',
     card: 'ahead',
     // Into the square before the card, as near it as it stays clear (measured as
-    // `INTO_THE_SQUARE`; at the edge of the square they were too far, the author). Turning
-    // right the dog, outside, swings round ahead after the first turn — over towards the card:
-    // the handler stops right in the square, 0.9 m before it; turning left, 0.7 m.
-    stopAt: sign === RIGHT ? { x: -MOST_OFF, z: 0.3 } : { x: 0, z: 0.5 },
+    // `INTO_THE_SQUARE`; at the edge of the square they were too far, the author): 0.8 m before
+    // it turning right, 0.7 m turning left.
+    stopAt: sign === RIGHT ? { x: 0, z: 0.4 } : { x: 0, z: 0.5 },
     steps: [
       ...stopSit('ahead'),
-      { footwork: turnSteps(sign), caption: `turn${side}90Stand` },
+      ...turn(sign, `turn${side}90Stand`),
       { wait: 1, caption: 'standHold' },
-      { footwork: turnSteps(sign), caption: `turn${side}90Sit` },
+      ...turn(sign, `turn${side}90Sit`),
       { dog: 'sit', caption: `turn${side}90Sit` },
       { wait: 1, caption: 'basePosition' },
-      { footwork: turnSteps(sign), caption: `turn${side}90Down` },
+      ...turn(sign, `turn${side}90Down`),
       { dog: 'down', caption: `turn${side}90Down` },
       { wait: 1, caption: 'downHold' },
       leave('ahead'),
