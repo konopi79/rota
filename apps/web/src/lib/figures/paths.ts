@@ -81,6 +81,16 @@ export const AROUND_DOG: Path = pathFromCurve((t) => {
   const sin = Math.sin(angle)
   return { x: 0.55 - 0.55 * Math.cos(angle), z: sin * (sin > 0 ? 0.9 : BEHIND_DOG) }
 })
+/**
+ * …past the dog's far side only as far from it as at heel (the author: "obchází velkým
+ * obloukem"): 0.85 m across. FCI 103, 104, 208 with the dog on the right, where its far side is
+ * the card's.
+ */
+export const AROUND_DOG_CLOSE: Path = pathFromCurve((t) => {
+  const angle = 2 * Math.PI * t
+  const sin = Math.sin(angle)
+  return { x: 0.425 - 0.425 * Math.cos(angle), z: sin * (sin > 0 ? 0.9 : BEHIND_DOG) }
+})
 
 /** How sharply the path bends from `behind` before `s` to `ahead` past it, at most: radians per metre. */
 export const bendAhead = (path: Path, s: number, ahead = 0.4, behind = 0.25): number => {

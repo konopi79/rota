@@ -3,6 +3,7 @@ import { HANDLER_PACE, HEEL, type HandlerPace } from './handler'
 import { angleTo, ease } from './math'
 import {
   AROUND_DOG,
+  AROUND_DOG_CLOSE,
   DOG_AROUND_FROM_HEEL,
   DOG_AROUND_HANDLER,
   DOG_AROUND_HANDLER_CLOSE,
@@ -90,7 +91,9 @@ export type ExerciseStep = { caption: string } & (
   | { stop: true } // the handler stops, the dog stops beside
   | { dog: DogPosture } // the dog changes position, the handler stands
   | { wait: number } // seconds
-  | { around: 'dog' } // the handler walks around the dog and back to the base place
+  // The handler walks around the dog and back to the base place (`dogClose`: past its far side
+  // only as far from it as at heel).
+  | { around: 'dog' | 'dogClose' }
   /**
    * The leave cards (2-211 "odkládá psa do pozice sedni a odchází"): the dog stays where it is,
    * in the position it is in, while the handler goes on — until it is called (`recall`) or the
@@ -249,7 +252,7 @@ export type ExerciseStep = { caption: string } & (
     }
 )
 
-const PATHS: Record<'dog', Path> = { dog: AROUND_DOG }
+const PATHS: Record<'dog' | 'dogClose', Path> = { dog: AROUND_DOG, dogClose: AROUND_DOG_CLOSE }
 
 /** A way of the dog's own while the team goes on (`dogRuns`). */
 export type DogRun = {
@@ -404,6 +407,10 @@ const HEEL_TO_BODY = -HEEL[1]
 /** Into steps taken out of a walk the handler slows down over the last metres, to this, m/s. */
 const SLOW_INTO_STEPS = 1.5
 const INTO_STEPS_SPEED = 0.7
+/** …and the steps go on once the foot they go on from lands within this of the walk's end, m. */
+const INTO_STEPS_WITHIN = 0.3
+/** A foot this far through its swing is still lifting (`sidle`: is it the walk's last step?). */
+const LIFTING = 0.2
 /** How quickly the body taken out of a walk settles over the steps, 1/s. */
 const OUT_OF_WALK_SETTLE = 6
 
@@ -452,9 +459,16 @@ const DOG_BACKS_SPEED = 0.35
 const SIDLE_SPEED = 0.3
 const SIDLE_MIN_TIME = 1
 const SIDLE_SLACK = 0.25
-/** Out of a walk it begins this share of the way over the walk's last this many metres. */
-const SIDLE_EARLY = 0.8
-const SIDLE_EARLY_OVER = 1.5
+/**
+ * Out of a walk it goes over during the handler's last step, the one the steps aside go on from,
+ * a little quicker (m/s, s): as near the foot as it can be ("Pes jej následuje a pohybuje se
+ * současně"; the author: "by měl následovat nohu"). Over the walk's last 1.5 m it went over well
+ * before the step, a step more where the walk took one to land on that foot; with no head start
+ * at all the foot stepping aside waited for it while the body went on, into a lunge — and
+ * quicker still its paws slipped.
+ */
+const SIDLE_SPEED_WALKING = 0.4
+const SIDLE_MIN_TIME_WALKING = 0.8
 
 /**
  * How far steps set by hand take the handler aside towards the dog at heel (metres, + left), if
@@ -497,10 +511,15 @@ const AHEAD_OF_HEEL = 0.1
 const WAITS_PACE = 0.5
 /** …turning round on the spot this fast, rad/s. */
 const TURNS_ROUND_RATE = 3.2
-/** …and then within this far of its place at heel it comes in facing the team's way, metres. */
-const CHASE_ALONGSIDE = 1
-/** Called on the run facing this far from the team's way (radians), it turns round first. */
+/**
+ * Called on the run facing this far from the team's way (radians), it turns round first — on the
+ * spot, till it faces within this of it (radians), then waits there for the handler to come up
+ * till its place at heel is this near behind it (metres). Turned only part of the way, it went
+ * back towards its place sideways, slowly turning (the author: "zadriftuje", FCI 411).
+ */
 const TURNS_ROUND_FROM = 0.75 * Math.PI
+const TURNED_ROUND = 0.12 * Math.PI
+const WAITS_FOR_HEEL = 0.3
 /** Turning from a stand on the run, the dog turns as if this much faster already, m/s. */
 const CHASE_TURN_FROM = 0.4
 /** On a way of its own (`dogRuns`) the dog trots at most this fast, m/s (`DOG_PATH_SPEED`'s). */
@@ -1035,6 +1054,8 @@ export class ExercisePlayer {
   } | null = null
   /** …how far over the body is, of the way (it never goes back). */
   private sidleOver = 0
+  /** Out of a walk, how far through the handler's last step the dog began going over (`sidle`). */
+  private sidleLead: { index: number; u: number; last?: boolean } | null = null
   private frontAim = { x: 0, z: 0 }
   private frontDog = { x: 0, z: 0 }
   /** Where the dog's body is in the team's frame, before it lies down over its forelegs. */
@@ -1114,8 +1135,9 @@ export class ExercisePlayer {
     speed: number
     /** A jump between it and the handler (FCI 420): it runs over its middle first. */
     over?: Bar | null
-    /** It turned round first (FCI 411). */
+    /** It turned round first (FCI 411), and is turning round now. */
     turnedRound?: boolean
+    turning?: boolean
   } | null = null
   /** Sent off to a place (`sendTo`): it is left there once it stops. */
   private sentOff = false
@@ -1509,13 +1531,26 @@ export class ExercisePlayer {
       const braking = brakes ? speed / SETTLE_RATE : 0
       const toGo = current.walk - (travelled - this.stepStart)
       done = toGo <= braking
-      // A side step towards the dog coming out of the walk: the dog, expecting it, begins to
-      // make room over the last metre (`sidle`).
+      // A side step towards the dog coming out of the walk: the dog, expecting it, goes over as
+      // the handler's last step swings — the foot the steps go on from, landing where the walk
+      // ends (`sidle`). Whether a step is the last is settled as it lifts (the body goes about
+      // half a step on while it swings), and the walk then ends as it lands.
+      let lastStep = false
       if (next && 'footwork' in next && next.fromFoot !== undefined) {
         const way = sidleWay(next.footwork, this.dogPlace)
         if (way) {
-          const u = Math.min(1, Math.max(0, (SIDLE_EARLY_OVER - toGo) / SIDLE_EARLY_OVER))
-          controls.dogOut = Math.abs(way) * SIDLE_EARLY * u * u * (3 - 2 * u)
+          const foot = this.last?.feet.handler[next.fromFoot]
+          const lead =
+            this.sidleLead?.index === this.index ? this.sidleLead : { index: this.index, u: 0 }
+          if (foot?.swing != null && foot.swing < LIFTING && !lead.last)
+            lead.last = toGo - foot.step / 2 <= INTO_STEPS_WITHIN
+          if (lead.last && foot?.swing != null) lead.u = Math.max(lead.u, foot.swing)
+          if (lead.last && foot?.swing == null && lead.u > 0) lead.u = 1
+          this.sidleLead = lead
+          lastStep = !!lead.last
+          controls.dogOut = Math.abs(way) * lead.u * lead.u * (3 - 2 * lead.u)
+          // (Going over, its legs reach further aside than trotting at heel.)
+          if (lead.u > 0) controls.dogSidles = true
         }
       }
       // Into steps set by hand the handler slows to a stand first — the steps then go on at
@@ -1532,7 +1567,10 @@ export class ExercisePlayer {
           const foot = this.last?.feet.handler[i]
           return foot !== undefined && foot.swing === null && foot.stance < 0.15
         }
-        done = (toGo <= 0.3 && landedFoot(next.fromFoot)) || toGo < -1
+        done =
+          ((toGo <= INTO_STEPS_WITHIN || (lastStep && this.sidleLead!.u >= 1)) &&
+            landedFoot(next.fromFoot)) ||
+          toGo < -1
         if (!done && current.closeUp && toGo <= 0.1 && landedFoot(1 - next.fromFoot)) {
           done = true
           this.closingUp = true
@@ -1915,7 +1953,11 @@ export class ExercisePlayer {
           const from = onField(this.team, this.dogAt)
           const to = onField(this.footworkTo, PLACES[this.dogPlace])
           const far = Math.hypot(to.x - from.x, to.z - from.z)
-          const duration = Math.max(SIDLE_MIN_TIME, (1.5 * far) / SIDLE_SPEED)
+          const walking = current.fromFoot !== undefined
+          const duration = Math.max(
+            walking ? SIDLE_MIN_TIME_WALKING : SIDLE_MIN_TIME,
+            (1.5 * far) / (walking ? SIDLE_SPEED_WALKING : SIDLE_SPEED),
+          )
           // How far over each foot steps (from where it stands), and so how far over the dog
           // must be by then — of its way over from where it is (it may have begun already).
           const already = Math.abs(this.dogAt.x) - Math.abs(PLACES[this.dogPlace].x)
@@ -2338,8 +2380,14 @@ export class ExercisePlayer {
     // as it comes up, so it falls into heel — then the walk is over.
     if (current && 'walk' in current && current.dogChases && starting) {
       this.chasing = { at: null, speed: 0 }
-      // Called on the run it comes into heel — from in front too (FCI 411).
-      if (this.dogPlace === 'front') this.dogPlace = this.flipped ? 'right' : 'left'
+      // Called on the run it comes into heel — from in front too (FCI 411), to the left leg
+      // whichever it came from (FCI §4.8: "Všechny cviky, při kterých je pes velen před psovoda,
+      // končí se psem na levé straně psovoda"; as `side` has it, in front it is no longer
+      // mirrored).
+      if (this.dogPlace === 'front') {
+        this.flipped = false
+        this.dogPlace = 'left'
+      }
       this.leftPosture = 'stand'
       this.recalling = true
       this.recallSpeed = RECALL_SPEED
@@ -2372,14 +2420,19 @@ export class ExercisePlayer {
         )
         // Facing away from where the team goes (FCI 411: standing facing the handler come up),
         // it turns round on the spot first, then comes in.
-        const turnsRound = Math.abs(angleTo(dog.heading, this.team.heading)) > TURNS_ROUND_FROM
+        const off = Math.abs(angleTo(dog.heading, this.team.heading))
+        const turnsRound = off > TURNS_ROUND_FROM || (!!c.turning && off > TURNED_ROUND)
+        c.turning = turnsRound
         if (turnsRound) c.speed = 0
+        // Turned round, it stands facing the way while its place at heel is still behind it.
+        const behind =
+          (heel.x - dog.x) * Math.sin(this.team.heading) +
+          (heel.z - dog.z) * Math.cos(this.team.heading)
+        if (c.turnedRound && !turnsRound && behind < -WAITS_FOR_HEEL) c.speed = 0
         const go = Math.min(far, c.speed * dt)
-        // (Close by it faces the way the team goes, coming in alongside — not head first at them.)
-        const way =
-          turnsRound || (c.turnedRound && far < CHASE_ALONGSIDE)
-            ? this.team.heading
-            : Math.atan2(dx, dz)
+        // (Turned round it faces the way the team goes all the way in, coming in alongside — not
+        // head first at them.)
+        const way = turnsRound || c.turnedRound ? this.team.heading : Math.atan2(dx, dz)
         if (turnsRound) c.turnedRound = true
         const span = Math.hypot(dx, dz) || 1
         const at = {

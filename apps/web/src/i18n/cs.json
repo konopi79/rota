@@ -449,7 +449,20 @@
       "leaveTurnRight": "Tým pokračuje novým směrem, pes jde u levé nohy",
       "finishSitRight": "Pes se posadí vedle druhé (levé) nohy psovoda",
       "basePositionRight": "Strana vedení je změněna: pes sedí u levé nohy",
-      "turnTowardsEachOther": "Obrat o 180° směrem k sobě – psovod vpravo, pes vlevo"
+      "turnTowardsEachOther": "Obrat o 180° směrem k sobě – psovod vpravo, pes vlevo",
+      "turnAwayFromEachOther": "Otočka o 180° od sebe – psovod vlevo, pes vpravo; pes přejde k levé noze",
+      "longStride": "Psovod se zastaví dlouhým výkrokem pravou nohou – pes se trochu opozdí",
+      "dogBetweenLegs": "Pes projde psovodovi mezi nohama zprava doleva",
+      "leaveRightAfterLegs": "Psovod rovnou vykročí dál, pes se zařadí k levé noze – strana vedení je změněna",
+      "heelAfterJump": "Pes je zpět u pravé nohy, tým pokračuje",
+      "recallHeel": "Psovod přivolá psa k pravé noze – způsob přiřazení není daný",
+      "recallAtCone": "U kuželu psovod přivolá psa za chůze – může zpomalit, pes ho dobíhá k pravé noze",
+      "recallOverJumpWalking": "Za překážkou psovod přivolá psa za chůze – pes ji přeskočí a dobíhá ho k pravé noze",
+      "leaveTogether": "U pravé nohy pes nesedá, tým pokračuje vpřed",
+      "aboutTurnAgain": "Hned znovu: psovod vpravo, pes vlevo – zezadu zpět k pravé noze",
+      "dogAroundWalking": "Na povel psovoda pes za pohybu oběhne psovoda zepředu a vrátí se k pravé noze",
+      "recallFrontBehind": "Psovod se neotáčí a přivolá psa do předsednutí – pes přiběhne podél jeho pravé strany",
+      "recallHeelBehind": "Psovod se neotáčí a přivolá psa k pravé noze, nohy zůstávají ve směru chůze"
     },
     "caption": {
       "courseStart": "Start – tým projde startovní čarou normálním tempem",
