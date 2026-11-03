@@ -49,6 +49,11 @@ export type StepGait = {
   support?: number
   /** Sideways a leg reaches this share of its reach ahead or back. */
   reachAside?: number
+  /**
+   * Going over sideways, its legs reach this many times further aside (a dog at heel as the
+   * handler steps aside towards it, FCI 302, 402) — not at a trot's narrow swing.
+   */
+  sidling?: number
   /** A planted foot turns on the spot to stay within this angle of the body, radians. */
   pivot?: number
 }
@@ -682,7 +687,7 @@ export class PawStepper {
     const s = Math.sin(body.heading)
     const stride = gait.stance * gait.cycleLength
     this.travelled += (speed * dt) / gait.cycleLength
-    const sideways = gait.reachAside ?? REACH_ASIDE
+    const sideways = (gait.reachAside ?? REACH_ASIDE) * (gait.sidling ?? 1)
     const support = gait.support ?? 2
     // How fast each paw's place moves (turning, the far paws' places move most).
     const homeVelocity = this.specs.map((spec) => {

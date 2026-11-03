@@ -54,6 +54,12 @@ const SAME: [string, string, string?][] = [
   // "Tým společně provede těsný obrat o 180°" — within 50 cm (§4.6).
   ['105', 'Z-008'],
   ['106', 'Z-009'],
+  // 107 / 108 Smyčka vpravo / vlevo: "Tým společně provede těsný obrat (smyčku) vpravo tak, že
+  // překříží původní směr trasy. Úhel obratu (smyčky) musí být mezi 180° a 270°." On the spot as
+  // in the FCI video (the author), 225° as the card draws it — Z-028 / Z-029; the way on crosses
+  // the way in where the team turned.
+  ['107', 'Z-028'],
+  ['108', 'Z-029'],
   ['109', 'Z-011'],
   ['110', 'Z-012'],
   ['111', 'Z-013'],
@@ -218,6 +224,8 @@ const R208: Exercise = {
 const INTO_THE_SQUARE: Record<string, number> = {
   '105': 0.15,
   '106': 0.5,
+  '107': 0.4,
+  '108': 0.4,
   '109': 0.4,
   '110': 0.4,
   '113': 0.15,
@@ -257,35 +265,6 @@ const R416 = (() => {
     steps: [...from.steps.slice(0, round), { walk: 3, caption: leaving }],
   }
 })()
-
-/**
- * 107 / 108 Smyčka vpravo / vlevo: "Tým společně provede těsný obrat (smyčku) vpravo tak, že
- * překříží původní směr trasy. Úhel obratu (smyčky) musí být mezi 180° a 270°." Walking on, 225°
- * as the card draws it, so the way out crosses the way in (the FCI video: a loop of about a
- * metre and a half across before the card, and away at a slant back past it). The dog keeps
- * its heel distance, outside the loop turning right, inside it turning left — the handler's
- * loop wider by as much, so the dog's is about as tight.
- */
-const loop = (code: string, sign: 1 | -1): Exercise => ({
-  code,
-  ruleset: 'FCI',
-  card: 'ahead',
-  // Turning right the dog swings out over where the card stands: the loop begins a little
-  // further back (measured as INTO_THE_SQUARE).
-  stopAt: { x: 0, z: sign === 1 ? -0.15 : 0.1 },
-  steps: [
-    { walk: 3.5, caption: 'approachTurn' },
-    {
-      turn: sign === 1 ? 225 : -225,
-      radius: sign === 1 ? LOOP.dogOutside : LOOP.dogInside,
-      caption: sign === 1 ? 'loopRight' : 'loopLeft',
-    },
-    { walk: 3, caption: 'leaveTurn' },
-  ],
-})
-
-/** The handler's loop (107 / 108), radius in metres. */
-const LOOP = { dogOutside: 0.5, dogInside: 0.85 }
 
 /** The team arrives and stops, the dog sitting at heel (FCI: "pes si sedá u nohy psovoda"). */
 const stopSit = (card: 'side' | 'ahead' = 'side'): ExerciseStep[] => [
@@ -400,6 +379,11 @@ const threeTurns = (code: string, sign: 1 | -1): Exercise => {
     code,
     ruleset: 'FCI',
     card: 'ahead',
+    // Into the square before the card, as near it as it stays clear (measured as
+    // `INTO_THE_SQUARE`; at the edge of the square they were too far, the author). Turning
+    // right the dog, outside, swings round ahead after the first turn — over towards the card:
+    // the handler stops right in the square, 0.9 m before it; turning left, 0.7 m.
+    stopAt: sign === RIGHT ? { x: -MOST_OFF, z: 0.3 } : { x: 0, z: 0.5 },
     steps: [
       ...stopSit('ahead'),
       { footwork: turnSteps(sign), caption: `turn${side}90Stand` },
@@ -495,9 +479,12 @@ const stepTurnStepRecall = (code: string, sign: 1 | -1): Exercise => ({
   code,
   ruleset: 'FCI',
   card: 'ahead',
-  // A step towards the card first: as near it as the handler stays clear of it, turning right
-  // across before it (measured as `INTO_THE_SQUARE`).
-  stopAt: { x: 0, z: sign === RIGHT ? -0.2 : 0.2 },
+  // As near the card as it stays clear (measured as `INTO_THE_SQUARE`). After the step towards
+  // it and a turn right the dog is called to the left leg — the side towards the card: the
+  // handler stops in the right of the square (the dog before the card), 0.9 m before it, and
+  // turns away from it. Straight before it they had to stop 1.4 m off, at the edge of the
+  // square (the author).
+  stopAt: sign === RIGHT ? { x: -0.5, z: 0.3 } : { x: 0, z: 0.2 },
   steps: [
     ...stopSit('ahead'),
     { dogStays: true, caption: 'staySit' },
@@ -550,8 +537,6 @@ export const FCI_EXERCISES: Exercise[] = [
   sitThenFront('209', 'D0a'),
   sitThenFront('210', 'D0b'),
   R208,
-  loop('107', 1),
-  loop('108', -1),
   R305,
   R413,
   sideSteps('302', LEFT, 1, true),

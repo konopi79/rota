@@ -62,6 +62,8 @@ export type TeamControls = {
   dogAt?: { x: number; z: number; heading: number }
   /** The dog at heel this much further out to its side than its `place`, metres. */
   dogOut?: number
+  /** …going over sideways as the handler steps aside towards it (`SIDLING_REACH`). */
+  dogSidles?: boolean
   /**
    * Lying down it keeps its front paws where they are, its body going back over them — as a
    * dog in front always does (`dogFold`).
@@ -220,6 +222,8 @@ const forepawReach = (pose: Pose) => {
   return (frames.get('leftFrontPaw')!.position[2] + frames.get('rightFrontPaw')!.position[2]) / 2
 }
 const STANDING_REACH = forepawReach(DOG_POSTURES.stand)
+/** A dog going over sideways reaches this many times further aside than trotting (`sidling`). */
+const SIDLING_REACH = 1.5
 /** Getting up folded back (`foldBack`), the dog has unfolded once this near standing, metres. */
 const UNFOLDED = 0.005
 
@@ -466,7 +470,12 @@ export class TeamAnimator {
         // On its legs (or still settling out of them): paws planted, legs solved to them.
         const paws = sitting
           ? this.dogFeet.feet
-          : this.dogFeet.update(dt, dog, dogStep(this.dogGait), controls.dogRest)
+          : this.dogFeet.update(
+              dt,
+              dog,
+              { ...dogStep(this.dogGait), ...(controls.dogSidles && { sidling: SIDLING_REACH }) },
+              controls.dogRest,
+            )
         const tail = -0.15 * Math.sin(4 * Math.PI * this.dogFeet.cycle) * motion
         // Out of a gallop the trunk settles back to how it is carried standing.
         const settle = 1 - Math.exp(-SETTLE_RATE * dt)

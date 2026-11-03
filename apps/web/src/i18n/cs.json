@@ -534,8 +534,6 @@
       "threeStepsStand": "Tři kroky vpřed, pes zůstane stát",
       "twoStepsOn": "Dva kroky vpřed",
       "onBetweenTurns": "Tým jde 1–2 m dál a obrací se znovu",
-      "loopRight": "Za chůze těsná smyčka vpravo – tým překříží svou cestu",
-      "loopLeft": "Za chůze těsná smyčka vlevo – tým překříží svou cestu",
       "turnRight90OnSpot": "Tým se na místě otočí vpravo o 90°",
       "turnLeft90OnSpot": "Tým se na místě otočí vlevo o 90°",
       "turnRight180OnSpot": "Tým se na místě otočí vpravo o 180° – nejvýš 4 kroky",

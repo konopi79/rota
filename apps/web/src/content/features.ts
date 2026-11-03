@@ -49,7 +49,7 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
       {
         id: 'fci-animations-more',
         title: 'Další animace karet FCI',
-        desc: 'Animaci má dalších 21 karet FCI-ROB, sestavených podle oficiálního videa FCI: smyčky (107, 108), spirály (119, 120), rušivé vlivy (221), úkroky za chůze i ze stoje (302, 401–404), kroky vzad (305, 412, 413), obraty na místě s polohami (414, 415), odložení za pochodu s obejitím psa (317, 318, 419), otočka od sebe (405) a krok, obrat, krok a přivolání (211, 212).',
+        desc: 'Animaci má dalších 21 karet FCI-ROB, sestavených podle oficiálního videa FCI: smyčky na místě (107, 108), spirály (119, 120), rušivé vlivy (221), úkroky za chůze i ze stoje (302, 401–404), kroky vzad (305, 412, 413), obraty na místě s polohami (414, 415), odložení za pochodu s obejitím psa (317, 318, 419), otočka od sebe (405) a krok, obrat, krok a přivolání (211, 212).',
       },
       {
         id: 'fci-animations',
