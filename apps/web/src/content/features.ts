@@ -58,7 +58,7 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
         points: [
           'Všechny karty národních tříd (RO-Z až RO3, RO-V), doplňkové karty D0 i karty FCI-ROB – ty podle pravidel FCI a jejich oficiálního videa.',
           'Skoky přes laťku, odběhnutí, vyslání ke kuželu i odložení s přivoláním; u odložení si vybereš, co následuje.',
-          'Národní karty i se psem u pravé nohy, jako po startu „R“.',
+          'Karty i se psem u pravé nohy, jako po startu „R“ – národní i FCI (kromě 417 a 418, které se cvičí jen z jedné strany).',
           'V katalogu takové karty poznáš podle štítku „animace“.',
         ],
       },

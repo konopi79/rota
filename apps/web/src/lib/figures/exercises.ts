@@ -60,9 +60,9 @@ const OWN_WAY: Record<string, Exercise> = {
  */
 const ROOM_BY_THE_CARD = { x: 0.25, z: 0 }
 /**
- * Walking round the dog (Z-004, Z-005) the handler goes out past the dog's far side — on the
- * right, towards the card: stopping further left and back in the square, the way round
- * passes in front of the card.
+ * Walking round the dog (Z-004, Z-005; FCI 208, 317, 318, 419) the handler goes out past the
+ * dog's far side — on the right, towards the card: stopping further left and back in the
+ * square, the way round passes in front of the card.
  */
 const ROOM_TO_GO_ROUND = { x: 0.55, z: -0.4 }
 
@@ -91,10 +91,15 @@ const MORE_ROOM: Record<string, { x: number; z: number }> = {
 }
 const STEP_LATER = new Set(['Z-018', 'Z-026', '1-123', '3-327'])
 
-const fromTheRight = (e: Exercise): Exercise => {
+/**
+ * The exercise with the dog starting at the right leg: its own way where it has one, room by
+ * the card on the dog's side, a jump (and its marks) on the dog's side. FCI's own scripts too
+ * (`fci-exercises.ts`).
+ */
+export const fromTheRight = (e: Exercise): Exercise => {
   const own = OWN_WAY[e.code] ?? e
   const card = own.cardAt ? null : (own.card ?? 'side')
-  const goesRound = own.steps.some((step) => 'around' in step)
+  const goesRound = own.steps.some((step) => 'around' in step || 'roundLeftDog' in step)
   const room =
     card === 'side' ? (goesRound ? ROOM_TO_GO_ROUND : ROOM_BY_THE_CARD) : card && ROOM_AHEAD
   const more = MORE_ROOM[e.code] ?? { x: 0, z: 0 }

@@ -2,7 +2,12 @@ import { describe, expect, test } from 'bun:test'
 
 import { getCard, type Card } from '@rota/content'
 
-import { ANIMATED_CARDS, FCI_ANIMATED_CARDS, animationFor } from '../figures/animated'
+import {
+  ANIMATED_CARDS,
+  FCI_ANIMATED_CARDS,
+  FCI_RIGHT_SIDE_CARDS,
+  animationFor,
+} from '../figures/animated'
 import { DOG, DOG_POSTURES, type DogPosture } from '../figures/dog'
 import {
   ExercisePlayer,
@@ -22,7 +27,7 @@ import { BAR_HEIGHT, JUMP_WIDTH } from '../figures/leap'
 import { apply } from '../figures/math'
 import { jointFrames, jointNames, lowestPoint, type Joint, type Pose } from '../figures/rig'
 import { EXERCISES, RIGHT_EXERCISES } from '../figures/exercises'
-import { FCI_EXERCISES } from '../figures/fci-exercises'
+import { FCI_EXERCISES, FCI_RIGHT_EXERCISES } from '../figures/fci-exercises'
 import { PAIRS_SHOWN } from '../figures/leave-exercises'
 import {
   Z001,
@@ -49,6 +54,7 @@ const PLAYED = [
   ...EXERCISES.map((e) => [e.code, e] as const),
   ...RIGHT_EXERCISES.map((e) => [`${e.code} (pes vpravo)`, e] as const),
   ...FCI_EXERCISES.map((e) => [`FCI ${e.code}`, e] as const),
+  ...FCI_RIGHT_EXERCISES.map((e) => [`FCI ${e.code} (pes vpravo)`, e] as const),
 ]
 
 /** The figure with only the named limbs: no other boxes, the joints they hang from kept. */
@@ -875,6 +881,29 @@ describe('animations in the card details', () => {
     expect([...FCI_ANIMATED_CARDS].sort()).toEqual(
       [...new Set(FCI_EXERCISES.map((e) => e.code))].sort(),
     )
+    expect([...FCI_RIGHT_SIDE_CARDS].sort()).toEqual(
+      [...new Set(FCI_RIGHT_EXERCISES.map((e) => e.code))].sort(),
+    )
+  })
+
+  // §3.5 "Všechny cviky (kromě 417 a 418) lze provádět se psem na levé nebo pravé straně": each
+  // ends with the dog where its card has it — a side change on the other side, a front exercise
+  // and a recall card at the left leg (`endSide`), every other where it started.
+  test.each(
+    [...FCI_EXERCISES, ...FCI_RIGHT_EXERCISES].map(
+      (e) => [`${e.code} ${e.pairedWith ?? ''} ${e.dogStarts ?? 'left'}`, e] as const,
+    ),
+  )('FCI %s: the dog ends at the leg its card says', (_, e) => {
+    const codes = e.parts ? e.parts.map((p) => p.exercise.code) : [e.code]
+    let side: 'left' | 'right' = e.dogStarts ?? 'left'
+    for (const code of codes) {
+      const { sequencing } = getCard('FCI', code) as Card
+      if (sequencing.sideOnly) expect(side).toBe(sequencing.sideOnly)
+      side =
+        sequencing.endSide ?? (sequencing.sideChange ? (side === 'left' ? 'right' : 'left') : side)
+    }
+    const end = playAll(e).at(-1)!
+    expect(end.dog.x - end.handler.x > 0 ? 'left' : 'right').toBe(side)
   })
 
   test('an FCI card plays with its card ahead for a change of direction or a side step (§4.3)', () => {

@@ -1,4 +1,5 @@
 import type { Exercise, ExerciseStep } from './exercise'
+import { fromTheRight } from './exercises'
 import { F2_214, F2_216, pair } from './leave-exercises'
 import { swerve } from './courses'
 import { PLACES } from './team'
@@ -67,6 +68,8 @@ const L409 = leaveOnTheMove('409', 'down')
  * 5 m past the card, 1 m right of the handler's way.
  */
 const RECALL_CONE = { x: -1, z: 5.5 }
+/** …with the dog on the right, left of the handler's way. */
+const RECALL_CONE_RIGHT = { ...RECALL_CONE, x: -RECALL_CONE.x }
 
 /**
  * A leave card with its recall cone: the leave card's part, on to the cone, and beside it the
@@ -79,7 +82,7 @@ const withCone = (leave: Exercise): Exercise => {
   const onTheWay = 'walk' in left ? left.walk : 0
   return {
     ...leave,
-    cones: [RECALL_CONE],
+    cones: [leave.dogStarts === 'right' ? RECALL_CONE_RIGHT : RECALL_CONE],
     pairedWith: CONE,
     steps: [
       ...leave.steps.slice(0, leaving + 1),
@@ -221,23 +224,28 @@ const F422: Exercise = {
  * move — it runs over at a slant into heel.
  */
 const SEND_CONE = { x: 4, z: 0 }
-const R410: Exercise = {
-  code: '410',
-  ruleset: 'FCI',
-  cones: [SEND_CONE, RECALL_CONE],
-  steps: [
-    { walk: 3.5, caption: 'approach' },
-    { stop: true, caption: 'stop' },
-    { turn: -90, radius: 0, caption: 'faceCone' },
-    { dog: 'sit', caption: 'sit' },
-    { wait: 1, caption: 'basePosition' },
-    { sendTo: SEND_CONE, caption: 'sendToConeStand' },
-    { turn: 90, radius: 0, caption: 'backOnCourse' },
-    { dogStays: true, caption: 'standAtCone' },
-    { walk: RECALL_CONE.z, caption: 'toRecallCone' },
-    { walk: 20, pace: 'slow', dogChases: true, caption: 'recallAtCone' },
-    { walk: 3, pace: 'normal', caption: 'leaveTogether' },
-  ],
+/** 410; with the dog on the right (`right`) the mirror image — the cone on its side, right. */
+const r410 = (right: boolean): Exercise => {
+  const m = right ? -1 : 1
+  const cone = { ...SEND_CONE, x: m * SEND_CONE.x }
+  return {
+    code: '410',
+    ruleset: 'FCI',
+    cones: [cone, right ? RECALL_CONE_RIGHT : RECALL_CONE],
+    steps: [
+      { walk: 3.5, caption: 'approach' },
+      { stop: true, caption: 'stop' },
+      { turn: m * -90, radius: 0, caption: 'faceCone' },
+      { dog: 'sit', caption: 'sit' },
+      { wait: 1, caption: 'basePosition' },
+      { sendTo: cone, caption: 'sendToConeStand' },
+      { turn: m * 90, radius: 0, caption: 'backOnCourse' },
+      { dogStays: true, caption: 'standAtCone' },
+      { walk: RECALL_CONE.z, caption: 'toRecallCone' },
+      { walk: 20, pace: 'slow', dogChases: true, caption: 'recallAtCone' },
+      { walk: 3, pace: 'normal', caption: 'leaveTogether' },
+    ],
+  }
 }
 
 /**
@@ -297,19 +305,54 @@ const FOLLOW_UPS = [F321, F322, F323, F421, F422]
 /** …and the leave card each recall card is shown after: on the move, sitting. */
 const SHOWN_BEFORE = L408
 
-const fciPair = (code: string, leave: Exercise, followUp: Exercise): Exercise => ({
-  ...pair(code, leave, followUp, false, followUp === F421 ? F421_GAP : RECALL_CARD_GAP),
+const fciPair = (code: string, leave: Exercise, followUp: Exercise, right = false): Exercise => ({
+  ...pair(
+    code,
+    right ? fromTheRight(leave) : leave,
+    right ? toTheLeftLeg(followUp) : followUp,
+    right,
+    followUp === F421 ? F421_GAP : RECALL_CARD_GAP,
+  ),
   ruleset: 'FCI',
+})
+
+/**
+ * A recall card after the dog was left at the right leg: "přivolává psa … k levé noze psovoda"
+ * (321–323, 421, 422 all end "Návrat k vedení na levé straně") — called as from the left. 421's
+ * jump stays left of the way ("2 m vlevo nebo vpravo od středové linie"): on the right it stood
+ * beyond the leave card, and the dog ran over the card on its way to it.
+ */
+const toTheLeftLeg = (followUp: Exercise): Exercise => ({
+  ...followUp,
+  steps: followUp.steps.flatMap((s): ExerciseStep[] =>
+    'recall' in s ? [{ dogSide: 'left', caption: s.caption }, s] : [s],
+  ),
 })
 /** A recall card "ve vzdálenosti 3 - 5 m od předchozí karty", metres. */
 const RECALL_CARD_GAP = 4
 
 export const FCI_LEAVE_EXERCISES: Exercise[] = [
-  R410,
+  r410(false),
   R411,
   ...FCI_LEAVE_PARTS.flatMap((leave) => [
     withCone(leave),
     ...FOLLOW_UPS.map((followUp) => fciPair(leave.code, leave, followUp)),
   ]),
   ...FCI_FOLLOW_UP_PARTS.map((followUp) => fciPair(followUp.code, SHOWN_BEFORE, followUp)),
+]
+
+/**
+ * …with the dog at the right leg ("Všechny cviky (kromě 417 a 418) lze provádět se psem na levé
+ * nebo pravé straně psovoda", §3.5): left on the right, the recall cone on the other side; a
+ * recall card calls it to the left leg (`toTheLeftLeg`), the cone back to the right one ("strana
+ * vedení se nemění").
+ */
+export const FCI_RIGHT_LEAVE_EXERCISES: Exercise[] = [
+  fromTheRight(r410(true)),
+  fromTheRight(R411),
+  ...FCI_LEAVE_PARTS.flatMap((leave) => [
+    withCone(fromTheRight(leave)),
+    ...FOLLOW_UPS.map((followUp) => fciPair(leave.code, leave, followUp, true)),
+  ]),
+  ...FCI_FOLLOW_UP_PARTS.map((followUp) => fciPair(followUp.code, SHOWN_BEFORE, followUp, true)),
 ]

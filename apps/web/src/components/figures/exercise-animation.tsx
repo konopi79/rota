@@ -24,8 +24,9 @@ import {
   stationOf,
   type Exercise,
 } from '@/lib/figures/exercise'
+import { FCI_RIGHT_SIDE_CARDS } from '@/lib/figures/animated'
 import { EXERCISES, RIGHT_EXERCISES, RIGHT_SIDE_CARDS } from '@/lib/figures/exercises'
-import { FCI_EXERCISES } from '@/lib/figures/fci-exercises'
+import { FCI_EXERCISES, FCI_RIGHT_EXERCISES } from '@/lib/figures/fci-exercises'
 import { CONE } from '@/lib/figures/fci-leave-exercises'
 import { HANDLER } from '@/lib/figures/handler'
 import { BAR_HEIGHT, JUMP_WIDTH, UPRIGHT_HEIGHT } from '@/lib/figures/leap'
@@ -452,14 +453,20 @@ export function AnimationPlayer({
   const [caption, setCaption] = useState<Caption | null>(null)
   const focusRef = useRef<Focus>({ x: 0, z: 0 })
   const press = useRef<{ x: number; y: number; time: number } | null>(null)
-  // The dog on the right: after a start "R" (every RO-Z card) or a change of side (R15).
-  // (FCI's cards with the dog on the right come later.)
+  // The dog on the right: after a start "R" (every RO-Z card) or a change of side (R15); every
+  // FCI card but 417 and 418, done from one leg only.
   const fci = ruleset === 'FCI'
-  const bothSides = !fci && RIGHT_SIDE_CARDS.includes(code)
+  const bothSides = (fci ? FCI_RIGHT_SIDE_CARDS : RIGHT_SIDE_CARDS).includes(code)
   const side = bothSides ? dogSide : 'left'
-  const variants = (fci ? FCI_EXERCISES : side === 'right' ? RIGHT_EXERCISES : EXERCISES).filter(
-    (e) => e.code === code,
-  )
+  const variants = (
+    fci
+      ? side === 'right'
+        ? FCI_RIGHT_EXERCISES
+        : FCI_EXERCISES
+      : side === 'right'
+        ? RIGHT_EXERCISES
+        : EXERCISES
+  ).filter((e) => e.code === code)
   const exercise = variants.find((e) => variantOf(e) === variant) ?? variants[0]!
   const variantGroup = isLeavePair(variants[0]!)
     ? 'followUp'

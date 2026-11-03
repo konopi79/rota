@@ -154,8 +154,8 @@ const SUPPLEMENTARY = ['D0a', 'D0b', 'D0c', 'D0d']
 export const SUPPLEMENTARY_SHOWN_WITH = 'Z-014'
 
 /**
- * The FCI cards with an animation (plan R19) — first the ones the national animations already
- * play (`fci-exercises.ts`, a test keeps the list in step).
+ * The FCI cards with an animation (plan R19): every one (`fci-exercises.ts`, a test keeps the
+ * list in step).
  */
 export const FCI_ANIMATED_CARDS: readonly string[] = [
   '101',
@@ -248,6 +248,15 @@ export const FCI_ANIMATED_CARDS: readonly string[] = [
   '421',
   '422',
 ]
+
+/**
+ * The FCI cards played with the dog at the right leg as well: "Všechny cviky (kromě 417 a 418)
+ * lze provádět se psem na levé nebo pravé straně psovoda" (§3.5) — 417 is done from the left leg
+ * only, 418 from the right one only.
+ */
+export const FCI_RIGHT_SIDE_CARDS: readonly string[] = FCI_ANIMATED_CARDS.filter(
+  (code) => code !== '417' && code !== '418',
+)
 
 /** What to play for a card: its own animation, or for a D0 card Z-014 ending with it. */
 export type CardAnimation = { code: string; variant?: string; ruleset: 'CZ' | 'FCI' }

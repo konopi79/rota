@@ -1,6 +1,6 @@
 import type { Exercise, ExerciseStep } from './exercise'
-import { EXERCISES } from './exercises'
-import { FCI_LEAVE_EXERCISES } from './fci-leave-exercises'
+import { EXERCISES, RIGHT_EXERCISES, fromTheRight } from './exercises'
+import { FCI_LEAVE_EXERCISES, FCI_RIGHT_LEAVE_EXERCISES } from './fci-leave-exercises'
 import { LEFT, RIGHT, stepAside, stopForSideStep } from './ro123-exercises'
 import { STRIDE, STRIDE_LAG, STRIDE_LEAN } from './paths'
 import { stepsBack, stepsForward, turnOnTheSpot, turnSteps } from './roz-exercises'
@@ -13,9 +13,12 @@ import { stepsBack, stepsForward, turnOnTheSpot, turnSteps } from './roz-exercis
  * before the stand — the script is put together here from the same building blocks.
  */
 
-/** A national exercise, or its variant (a D0 card, the pace before). */
-const national = (code: string, variant?: string): Exercise => {
-  const all = EXERCISES.filter((e) => e.code === code)
+/**
+ * A national exercise, or its variant (a D0 card, the pace before) — with the dog at the right
+ * leg (`right`).
+ */
+const national = (code: string, variant?: string, right = false): Exercise => {
+  const all = (right ? RIGHT_EXERCISES : EXERCISES).filter((e) => e.code === code)
   const found = variant
     ? all.find((e) => e.supplementary === variant || e.fromPace === variant)
     : all[0]
@@ -354,9 +357,8 @@ const sideSteps = (code: string, sign: 1 | -1, count: 1 | 2, walking: boolean): 
     code,
     ruleset: 'FCI',
     card: 'ahead',
-    // Into FCI's square before the card, as 301, 303, 304 (`INTO_THE_SQUARE`) — stepping left
-    // out of the walk, the handler walks on towards the card until the step: not as near.
-    stopAt: stopForSideStep(sign, walking && sign === LEFT ? 0.3 : SIDE_STEPS_NEARER),
+    // Into FCI's square before the card, as 301, 303, 304 (`INTO_THE_SQUARE`).
+    stopAt: stopForSideStep(sign, SIDE_STEPS_NEARER),
     steps: walking
       ? [{ walk: 3.5, caption: 'approachTurn' }, ...steps, on]
       : [
@@ -375,15 +377,17 @@ const sideSteps = (code: string, sign: 1 | -1, count: 1 | 2, walking: boolean): 
  * then sedni, then lehni, as the card draws it (the Czech title says "stůj" twice). Each turn in
  * Z-030's three steps; "Nový směr postupu je 90° vlevo od původního směru trasy".
  */
-const threeTurns = (code: string, sign: 1 | -1): Exercise => {
+const threeTurns = (code: string, sign: 1 | -1, dogRight = false): Exercise => {
   const side = sign === RIGHT ? 'Right' : 'Left'
-  // Turning right, on the spot (the handler pivoting, the dog round outside at heel): in the
-  // three steps the handler drifted aside out of the square (the author). Turning left, the
-  // three steps.
+  // With the dog round the outside, on the spot (the handler pivoting, the dog going round at
+  // heel): in the three steps the handler drifted aside out of the square, a little more with
+  // each turn (the author — 414, and 415 with the dog on the right). With it inside, the three
+  // steps.
+  const pivots = dogRight ? sign === LEFT : sign === RIGHT
   const turn = (sign: 1 | -1, caption: string): ExerciseStep[] =>
-    sign === RIGHT
+    pivots
       ? [
-          { turn: 90, radius: 0, caption },
+          { turn: sign === RIGHT ? 90 : -90, radius: 0, caption },
           { stop: true, caption },
         ]
       : [{ footwork: turnSteps(sign), caption }]
@@ -519,11 +523,11 @@ const stepTurnStepRecall = (code: string, sign: 1 | -1): Exercise => ({
  * (3 m), three times between the two on its short one (1.5 m) — with cones where the team goes
  * round and the distractions (in bowls) where it passes between.
  */
-const R221 = (() => {
-  const from = fci('221', national('1-117'))
+const r221 = (dogRight: boolean): Exercise => {
+  const from = fci('221', national('1-117', undefined, dogRight))
   const [left, right, near, far] = from.bowls!
   return { ...from, cones: [left!, right!], bowls: [near!, far!] }
-})()
+}
 
 /**
  * The jumps (§3.5, the plan's `geometry.props`): "Dva metry před překážkou se nachází karta", the
@@ -647,36 +651,59 @@ const CONE_TURN = { cone: 2.3, round: 0.65, after: 3 }
  * behind), the dog goes straight in and across under them between their feet, ducking
  * (`betweenLegs`), and the right foot comes up — the dog at the right leg.
  */
-const R312: Exercise = {
-  code: '312',
-  ruleset: 'FCI',
-  longStride: true,
-  // The long stride takes the team on past where it would stop: the card stands that much on.
-  stopAt: { x: 0, z: -STRIDE.ahead },
-  steps: [
-    { walk: 3.5, caption: 'approach' },
-    // The stop is the long stride itself (the author): out of the walk the left foot steps far
-    // forward and stays there, the right one behind; the dog falls a little behind meanwhile, to
-    // go in at a slant.
-    {
-      footwork: [{ foot: 0, x: 0.1, z: STRIDE.ahead + STRIDE.behind - 0.08, yaw: 0 }],
-      fromFoot: 1,
-      lean: STRIDE_LEAN,
-      dogLags: STRIDE_LAG,
-      caption: 'longStride',
-    },
-    { dogPath: 'betweenLegs', split: STRIDE, caption: 'dogBetweenLegs' },
-    // On at once out of the stride, the right foot first — the dog falling in at the right leg
-    // as the handler comes level (the author: no closing up and standing first).
-    { walk: 3, pace: 'normal', caption: 'leaveRightAfterLegs' },
-  ],
+const r312 = (right: boolean): Exercise => {
+  // From the right leg the mirror image: the right foot ahead, the dog over to the left leg.
+  const m = right ? -1 : 1
+  return {
+    code: '312',
+    ruleset: 'FCI',
+    longStride: true,
+    ...(right && { dogStarts: 'right' as const }),
+    // The long stride takes the team on past where it would stop: the card stands that much on.
+    stopAt: { x: 0, z: -STRIDE.ahead },
+    steps: [
+      { walk: 3.5, caption: 'approach' },
+      // The stop is the long stride itself (the author): out of the walk the left foot steps far
+      // forward and stays there, the right one behind; the dog falls a little behind meanwhile,
+      // to go in at a slant.
+      {
+        footwork: [
+          { foot: right ? 1 : 0, x: m * 0.1, z: STRIDE.ahead + STRIDE.behind - 0.08, yaw: 0 },
+        ],
+        fromFoot: right ? 0 : 1,
+        lean: STRIDE_LEAN,
+        dogLags: STRIDE_LAG,
+        caption: 'longStride',
+      },
+      {
+        dogPath: 'betweenLegs',
+        // (`split` is the left foot's ahead and the right one's behind.)
+        split: right ? { ahead: -STRIDE.behind, behind: -STRIDE.ahead } : STRIDE,
+        caption: 'dogBetweenLegs',
+      },
+      // On at once out of the stride, the right foot first — the dog falling in at the right leg
+      // as the handler comes level (the author: no closing up and standing first).
+      { walk: 3, pace: 'normal', caption: 'leaveRightAfterLegs' },
+    ],
+  }
 }
 
 /** How much nearer the card the side steps begin than nationally, metres (301, 303, 304's). */
 const SIDE_STEPS_NEARER = 0.75
 
+/**
+ * Where an FCI card plays its national exercise somewhere else in the square (the author): 306
+ * and 309 in the middle — 1-108 and 3-318 stop left of it for the dog's way into the front or
+ * round the handler, which FCI's card leaves far clear (40 cm, 25 cm).
+ */
+const STOP: Record<string, { x: number; z: number }> = {
+  '306': { x: 0, z: -0.3 },
+  '309': { x: 0, z: -0.3 },
+}
+
 /** The national exercise as FCI's card, a little nearer its card where it has to be. */
 const same = (code: string, from: string, variant?: string): Exercise => {
+  if (STOP[code]) return { ...fci(code, national(from, variant)), stopAt: STOP[code] }
   const e = fci(code, national(from, variant))
   const nearer = INTO_THE_SQUARE[code]
   if (!nearer) return e
@@ -684,9 +711,148 @@ const same = (code: string, from: string, variant?: string): Exercise => {
   return { ...e, stopAt: { x: stop.x, z: stop.z + nearer } }
 }
 
-/** The FCI exercises, in card order. */
-export const FCI_EXERCISES: Exercise[] = [
-  ...SAME.map(([code, from, variant]) => same(code, from, variant)),
+/**
+ * A card ahead, with the dog on the right: turning left the dog swings out round the front, over
+ * where the card stands, as turning right from the left — so the team comes as near the card as
+ * the card turning the other way does from the left (measured the same way: 106 as near as 105,
+ * 214 as 213, …), and turning right as near as the left turn does.
+ */
+const MIRROR: Record<string, string> = {
+  '105': '106',
+  '106': '105',
+  '107': '108',
+  '108': '107',
+  '109': '110',
+  '110': '109',
+  '114': '115',
+  '115': '114',
+  '213': '214',
+  '214': '213',
+  '215': '216',
+  '216': '215',
+  '217': '218',
+  '218': '217',
+  '307': '308',
+  '308': '307',
+}
+
+/**
+ * …with the dog at the right leg: the national exercise from the right (its own way round cones,
+ * its side change the other way), stopping as FCI's from the left does — as near the card as its
+ * mirror image (`MIRROR`) — plus the room the national one takes on the right.
+ */
+const sameFromTheRight = (code: string, from: string, variant?: string): Exercise => {
+  const nearer = (INTO_THE_SQUARE[MIRROR[code] ?? code] ?? 0) - (INTO_THE_SQUARE[code] ?? 0)
+  const stop = same(code, from, variant).stopAt ?? { x: 0, z: 0 }
+  const at = { x: stop.x, z: stop.z + nearer }
+  const left = national(from, variant).stopAt ?? { x: 0, z: 0 }
+  const { supplementary: _, pairedWith: __, ...right } = national(from, variant, true)
+  const room = right.stopAt ?? { x: 0, z: 0 }
+  return {
+    ...right,
+    code,
+    ruleset: 'FCI',
+    stopAt: RIGHT_STOP[code] ?? { x: at.x + room.x - left.x, z: at.z + room.z - left.z },
+    steps: right.steps.map(roundClose),
+  }
+}
+
+/**
+ * Going round the dog "zepředu" (103, 104, 208) with the dog on the right, the handler passes its
+ * right side, the card's: past it only as far as at heel (`dogClose`; round the national way
+ * the handler went wide and had to stop 0.55 m left and 0.3 m short in FCI's 1 m square — the
+ * author: "obchází velkým obloukem").
+ */
+const roundClose = (step: ExerciseStep): ExerciseStep =>
+  'around' in step ? { ...step, around: 'dogClose' } : step
+
+/**
+ * Where FCI's exercises stop with the dog on the right, if not as `fromTheRight` has it
+ * (measured as `INTO_THE_SQUARE`). 103, 104, 208 go round the dog close (`roundClose`): 0.4 m left
+ * in the square and 0.1 m short of its middle, 6 cm clear of the stand. 415 turns left on the
+ * spot (`OWN_RIGHT`), as near the card as 414 from the left. 302 steps left and passes the card on
+ * its right, the dog's side: further left in the square (as 2-229's `MORE_ROOM`). 222 / 320 pass the card with the dog between them and it, and the dog
+ * turns out to the jump beside it (`SENT_AT_THE_CARD`): further left, as going round a dog.
+ */
+const RIGHT_STOP: Record<string, { x: number; z: number }> = {
+  '103': { x: 0.4, z: -0.1 },
+  '104': { x: 0.4, z: -0.1 },
+  // 112 nearer the card (the author): its dog is between the handler and the card, so the room
+  // by it the left side's swing needed is not (15 cm clear walking past it). 113 a little left
+  // (the author), its dog round behind the handler 9 cm clear of the stand ahead.
+  '112': { x: 0.1, z: -0.15 },
+  '113': { x: 0.15, z: 0.1 },
+  // 115 nearer the card (the author): turning left on the spot the dog swings round the front
+  // over where it stands — a little left of the card, 0.15 m nearer than 114's (5 cm clear).
+  '115': { x: 0.2, z: 0.25 },
+  // …and 218, which turns left on the spot as 115 does (the author: it may stop further on).
+  '218': { x: 0.2, z: 0.25 },
+  // 209 / 210 / 306 without the room by the card (the author: needlessly left) — the dog goes
+  // into the front, a quarter of a metre clear of the stand.
+  '209': { x: 0.1, z: -0.3 },
+  '210': { x: 0.1, z: -0.3 },
+  '306': { x: 0.1, z: -0.3 },
+  // 309: its dog round the handler, then passing the card as they leave (15 cm clear).
+  '309': { x: 0.1, z: -0.3 },
+  // 315 / 316 change the dog over to the left leg behind / in front of the handler: in the
+  // middle (39 cm clear and more).
+  '315': { x: 0, z: -0.3 },
+  '316': { x: 0, z: -0.3 },
+  // 211 in the middle of the square (the author: needlessly right): from the left the dog is
+  // called to the leg towards the card, from the right to the one away from it (7 cm clear).
+  '211': { x: 0, z: 0.2 },
+  '208': { x: 0.4, z: -0.1 },
+  // 212 the mirror image of 211 from the left (the author: the team stood outside the square): the
+  // dog called to the leg towards the card, the handler in the left of the square (3 cm clear).
+  '212': { x: 0.5, z: 0.3 },
+  '222': { x: 0.55, z: 0 },
+  // 301 / 401 step right, towards the dog: from the left the team stops right in the square so
+  // the dog clears the card after the step; the dog on the right, only the handler has to pass
+  // it — in the middle, a little further back (the author: needlessly right; 11 cm clear).
+  '301': { x: 0, z: 0.6 },
+  '401': { x: 0, z: 0.6 },
+  // …and 303 from a stop: in the middle, as near the card as from the left (12 cm clear).
+  '303': { x: 0, z: 0.75 },
+  // 302 / 402 with the dog on the right step away from it: the walk goes on a step to land on
+  // the foot the step goes from (`INTO_STEPS_WITHIN`), so they stop short of where the dog on
+  // the left lets them (there it goes over during the last step, `sidle`).
+  '302': { x: 0.3, z: 0.25 },
+  '402': { x: 0.04, z: 0.25 },
+  '320': { x: 0.55, z: 0 },
+  '415': { x: 0, z: 0.4 },
+}
+
+/**
+ * 222 / 320 with the dog on the right: the jump on its side, and so is the card — sent before it
+ * the dog ran over the card's stand. Sent as it is level with the card ("Cviky 222 a 320 se
+ * začínají provádět nejdříve až vedle karty", §4.3), this far on, metres; sent later it had to
+ * turn out to the jump so sharply that its paws slipped.
+ */
+const SENT_AT_THE_CARD = 0.6
+
+/** An FCI script of `OWN` with the dog on the right. */
+const ownFromTheRight = (e: Exercise): Exercise => {
+  const right = fromTheRight(e)
+  return {
+    ...right,
+    ...(RIGHT_STOP[e.code] && { stopAt: RIGHT_STOP[e.code] }),
+    steps: right.steps
+      .map(roundClose)
+      .map((s) =>
+        'walk' in s && s.dogJumps
+          ? { ...s, dogJumps: s.dogJumps - SENT_AT_THE_CARD, jumpsAfter: SENT_AT_THE_CARD }
+          : s,
+      ),
+  }
+}
+
+/** FCI's own scripts with a script of their own for the dog on the right. */
+const OWN_RIGHT: Record<string, Exercise> = {
+  '415': threeTurns('415', LEFT, true),
+}
+
+/** FCI's own scripts that play from the right as they are, with room by the card. */
+const OWN: Exercise[] = [
   R201,
   doubleTurn('202', '1-121'),
   doubleTurn('203', '1-122'),
@@ -711,12 +877,31 @@ export const FCI_EXERCISES: Exercise[] = [
   R412,
   stepTurnStepRecall('211', RIGHT),
   stepTurnStepRecall('212', LEFT),
-  R221,
-  ...FCI_LEAVE_EXERCISES,
   R222,
   R320,
   R420,
-  R312,
+]
+
+/** The FCI exercises, in card order. */
+export const FCI_EXERCISES: Exercise[] = [
+  ...SAME.map(([code, from, variant]) => same(code, from, variant)),
+  ...OWN,
+  r221(false),
+  ...FCI_LEAVE_EXERCISES,
+  r312(false),
   roundConeTurn('417', false),
   roundConeTurn('418', true),
+].sort((a, b) => a.code.localeCompare(b.code))
+
+/**
+ * The FCI exercises with the dog at the right leg, in card order: "Všechny cviky (kromě 417 a
+ * 418) lze provádět se psem na levé nebo pravé straně psovoda" (§3.5) — 417 is done only from
+ * the left leg, 418 only from the right (`FCI_EXERCISES` plays it so).
+ */
+export const FCI_RIGHT_EXERCISES: Exercise[] = [
+  ...SAME.map(([code, from, variant]) => sameFromTheRight(code, from, variant)),
+  ...OWN.map((e) => ownFromTheRight(OWN_RIGHT[e.code] ?? e)),
+  r221(true),
+  ...FCI_RIGHT_LEAVE_EXERCISES,
+  fromTheRight(r312(true)),
 ].sort((a, b) => a.code.localeCompare(b.code))
