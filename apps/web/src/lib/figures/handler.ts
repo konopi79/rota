@@ -249,6 +249,15 @@ const RUN_BOUNCE = 0.04
 /** A human hip: turns the leg about 40° either way, swings it 25° out and 20° in. */
 const HIP_LIMITS: LegLimits = { yaw: 0.69, out: 0.45, in: 0.35 }
 
+/**
+ * A planted foot this far behind the body (from the heel, metres) begins to lift its heel, and
+ * this much further it is up on its toes, the foot square to the leaning shin.
+ */
+const HEEL_UP_FROM = 0.2
+const HEEL_UP_OVER = 0.15
+/** …the leg leaning from a hip about this high above the ground, metres. */
+const STRIDE_HIP = 0.75
+
 /** The longest a walking leg stretches: nearly straight, never locked. */
 const WALKING_LEG = LEG * 0.996
 /** The pelvis root standing straight: ankle height + leg + hip joint. */
@@ -269,6 +278,8 @@ export const handlerPose = (
   motion: number,
   /** Each foot's pitch last frame and how far it may change by now: feet never snap. */
   previous?: { pitch: readonly number[]; maxChange: number; pelvis: number; maxRise: number },
+  /** Holding a long stride (FCI 312): the foot far behind up on its toes. */
+  stride = false,
 ): { pose: Pose; pelvis: number; pitch: number[] } => {
   const ankles = feet.map((foot, i) => {
     // A short step lands flatter than a full one…
@@ -294,6 +305,13 @@ export const handlerPose = (
         const backwards = Math.min(1, Math.max(0, (behind - 0.05) / 0.15))
         pitch = p.strike * k * ease((u - 0.7) / 0.3) * (1 - 2 * backwards)
       }
+    }
+    // In a long stride (FCI 312) the foot far behind is up on its toes, the heel lifted — flat,
+    // the ankle would bend up past what it can; stepping back into it, it lands so.
+    if (stride) {
+      // The foot square to the shin, as standing (the author): tipped as far as the leg leans.
+      const farBehind = Math.min(1, Math.max(0, (behind - HEEL_UP_FROM) / HEEL_UP_OVER))
+      pitch = Math.max(pitch, Math.atan2(behind, STRIDE_HIP) * farBehind)
     }
     if (previous) {
       const before = previous.pitch[i] ?? 0

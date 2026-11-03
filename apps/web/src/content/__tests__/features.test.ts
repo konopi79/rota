@@ -14,6 +14,9 @@ describe('feature list', () => {
     for (const item of items) {
       expect(item.title.length).toBeGreaterThan(0)
       expect(item.desc.split(/[.!?](\s|$)/).filter((s) => s.trim()).length).toBeLessThanOrEqual(2)
+      // Points short: one sentence each.
+      for (const point of item.points ?? [])
+        expect(point.split(/[.!?](\s|$)/).filter((s) => s.trim()).length).toBeLessThanOrEqual(1)
     }
   })
 })
