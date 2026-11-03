@@ -577,6 +577,7 @@ gesture for audio).
 - [x] Install hint on the home screen until dismissed: iOS share-sheet steps (Safari, Chrome and the rest — all WebKit), Chrome/Android install button (`beforeinstallprompt`)
 - [x] Installed app updates itself: iOS resumed the home-screen app from memory and kept an old version (found by the author, 2026-09-27) — now a check on every return to the screen, reload once hidden (`lib/sw-update.ts`, tested); build time at the bottom of `/o-aplikaci`
 - [x] No blank page after an update (2026-10-22): a new version took over an open installed app, and the next navigation inside it ("Sestavit tréninkový parkur" on the author's iPhone) loaded the new build into the old scripts — a blank screen until the app was restarted; reproduced locally by swapping builds under an open page. Now the page is marked stale on takeover and every navigation loads a whole page: links (click capture), code (`navigate`), back/forward (popstate before the router's) — `lib/stale-page.ts`, tested; verified the same way
+- [x] A plain reload shows a new version (2026-11-03, the author: "musím cmd+shift+r"): pages and their RSC payloads come from the network first, the precache only without signal or after 3 s (`sw.ts`); scripts, styles, card images stay precache-first. Tested on the production image: the new build on the first reload; with the server stopped, a deck from its URL, its card images and a link inside the app still load
 
 ### R6 — Deploy + open-source release
 
