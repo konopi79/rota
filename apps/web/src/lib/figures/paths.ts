@@ -203,6 +203,42 @@ export const DOG_AROUND_FROM_HEEL: Path = pathFromCurve(
 )
 
 /**
+ * The handler's long stride held for the dog (FCI 312), metres: the left foot stepped forward
+ * this far ahead of the body (over it, the leg straight), the right one this far behind (up on
+ * its toes, the foot square to the leg, the leg straight — the author), and how far the body is
+ * then ahead of the point between the feet.
+ */
+export const STRIDE = { ahead: 0.28, behind: 0.62 }
+export const STRIDE_LEAN = (STRIDE.behind - STRIDE.ahead) / 2
+/** Behind its place at heel the dog has fallen as the handler strides out, metres. */
+export const STRIDE_LAG = 0.55
+/** It goes in between the handler's legs here — where they are furthest apart at its height. */
+const UNDER = { x: 0, z: -0.03 }
+/** …straight through there at 45° for this far either side, metres. */
+const SLANT = 0.2
+
+/**
+ * FCI 312 "Pes změní stranu vedení mezi nohama psovoda": the handler stopped in a long stride,
+ * left foot forward and right foot behind (the FCI video), the dog — fallen a little behind — at
+ * a slant forward across under them between the feet, and on round to their right leg, as
+ * smoothly in as out (the author).
+ */
+export const DOG_BETWEEN_LEGS: Path = pathFromCurve(
+  chain(
+    // At a slant (45°) under the handler — one smooth bend in, one out.
+    bezier(
+      [0.42, -0.2 - STRIDE_LAG],
+      [0.42, -0.4],
+      [UNDER.x + SLANT, UNDER.z - SLANT],
+      [UNDER.x, UNDER.z],
+    ),
+    // Out on the right in one even bend round to the way the team goes, at its right leg's
+    // side — the handler then walks straight on with it.
+    bezier([UNDER.x, UNDER.z], [UNDER.x - SLANT, UNDER.z + SLANT], [-0.46, 0.0], [-0.46, 0.25]),
+  ),
+)
+
+/**
  * D0b/D0d "Přiřazení přímo" (p. 17): from the front straight to the left leg, without going
  * round the handler: the dog's front steps across to the handler's left leg while its rear
  * swings out to the left and round behind, into heel.

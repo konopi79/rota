@@ -2,6 +2,7 @@ import type { Exercise, ExerciseStep } from './exercise'
 import { EXERCISES } from './exercises'
 import { FCI_LEAVE_EXERCISES } from './fci-leave-exercises'
 import { LEFT, RIGHT, stepAside, stopForSideStep } from './ro123-exercises'
+import { STRIDE, STRIDE_LAG, STRIDE_LEAN } from './paths'
 import { stepsBack, stepsForward, turnOnTheSpot, turnSteps } from './roz-exercises'
 
 /**
@@ -575,6 +576,102 @@ const R420: Exercise = {
   ],
 }
 
+/**
+ * 417 / 418 90° vlevo / vpravo kolem kuželu: "Za stálého pohybu týmu (dříve, než tým mine kartu
+ * cviku) psovod vysílá psa oběhnout kužel, který se nachází 1 - 2 metry od zadní strany karty …
+ * Zatímco pes obíhá kužel po směru hodinových ručiček, psovod udělá před kuželem obrat o 90°
+ * vlevo. Psovod může zpomalit tempo … Cvik končí přiřazením psa k pravé noze psovoda" (418 the
+ * mirror image, from the right leg). As in the FCI video: the cone 1.5 m past the card on the
+ * team's way, the dog sent at the card, the handler slowing and turning about 1 m short of the
+ * cone; the dog up the cone's far side from the handler's turn, round behind it and back, then
+ * after the handler into heel on the other side (`dogRuns`). Built turning left; `right`
+ * mirrors it.
+ */
+const roundConeTurn = (code: string, right: boolean): Exercise => {
+  const m = right ? -1 : 1
+  const at = (x: number, z: number, heading: number) => ({ x: m * x, z, heading: m * heading })
+  const cone = { x: 0, z: CONE_TURN.cone }
+  const r = CONE_TURN.round
+  return {
+    code,
+    ruleset: 'FCI',
+    ...(right && { dogStarts: 'right' as const }),
+    cones: [cone],
+    steps: [
+      { walk: 3.5, caption: 'approach' },
+      {
+        walk: 0.6,
+        pace: 'slow',
+        // Up the cone's far side from the handler's turn, round behind it and back past its
+        // near side, on after the handler.
+        dogRuns: {
+          via: [
+            at(r, cone.z, 0),
+            at(0, cone.z + r, -Math.PI / 2),
+            at(-r, cone.z, Math.PI),
+            at(0, cone.z - r, Math.PI / 2),
+            at(r + 0.3, cone.z - r, Math.PI / 2),
+          ],
+          ends: right ? 'left' : 'right',
+        },
+        caption: right ? 'sendRoundConeRight' : 'sendRoundConeLeft',
+      },
+      {
+        turn: m * -90,
+        radius: 0.5,
+        caption: right ? 'turnRightBeforeCone' : 'turnLeftBeforeCone',
+      },
+      // Slowly on until the dog is at heel — then at once at the normal pace (the author).
+      {
+        walk: 10,
+        pace: 'slow',
+        untilDogJoins: true,
+        caption: right ? 'leaveLeftAfterCone' : 'leaveRightAfterCone',
+      },
+      { walk: 3, pace: 'normal', caption: right ? 'leaveLeftAfterCone' : 'leaveRightAfterCone' },
+    ],
+  }
+}
+/**
+ * Where the cone stands (on the team's way, 1.5 m past the card), how far from it the dog goes
+ * round, how far the team walks slowly after the turn while the dog comes up, metres.
+ */
+const CONE_TURN = { cone: 2.3, round: 0.65, after: 3 }
+
+/**
+ * 312 Změna strany mezi nohama: "Pes změní stranu vedení mezi nohama psovoda. V okamžiku, kdy pes
+ * provádí tento cvik, se psovod smí zastavit. Psovod může rovněž zvednout nohu …" The FCI video's
+ * terrier goes between the legs of a handler walking on; a dog our size needs room, so the
+ * handler stops, steps forward with the left foot and holds the long stride, both legs straight
+ * and the right foot up on its toes (the author: as in the video, one foot ahead and one
+ * behind), the dog goes straight in and across under them between their feet, ducking
+ * (`betweenLegs`), and the right foot comes up — the dog at the right leg.
+ */
+const R312: Exercise = {
+  code: '312',
+  ruleset: 'FCI',
+  longStride: true,
+  // The long stride takes the team on past where it would stop: the card stands that much on.
+  stopAt: { x: 0, z: -STRIDE.ahead },
+  steps: [
+    { walk: 3.5, caption: 'approach' },
+    // The stop is the long stride itself (the author): out of the walk the left foot steps far
+    // forward and stays there, the right one behind; the dog falls a little behind meanwhile, to
+    // go in at a slant.
+    {
+      footwork: [{ foot: 0, x: 0.1, z: STRIDE.ahead + STRIDE.behind - 0.08, yaw: 0 }],
+      fromFoot: 1,
+      lean: STRIDE_LEAN,
+      dogLags: STRIDE_LAG,
+      caption: 'longStride',
+    },
+    { dogPath: 'betweenLegs', split: STRIDE, caption: 'dogBetweenLegs' },
+    // On at once out of the stride, the right foot first — the dog falling in at the right leg
+    // as the handler comes level (the author: no closing up and standing first).
+    { walk: 3, pace: 'normal', caption: 'leaveRightAfterLegs' },
+  ],
+}
+
 /** How much nearer the card the side steps begin than nationally, metres (301, 303, 304's). */
 const SIDE_STEPS_NEARER = 0.75
 
@@ -619,4 +716,7 @@ export const FCI_EXERCISES: Exercise[] = [
   R222,
   R320,
   R420,
+  R312,
+  roundConeTurn('417', false),
+  roundConeTurn('418', true),
 ].sort((a, b) => a.code.localeCompare(b.code))

@@ -1,5 +1,7 @@
 import type { Exercise, ExerciseStep } from './exercise'
 import { F2_214, F2_216, pair } from './leave-exercises'
+import { swerve } from './courses'
+import { PLACES } from './team'
 
 /**
  * FCI's leave cards and recall cards (plan R19), from the FCI rules (Zkušební řád & Směrnice pro
@@ -208,6 +210,84 @@ const F422: Exercise = {
   ],
 }
 
+/**
+ * 410 Stop, vyslání vpřed, stůj, chůze vpřed, přivolání: "Týmu je při zastavení dovoleno se otočit
+ * směrem ke kuželu. Kužel je umístěn ve vzdálenosti 3 - 5 m v úhlu 90° vpravo nebo vlevo. Psovod
+ * vysílá psa, aby se zastavil u kuželu (nejméně jedna tlapka musí být ve vzdálenosti do 1 metru od
+ * kuželu). Pes zůstává stát u kuželu, zatímco psovod pokračuje vpřed směrem ke kuželu pro
+ * přivolání (C) a přivolává psa." As in the FCI video: the team turns to the cone, 4 m to the dog's
+ * side (the plan's), the dog sits, runs out and stops standing by the cone facing the handler
+ * (3-324's `sendTo`); the handler turns back, walks on to the recall cone and calls the dog on the
+ * move — it runs over at a slant into heel.
+ */
+const SEND_CONE = { x: 4, z: 0 }
+const R410: Exercise = {
+  code: '410',
+  ruleset: 'FCI',
+  cones: [SEND_CONE, RECALL_CONE],
+  steps: [
+    { walk: 3.5, caption: 'approach' },
+    { stop: true, caption: 'stop' },
+    { turn: -90, radius: 0, caption: 'faceCone' },
+    { dog: 'sit', caption: 'sit' },
+    { wait: 1, caption: 'basePosition' },
+    { sendTo: SEND_CONE, caption: 'sendToConeStand' },
+    { turn: 90, radius: 0, caption: 'backOnCourse' },
+    { dogStays: true, caption: 'standAtCone' },
+    { walk: RECALL_CONE.z, caption: 'toRecallCone' },
+    { walk: 20, pace: 'slow', dogChases: true, caption: 'recallAtCone' },
+    { walk: 3, pace: 'normal', caption: 'leaveTogether' },
+  ],
+}
+
+/**
+ * 411 Postavení před, couvání, stůj, chůze vpřed, přivolání: "Psovod zastaví a velí psa do pozice
+ * stůj před psovodem. Pes je poté velen k chůzi vzad (couvání) nejméně o tři délky svého těla ve
+ * směru od psovoda a zastavil se. Zatímco pes stojí, psovod přichází k psovi, kterého velí k
+ * přiřazení se (návrat k vedení vlevo) a společně bez zastavení pokračují." The dog into the front,
+ * standing; backing away (`dogBacks`); the handler walks up beside it — keeping it on their left —
+ * and as they come level it turns round into heel and on they go (`dogChases`). The handler stops
+ * left in the square: walking up, their way passes the card on their right.
+ */
+/**
+ * Walking up to the dog standing facing them (411), the handler passes this far right of it,
+ * metres — room for it to turn round into heel.
+ */
+const TURNS_ROUND_ROOM = 0.65
+/** Walking up to the dog, the handler goes straight on this far — past the card — first, metres. */
+const PAST_THE_CARD = 0.7
+/** 411's dog backs away "nejméně o tři délky svého těla" — a little more, metres. */
+const BACKS_AWAY = 3.5 * DOG_LENGTH
+/** …and it turns round towards them as they are still this far short of it, metres. */
+const TURNS_ROUND_AHEAD = 1.6
+const R411: Exercise = {
+  code: '411',
+  ruleset: 'FCI',
+  steps: [
+    { walk: 3.5, caption: 'approach' },
+    { stop: true, caption: 'stop' },
+    { dogPath: 'toFront', caption: 'frontStand' },
+    { wait: 0.8, caption: 'frontStand' },
+    { dogStays: true, caption: 'frontStand' },
+    { dogBacks: BACKS_AWAY, caption: 'dogBacksAwayThree' },
+    { wait: 0.8, caption: 'standHold' },
+    // Straight on past the card, then a long gentle bend over to pass the dog on its right;
+    // the dog turns round as the handler is still `TURNS_ROUND_AHEAD` short of it.
+    { walk: PAST_THE_CARD, caption: 'toTheDog' },
+    {
+      course: swerve(
+        -TURNS_ROUND_ROOM,
+        PLACES.front.z + BACKS_AWAY - TURNS_ROUND_AHEAD - PAST_THE_CARD - 0.3,
+      ),
+      parts: [0, 2],
+      caption: 'toTheDog',
+    },
+    // Slower as the dog turns round and comes in, then on together at the pace.
+    { walk: 6, pace: 'slow', dogChases: true, caption: 'dogIntoHeelWalking' },
+    { walk: 2, pace: 'normal', caption: 'leaveTogether' },
+  ],
+}
+
 /** The leave cards' parts (each also played with its cone), and the recall cards'. */
 export const FCI_LEAVE_PARTS: Exercise[] = [L319, L408, L409]
 export const FCI_FOLLOW_UP_PARTS: Exercise[] = [F321, F322, F323, F421, F422]
@@ -225,6 +305,8 @@ const fciPair = (code: string, leave: Exercise, followUp: Exercise): Exercise =>
 const RECALL_CARD_GAP = 4
 
 export const FCI_LEAVE_EXERCISES: Exercise[] = [
+  R410,
+  R411,
   ...FCI_LEAVE_PARTS.flatMap((leave) => [
     withCone(leave),
     ...FOLLOW_UPS.map((followUp) => fciPair(leave.code, leave, followUp)),

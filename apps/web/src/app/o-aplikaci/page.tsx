@@ -52,6 +52,13 @@ export default function AboutPage() {
                     {item.id === LATEST_FEATURE_ID && <Badge>{t('about.new')}</Badge>}
                   </p>
                   <p className="text-muted-foreground text-sm">{item.desc}</p>
+                  {item.points && (
+                    <ul className="text-muted-foreground list-disc space-y-0.5 pl-5 text-sm">
+                      {item.points.map((point) => (
+                        <li key={point}>{point}</li>
+                      ))}
+                    </ul>
+                  )}
                 </li>
               ))}
             </ul>

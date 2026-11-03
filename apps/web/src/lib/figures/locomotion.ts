@@ -369,6 +369,10 @@ export class BipedStepper {
    * down a moment; the stepper takes no steps of its own meanwhile.
    */
   /** `avoid`: what the feet keep clear of — the dog. */
+  /**
+   * `split`: standing with the left foot this far ahead of its place and the right one this far
+   * behind, metres — a long stride held (FCI 312, the dog between the legs).
+   */
   update(
     dt: number,
     body: Body,
@@ -376,6 +380,7 @@ export class BipedStepper {
     rest?: Body,
     script?: FootTarget,
     avoid?: Clearance,
+    split?: { ahead: number; behind: number },
   ): FootState[] {
     const prev = this.last
     this.last = { ...body }
@@ -388,7 +393,7 @@ export class BipedStepper {
     const back = (gait.backShift ?? 0) * Math.min(1, Math.max(0, forward / 0.6))
     const homeOf = (b: Body, i: number) => {
       const [x, z] = this.specs[i]!.neutral
-      return placeUnder(b, [x, z - back])
+      return placeUnder(b, [x, z - back + (split ? (x > 0 ? split.ahead : -split.behind) : 0)])
     }
     // Running only once the body moves at a run; setting off and stopping, it walks.
     const running = gait.run !== undefined && forward > RUNNING

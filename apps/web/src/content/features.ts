@@ -1,17 +1,21 @@
 /**
- * What ROTA can do — shown on `/o-aplikaci`, the link to send when someone asks. Plain
- * points grouped by theme, kept in Czech like the rest of the user-facing content (same
- * pattern as Malibo's `/funkce`).
+ * What ROTA can do — shown on `/o-aplikaci`, the link to send when someone asks. A feature list,
+ * not a changelog (the author, 2026-11-03): related things go into one item, its details as
+ * points. Kept in Czech like the rest of the user-facing content (same pattern as Malibo's
+ * `/funkce`).
  *
- * MAINTENANCE: when you ship a feature, add its item to the right group and point
- * `LATEST_FEATURE_ID` at it — that single id gets the "Nové" badge. Keep descriptions to
- * one or two sentences, tykání, genderless.
+ * MAINTENANCE: when you ship a feature, put it into the item it belongs to (a new point), or a
+ * new item if it is something of its own, and point `LATEST_FEATURE_ID` at that item — that
+ * single id gets the "Nové" badge. Descriptions one or two sentences, points short; tykání,
+ * genderless.
  */
 
 export interface Feature {
   id: string
   title: string
   desc: string
+  /** The details, as a list under the description. */
+  points?: string[]
 }
 
 export interface FeatureGroup {
@@ -20,7 +24,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'fci-animations-leave'
+export const LATEST_FEATURE_ID = 'animations'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -39,47 +43,24 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
       {
         id: 'catalogue',
         title: 'Katalog karet',
-        desc: 'Hledání podle čísla nebo názvu (i bez diakritiky), filtry na nové karty třídy, typ cviku, body FCI nebo cviky bez pomůcek. U každé karty popis, dílčí části, nákres spirál a pravidla řazení; tlačítky Předchozí a Další projdeš vyfiltrovaný seznam bez vracení na přehled.',
-      },
-      {
-        id: 'main-parts',
-        title: 'Hlavní a vedlejší části cviku',
-        desc: 'U národních karet vidíš, která část cviku je hlavní a která vedlejší – v detailu karty i v popisu pod kartou v balíčku. Chybí-li hlavní část, vyplatí se cvik zopakovat; u vedlejší opakováním nic nezískáš.',
-      },
-      {
-        id: 'fci-animations-leave',
-        title: 'Odložení, přivolání a skoky FCI v animaci',
-        desc: 'Animaci mají i odložení 319, 408 a 409 – s kuželem pro přivolání, kde psovod psa přivolá za chůze, i s každou kartou přivolání (321, 322, 323, 421, 422) – a skoky 222, 320 a 420. U odložení si vybereš, co následuje.',
-      },
-      {
-        id: 'fci-animations-more',
-        title: 'Další animace karet FCI',
-        desc: 'Animaci má dalších 21 karet FCI-ROB, sestavených podle oficiálního videa FCI: smyčky na místě (107, 108), spirály (119, 120), rušivé vlivy (221), úkroky za chůze i ze stoje (302, 401–404), kroky vzad (305, 412, 413), obraty na místě s polohami (414, 415), odložení za pochodu s obejitím psa (317, 318, 419), otočka od sebe (405) a krok, obrat, krok a přivolání (211, 212).',
-      },
-      {
-        id: 'fci-animations',
-        title: 'Animace i pro karty FCI',
-        desc: 'Animaci cviku má i 52 karet FCI-ROB – ty, které FCI popisuje stejně jako národní řád, s kartou a prostorem 1 × 1 m podle pravidel FCI. Zbylé karty, pes vpravo a průchod parkurem FCI přijdou.',
+        desc: 'Všechny karty třídy na jednom místě, s detailem každé karty.',
+        points: [
+          'Hledání podle čísla nebo názvu (i bez diakritiky), filtry na nové karty třídy, typ cviku, body FCI nebo cviky bez pomůcek.',
+          'U karty popis, dílčí části, nákres spirál a pravidla řazení.',
+          'U národních karet je vidět, která část cviku je hlavní a která vedlejší – chybí-li hlavní, vyplatí se cvik zopakovat.',
+          'Tlačítky Předchozí a Další projdeš vyfiltrovaný seznam bez vracení na přehled.',
+        ],
       },
       {
         id: 'animations',
         title: 'Animace cviků',
-        desc: 'U všech národních karet (RO-Z až RO3, RO-V) i doplňkových karet D0 si v detailu karty pustíš 3D animaci, jak psovod a pes cvik podle zkušebního řádu provedou – s popisky, zpomalením, otáčením pohledu a vyznačeným místem pro provedení cviku. V katalogu takové karty poznáš podle štítku „animace“.',
-      },
-      {
-        id: 'animations-jumps',
-        title: 'Skoky, odběhnutí a vyslání v animaci',
-        desc: 'Pes v animaci skáče přes laťku ve výšce podle řádu – za chůze vedle psovoda (2-217, 3-313) i na přivolání z poslední pozice (2-218, 3-314); psovod od psa odběhne a nechá se dohnat (3-323) nebo psa vyšle ke kuželu (3-324). Tím mají animaci všechny karty národních tříd.',
-      },
-      {
-        id: 'animations-leave',
-        title: 'Odložení a přivolání v animaci',
-        desc: 'Odkládací karty RO2 a RO3 (i odložení za pochodu) se v animaci přehrají s kartou, která po nich následuje – návratem ke psovi nebo přivoláním; kterou, si vybereš pod animací. Na přivolání pes vstane a přiběhne cvalem, v RO3 i s položením před značkou ⅔ nebo s polohami na dálku, u 2-230 a 2-231 dojde krokem.',
-      },
-      {
-        id: 'animations-right',
-        title: 'Animace se psem vpravo',
-        desc: 'Všechny národní karty si v animaci pustíš i se psem u pravé nohy – jako po startu „R“ nebo uprostřed parkuru RO2 a RO3. Obraty zůstávají, jak je karta říká, takže pes je najednou uvnitř oblouku, překážka stojí na jeho straně a doplňková karta D0 ho vrátí k levé noze.',
+        desc: 'U každé karty si v detailu pustíš 3D animaci, jak psovod a pes cvik provedou – s popisky, zpomalením, otáčením pohledu a vyznačeným místem pro provedení cviku.',
+        points: [
+          'Všechny karty národních tříd (RO-Z až RO3, RO-V), doplňkové karty D0 i karty FCI-ROB – ty podle pravidel FCI a jejich oficiálního videa.',
+          'Skoky přes laťku, odběhnutí, vyslání ke kuželu i odložení s přivoláním; u odložení si vybereš, co následuje.',
+          'Národní karty i se psem u pravé nohy, jako po startu „R“.',
+          'V katalogu takové karty poznáš podle štítku „animace“.',
+        ],
       },
     ],
   },
@@ -90,6 +71,11 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
         id: 'random-deck',
         title: 'Náhodný balíček',
         desc: 'Karty jedna po druhé na celou obrazovku; další kartu ukáže přejetí, klepnutí nebo tlačítko.',
+        points: [
+          'Štítky nahoře ukazují, jestli jdeš v pomalém či rychlém tempu a u které nohy je pes.',
+          'Pořadí karet je uložené v adrese – po obnovení stránky i u toho, komu odkaz pošleš, je stejné.',
+          'Během tréninku zůstane obrazovka rozsvícená.',
+        ],
       },
       {
         id: 'performable',
@@ -102,99 +88,64 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
         desc: 'Celá třída, nebo jen nové karty; počet karet; pomůcky, které máš s sebou (kužely, misky, překážka); strana psa na startu; popis pod kartou. Poslední nastavení si aplikace pamatuje.',
       },
       {
-        id: 'field-plan',
-        title: 'Parkur, který se vejde na plochu (FCI)',
-        desc: 'Karty FCI-ROB rozmístí aplikace na plochu 20 × 20 m, nebo 20 × 30 m, když ji vybereš v nastavení: start na kraji, 3–5 m mezi kartami, mezi kartami rovně (směr mění jen karty), místo pro kužely, přivolání i skoky. Plánek s vyznačenou aktuální kartou otevřeš ikonou mapy; má ho balíček do 20 karet.',
-      },
-      {
-        id: 'cndc',
-        title: 'Více karet na jednom stanovišti (CNDC)',
-        desc: 'V RO1 až RO3 a RO-V dá balíček i tréninkový parkur na přání několik karet na jedno stanoviště, jako na skutečných parkurech – cviky z nich uděláš za sebou. Raději přísněji: jen kombinace, které pravidla jistě dovolují.',
-      },
-      {
-        id: 'cndc-plan',
-        title: 'CNDC na plánku',
-        desc: 'Karty jednoho stanoviště stojí na plánku vedle sebe a další cvik začíná tam, kde skončil předchozí – po dynamickém cviku o krok dál. Za CNDC s dynamickým cvikem je další stanoviště o metr dál, jak chtějí směrnice.',
-      },
-      {
-        id: 'cndc-editor',
-        title: 'CNDC ve vlastním parkuru',
-        desc: 'Ve vlastním parkuru dáš kartu na stejné stanoviště jako předchozí a kontrolu pořadí zvolíš ve čtyřech stupních: vypnutá, řád, směrnice, nebo přísně – navíc opatrná pravidla, podle kterých skládá CNDC aplikace.',
-      },
-      {
-        id: 'cndc-walkthrough',
-        title: 'CNDC v animaci',
-        desc: 'Tréninkový parkur s CNDC projdeš v animaci celý: na stanovišti tým navazuje dalším cvikem hned, po dynamickém cviku krokem vpřed. Stanoviště aplikace skládá tak, aby tým ani pes nezavadil o stojan s kartami.',
-      },
-      {
-        id: 'national-field-plan',
-        title: 'Plánek i pro národní třídy',
-        desc: 'Karty RO-Z až RO3 a RO-V rozmístí aplikace na plochu 20 × 30 m, jak ji doporučuje řád (RO-Z, RO1 a RO-V i na 20 × 20 m): každý cvik na vlastním stanovišti, mezi kartami rovně a nejméně 3 m, u skoků, odložení s přivoláním a některých cviků dál podle směrnic pro rozhodčí, ulička mezi kartami volná. Plánek má tréninkový parkur i balíček do délky parkuru.',
-      },
-      {
-        id: 'course-walkthrough',
-        title: 'Parkur v animaci',
-        desc: 'Tréninkový parkur RO-Z a RO1 si projdeš celý v 3D animaci: tým jde po plánku od startu ke každé kartě, provede cvik a pokračuje do cíle – i se psem vpravo po startu „R“. Kamera za týmem (natočíš si ji) nebo nad celou plochou, pauza, rychlost a přeskakování po kartách.',
-      },
-      {
-        id: 'course-walkthrough-leave',
-        title: 'Parkur v animaci i pro RO2, RO3 a RO-V',
-        desc: 'V animaci projdeš i parkur vyšších tříd: pes zůstane odložený u své karty, psovod dojde k další a odtud ho přivolá nebo se k němu vrátí, překážky a kužel stojí na ploše podle plánku.',
-      },
-      {
-        id: 'plan-zoom-print',
-        title: 'Plánek zvětšený i vytištěný',
-        desc: 'Klepnutím na plánek tréninkového parkuru ho otevřeš přes celou obrazovku a přiblížíš tlačítky nebo dvěma prsty. Vytištěný parkur má plánek přes celou první stranu a seznam cviků na další.',
-      },
-      {
-        id: 'badges',
-        title: 'Tempo a strana psa na očích',
-        desc: 'Štítky nahoře ukazují, jestli jdeš v pomalém či rychlém tempu a u které nohy je pes.',
-      },
-      {
         id: 'voice',
         title: 'Čtení nahlas',
         desc: 'Aplikace ti řekne číslo a název další karty (i doplňkové) a upozorní na změnu tempa nebo strany – telefon může zůstat v kapse.',
       },
-      {
-        id: 'share-deck',
-        title: 'Balíček v odkazu',
-        desc: 'Pořadí karet je uložené v adrese – po obnovení stránky i u toho, komu odkaz pošleš, je stejné.',
-      },
-      {
-        id: 'wake-lock',
-        title: 'Displej nezhasne',
-        desc: 'Během tréninku zůstane obrazovka rozsvícená.',
-      },
     ],
   },
   {
-    title: 'Parkur a učení',
+    title: 'Parkur',
     items: [
       {
         id: 'course',
         title: 'Tréninkový parkur',
-        desc: 'Parkur o velikosti jako na závodech – u FCI s nejméně sedmi čtyřbodovými a pěti tříbodovými kartami – s plánkem rozmístění na ploše. Číslovaný seznam k vytištění, sdílení nebo projití jako balíček.',
+        desc: 'Parkur o velikosti jako na závodech, s číslovaným seznamem k vytištění, sdílení nebo projití jako balíček.',
+        points: [
+          'Národní třídy podle směrnic pro rozhodčí: povinné cviky třídy, opakují se jen karty, které se opakovat smí, a pes jde vpravo jen tak, jak to směrnice dovolují.',
+          'FCI-ROB s nejméně sedmi čtyřbodovými a pěti tříbodovými kartami, karty tak často, jak je dávají rozhodčí na skutečných parkurech (přes 140 parkurů z katalogu FCI Rally Obedience HUB) – a přece každý parkur jiný.',
+          'Tlačítkem „Na jednu obrazovku“ zobrazíš všechny karty najednou, co největší – telefon postavíš opodál a displej nezhasne.',
+        ],
       },
       {
-        id: 'fci-judges-course',
-        title: 'FCI parkur jako od rozhodčích',
-        desc: 'Tréninkový parkur FCI-ROB skládá karty tak často, jak je dávají rozhodčí na skutečných parkurech (přes 140 parkurů z katalogu FCI Rally Obedience HUB), ale každý parkur je jiný: víc odložení s přivoláním, slalomy, skoky a občas karta dvakrát.',
+        id: 'field-plan',
+        title: 'Plánek na ploše',
+        desc: 'Karty tréninkového parkuru i balíčku do délky parkuru rozmístí aplikace na plochu – start na kraji, mezi kartami rovně, směr mění jen karty, místo pro kužely, přivolání i skoky.',
+        points: [
+          'FCI-ROB na 20 × 20 m nebo 20 × 30 m, 3–5 m mezi kartami.',
+          'Národní třídy na 20 × 30 m, jak doporučuje řád (RO-Z, RO1 a RO-V i na 20 × 20 m), s odstupy podle směrnic a volnou uličkou mezi kartami.',
+          'V balíčku ho otevřeš ikonou mapy, aktuální karta je vyznačená.',
+          'Klepnutím ho zvětšíš přes celou obrazovku a přiblížíš dvěma prsty; vytištěný parkur má plánek přes celou první stranu.',
+        ],
       },
       {
-        id: 'course-grid',
-        title: 'Celý parkur na jedné obrazovce',
-        desc: 'Tlačítkem „Na jednu obrazovku“ zobrazíš všechny karty parkuru najednou, očíslované a co největší – telefon můžeš postavit opodál a nemusíš na něj sahat. Displej mezitím nezhasne.',
+        id: 'course-walkthrough',
+        title: 'Parkur v animaci',
+        desc: 'Tréninkový parkur národních tříd si projdeš celý v 3D animaci: tým jde po plánku od startu ke každé kartě, provede cvik a pokračuje do cíle.',
+        points: [
+          'Pes zůstane odložený u své karty a psovod ho od další přivolá nebo se k němu vrátí; překážky a kužely stojí podle plánku.',
+          'I se psem vpravo po startu „R“ nebo uprostřed parkuru.',
+          'Kamera za týmem (natočíš si ji) nebo nad celou plochou, pauza, rychlost a přeskakování po kartách.',
+        ],
       },
       {
-        id: 'national-course',
-        title: 'Národní parkur podle směrnic pro rozhodčí',
-        desc: 'Parkur RO-Z až RO3 a RO-V obsahuje povinné cviky své třídy, opakuje jen karty, které se opakovat smí (Stop, obraty, D0…), a psa vede vpravo jen tak, jak to směrnice dovolují – v RO1 od startu „R“ k první kartě nebo od poslední karty do cíle.',
+        id: 'cndc',
+        title: 'Více karet na jednom stanovišti (CNDC)',
+        desc: 'V RO1 až RO3 a RO-V dá balíček i tréninkový parkur na přání několik karet na jedno stanoviště, jako na skutečných parkurech – cviky z nich uděláš za sebou.',
+        points: [
+          'Raději přísněji: jen kombinace, které pravidla jistě dovolují.',
+          'Na plánku stojí karty stanoviště vedle sebe; za CNDC s dynamickým cvikem je další stanoviště o metr dál, jak chtějí směrnice.',
+          'V animaci tým na stanovišti navazuje dalším cvikem hned, po dynamickém cviku krokem vpřed.',
+          'Ve vlastním parkuru dáš kartu na stejné stanoviště jako předchozí.',
+        ],
       },
       {
         id: 'custom-course',
         title: 'Vlastní parkur',
-        desc: 'Poskládej celý parkur nebo jen krátkou sekvenci cviků – třeba podle plánku z tréninku – a pošli ji odkazem; příjemce ji projde jako balíček. Pořadí aplikace kontroluje podle pravidel řazení (u národních tříd na přání i podle směrnic pro rozhodčí), kontrolu jde i vypnout.',
+        desc: 'Poskládej celý parkur nebo jen krátkou sekvenci cviků – třeba podle plánku z tréninku – a pošli ji odkazem; příjemce ji projde jako balíček.',
+        points: [
+          'Pořadí aplikace kontroluje ve čtyřech stupních: vypnutá kontrola, řád, směrnice pro rozhodčí, nebo přísně – navíc opatrná pravidla, podle kterých skládá CNDC aplikace.',
+        ],
       },
       {
         id: 'quiz',

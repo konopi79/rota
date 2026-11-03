@@ -6,6 +6,7 @@ import {
   DOG_AROUND_FROM_HEEL,
   DOG_AROUND_HANDLER,
   DOG_AROUND_HANDLER_CLOSE,
+  DOG_BETWEEN_LEGS,
   DOG_BEHIND_TO_RIGHT,
   DOG_FRONT_TO_RIGHT,
   DOG_TO_FRONT,
@@ -70,6 +71,15 @@ export type ExerciseStep = { caption: string } & (
       dogJumps?: number
       /** …the dog sent only once the team has walked this far on (metres; 3-313 on the right). */
       jumpsAfter?: number
+      /**
+       * The dog sent off on a way of its own while the team goes on, walking and turning (FCI
+       * 417 / 418: round a cone while the handler turns 90°): through the places `via` —
+       * station frame, each with the way the dog faces there — at its own pace, then after the
+       * handler into heel at `ends`.
+       */
+      dogRuns?: DogRun
+      /** The walk ends as the dog on its way of its own (`dogRuns`) is back at heel. */
+      untilDogJoins?: true
       /**
        * The dog left behind is called while the handler runs on (3-323 "za běhu jej přivolává"):
        * it gets up and gallops after them, slowing to their pace as it comes up into heel —
@@ -139,7 +149,12 @@ export type ExerciseStep = { caption: string } & (
    * Station frame.
    */
   | { sendTo: { x: number; z: number } }
-  | { dogPath: DogPath } // the dog goes along a path round the standing handler
+  /**
+   * The dog goes along a path round the standing handler — `split`: the handler holding a long
+   * stride meanwhile, each foot this far ahead or behind (FCI 312, the dog between their legs),
+   * metres.
+   */
+  | { dogPath: DogPath; split?: { ahead: number; behind: number } }
   /**
    * The handler's steps set by hand, one foot after the other: where each foot lands, in
    * the frame of the handler's place as the step starts (+x left, +z ahead); the body
@@ -152,6 +167,13 @@ export type ExerciseStep = { caption: string } & (
        * and the steps are set from where it stands — level with it — not from the body.
        */
       fromFoot?: 0 | 1
+      /**
+       * The body ends this far ahead of the point between the feet (negative: behind), metres —
+       * leaning over the front foot of a long stride (FCI 312), and back over the feet after.
+       */
+      lean?: number
+      /** Meanwhile the dog at heel falls this far behind its place, metres (FCI 312). */
+      dogLags?: number
     }
   /**
    * The team walks parts `parts[0]` up to (not including) `parts[1]` of a course round
@@ -229,6 +251,12 @@ export type ExerciseStep = { caption: string } & (
 
 const PATHS: Record<'dog', Path> = { dog: AROUND_DOG }
 
+/** A way of the dog's own while the team goes on (`dogRuns`). */
+export type DogRun = {
+  via: Pose[]
+  ends: 'left' | 'right'
+}
+
 /**
  * Where the handler's steps are as an exercise begins walking: the foot that came down last
  * (0 left, 1 right), and how far the team has walked since, metres.
@@ -266,6 +294,7 @@ export type DogPath =
   | 'toFront'
   | 'aroundHandler'
   | 'aroundHandlerClose'
+  | 'betweenLegs'
   | 'toHeel'
   | 'aroundFromHeel'
   | 'behindToRight'
@@ -278,6 +307,7 @@ const DOG_PATHS: Record<DogPath, { path: Path; ends: TeamControls['place']; even
   toFront: { path: DOG_TO_FRONT, ends: 'front' },
   aroundHandler: { path: DOG_AROUND_HANDLER, ends: 'left' },
   aroundHandlerClose: { path: DOG_AROUND_HANDLER_CLOSE, ends: 'left' },
+  betweenLegs: { path: DOG_BETWEEN_LEGS, ends: 'right' },
   toHeel: { path: DOG_TO_HEEL, ends: 'left' },
   aroundFromHeel: { path: DOG_AROUND_FROM_HEEL, ends: 'left' },
   behindToRight: { path: DOG_BEHIND_TO_RIGHT, ends: 'right' },
@@ -410,6 +440,8 @@ const RECALL_BRAKING = 4
 const BESIDE_DOG_ROOM = 0.04
 /** Called over a jump on the run (`dogChases`), the dog heads past its middle by this much, metres. */
 const CHASE_PAST_BAR = 0.6
+/** Going in between the handler's legs, the dog ducks its head this near them, metres. */
+const DUCKS_WITHIN = 1.1
 /** Backing away from the handler (`dogBacks`), the dog walks this fast, m/s. */
 const DOG_BACKS_SPEED = 0.35
 /**
@@ -457,6 +489,22 @@ export const HALFWAY = 0.45
 const CHASE_PICK_UP = 6
 const CHASE_TURN = 6
 const CHASE_CAUGHT = 0.12
+/**
+ * Setting off with the dog this far ahead of its place at heel, metres, it walks on at this share
+ * of the team's speed till the handler is level, rather than back to its place.
+ */
+const AHEAD_OF_HEEL = 0.1
+const WAITS_PACE = 0.5
+/** …turning round on the spot this fast, rad/s. */
+const TURNS_ROUND_RATE = 3.2
+/** …and then within this far of its place at heel it comes in facing the team's way, metres. */
+const CHASE_ALONGSIDE = 1
+/** Called on the run facing this far from the team's way (radians), it turns round first. */
+const TURNS_ROUND_FROM = 0.75 * Math.PI
+/** Turning from a stand on the run, the dog turns as if this much faster already, m/s. */
+const CHASE_TURN_FROM = 0.4
+/** On a way of its own (`dogRuns`) the dog trots at most this fast, m/s (`DOG_PATH_SPEED`'s). */
+const RUN_SPEED = DOG_PATH_SPEED
 /** Left on the move, the dog stops this hard, m/s² — within a body length from a walk. */
 const DROP_BRAKING = 2.5
 /** Running in, over its last this many metres its strides land where it will stand. */
@@ -497,6 +545,11 @@ export type Exercise = {
   stopAt?: { x: number; z: number }
   /** Where the card stands when not in one of the usual places (station's frame). */
   cardAt?: { x: number; z: number }
+  /**
+   * The handler holds a long stride in this exercise (FCI 312): a foot far behind goes up on
+   * its toes, as a person's does.
+   */
+  longStride?: true
   /** Cones and bowls on the field, in the station's frame. */
   cones?: { x: number; z: number }[]
   bowls?: { x: number; z: number }[]
@@ -1035,6 +1088,21 @@ export class ExercisePlayer {
    * far the team had walked to how far it will have walked as the dog comes back into heel.
    */
   private jumpRun: { route: Path; from: number; over: number; pace: number[] } | null = null
+  /**
+   * On a way of its own (`dogRuns`): the way (in the frame of where it set off), how far along
+   * it and how fast — then, past its end, after the handler (`at`) into heel at `ends`.
+   */
+  private dogRun: {
+    route: Path
+    origin: Pose
+    walked: number
+    speed: number
+    at: Pose | null
+    ends: 'left' | 'right'
+  } | null = null
+  private dogRunStep = -1
+  /** Ahead of its place at heel as the team sets off: where it is, walking on slowly. */
+  private dogWaits: Pose | null = null
   /** The step whose jump the dog has been sent over (`jumpsAfter`: not at once). */
   private jumpStep = -1
   /**
@@ -1046,6 +1114,8 @@ export class ExercisePlayer {
     speed: number
     /** A jump between it and the handler (FCI 420): it runs over its middle first. */
     over?: Bar | null
+    /** It turned round first (FCI 411). */
+    turnedRound?: boolean
   } | null = null
   /** Sent off to a place (`sendTo`): it is left there once it stops. */
   private sentOff = false
@@ -1681,6 +1751,8 @@ export class ExercisePlayer {
       } else if (starting && 'dogPath' in current) {
         this.dogWay = this.side(DOG_PATHS[current.dogPath])
         this.recalling = false
+        // Stopped where it was (FCI 312: the handler striding on as it stops), it goes from there.
+        this.left = null
       }
       const { path, ends, even } = this.dogWay!
       if (starting) {
@@ -1735,6 +1807,12 @@ export class ExercisePlayer {
         dog: dogGait(this.pace),
         place: this.dogPlace,
         handler: 'stand',
+        ...('dogPath' in current &&
+          current.split && {
+            handlerSplit: current.split,
+            // Near the handler's legs it ducks its head to go in between them.
+            dogDucks: Math.hypot(this.dogAt.x, this.dogAt.z) < DUCKS_WITHIN,
+          }),
         // Getting up it keeps to where it sat, facing the same way.
         dogAt: onLegs
           ? shifted(path.at(this.dogWalked), this.dogPathShift, this.dogWalked)
@@ -1814,6 +1892,9 @@ export class ExercisePlayer {
           return { x: at.x, z: at.z, yaw: at.heading }
         })
         this.footworkTo = onField(bodyOver(end), this.footworkOffset)
+        // Out of a walk into a long stride the body ends over the front foot (`lean`).
+        if (current.lean && current.fromFoot !== undefined)
+          this.footworkTo = forward(this.footworkTo, current.lean)
         // Walking on from feet still apart, the team goes the way the leading foot points —
         // the full turn — not between that and the foot left behind.
         const then = steps[this.index + 1]
@@ -1864,7 +1945,10 @@ export class ExercisePlayer {
       const turning = Math.abs(this.footworkTo.heading - this.footworkFrom.heading) > 0.2
       const over =
         feet && !turning && current.fromFoot === undefined
-          ? onField(bodyOver(feet), this.footworkOffset)
+          ? onField(bodyOver(feet), {
+              ...this.footworkOffset,
+              z: this.footworkOffset.z + (current.lean ?? 0) * glide,
+            })
           : null
       this.team = {
         x: over?.x ?? this.footworkFrom.x + (this.footworkTo.x - this.footworkFrom.x) * travel,
@@ -1931,6 +2015,11 @@ export class ExercisePlayer {
                 yaw: feet[target.foot]!.yaw,
               }
             : { foot: target.foot, x: at.x, z: at.z, yaw: at.heading },
+      }
+      // Falling behind as the handler strides out (FCI 312), ready to go in between their legs.
+      if (current.dogLags && (this.dogPlace === 'left' || this.dogPlace === 'right')) {
+        const place = PLACES[this.dogPlace]
+        controls.dogAt = { ...place, z: place.z - current.dogLags * glide }
       }
       // A dog in front keeps its distance from the handler's forward foot, not from the body
       // between the feet: following the handler back, it goes where that foot goes, smoothly
@@ -2141,10 +2230,116 @@ export class ExercisePlayer {
       this.dogAim = at
       if (u >= 1) this.jumpRun = null
     }
+    // Sent off on a way of its own while the team goes on (`dogRuns`): along it at its own
+    // pace — quickening, slowing for each bend as a dog called in does — then after the handler
+    // into heel on the side it says, as one called on the run (`dogChases`).
+    if (current && 'walk' in current && current.dogRuns && this.dogRunStep !== this.index) {
+      this.dogRunStep = this.index
+      const run = current.dogRuns
+      const station = stationOf(this.exercise)
+      const origin = onField(this.team, this.dogAt)
+      const local = (p: Pose) => inTeam(origin, { ...p, z: station + p.z })
+      const route = towards(...run.via.map(local)).path
+      this.dogRun = {
+        route,
+        origin,
+        walked: 0,
+        speed: this.dogBody.speed,
+        at: null,
+        ends: run.ends,
+      }
+      this.recalling = true
+    }
+    if (this.dogRun) {
+      const r = this.dogRun
+      let at: Pose
+      if (!r.at) {
+        const keepingUp = Math.min(
+          1,
+          Math.max(0, (DOG_FALLS_BEHIND - this.dogBody.behind) / (DOG_FALLS_BEHIND / 2)),
+        )
+        // As fast as each bend ahead lets it — not slowing for the way's end: it runs on.
+        let most = RUN_SPEED
+        for (let d = 0; d <= SLOWING_AHEAD && r.walked + d < r.route.length; d += 0.1) {
+          const there = DOG_MAX_SPIN / Math.max(bendAhead(r.route, r.walked + d, 0.1, 0), 1e-6)
+          most = Math.min(most, Math.sqrt(there * there + 2 * RECALL_BRAKING * d))
+        }
+        // (Held back by a paw, it eases off — not to a stop at once.)
+        const wanted = keepingUp * most
+        r.speed =
+          wanted < r.speed
+            ? Math.max(wanted, r.speed - RECALL_BRAKING * dt)
+            : r.speed + (wanted - r.speed) * (1 - Math.exp(-4 * dt))
+        r.walked = Math.min(r.route.length, r.walked + r.speed * dt)
+        at = onField(r.origin, r.route.at(r.walked))
+        if (r.walked >= r.route.length) {
+          r.at = at
+          this.dogPlace = r.ends
+        }
+      } else {
+        // After the handler into heel: as fast as it can still slow to their pace there.
+        const dog = r.at
+        const heel = onField(this.team, PLACES[r.ends])
+        const [dx, dz] = [heel.x - dog.x, heel.z - dog.z]
+        const far = Math.hypot(dx, dz)
+        r.speed = Math.min(
+          RUN_SPEED,
+          r.speed + CHASE_PICK_UP * dt,
+          speed + Math.sqrt(2 * RECALL_BRAKING * far),
+        )
+        const go = Math.min(far, r.speed * dt)
+        at = {
+          x: dog.x + (dx / (far || 1)) * go,
+          z: dog.z + (dz / (far || 1)) * go,
+          heading:
+            dog.heading +
+            angleTo(dog.heading, far > 0.3 ? Math.atan2(dx, dz) : heel.heading) *
+              Math.min(1, CHASE_TURN * dt),
+        }
+        r.at = at
+        if (far < CHASE_CAUGHT) {
+          this.dogRun = null
+          this.recalling = false
+        }
+      }
+      controls = { ...controls, dogAt: inTeam(this.team, at) }
+      this.dogAim = at
+    }
+    // Setting off with the dog standing ahead of its place at heel (FCI 312, out from between the
+    // legs): it walks on slowly, not back to its place — the handler comes level with it.
+    const before = steps[this.index - 1]
+    if (current && 'walk' in current && starting && before && 'dogPath' in before && before.split) {
+      const place = PLACES[this.dogPlace]
+      if (this.dogPlace !== 'front' && this.dogAt.z - place.z > AHEAD_OF_HEEL)
+        this.dogWaits = onField(this.team, this.dogAt)
+    }
+    if (this.dogWaits && current && 'walk' in current) {
+      const heel = onField(this.team, PLACES[this.dogPlace])
+      const ahead = inTeam(this.team, this.dogWaits).z - PLACES[this.dogPlace].z
+      if (ahead <= 0.02 || !Number.isFinite(heel.x)) this.dogWaits = null
+      else {
+        // On at a share of the team's speed, so the handler draws level.
+        this.dogWaits = forward(this.dogWaits, speed * WAITS_PACE * dt)
+        // …and over to beside the handler as they come.
+        const aside = inTeam(this.team, this.dogWaits)
+        const k = 1 - Math.exp(-SETTLE_RATE * dt)
+        this.dogWaits = onField(this.team, {
+          ...aside,
+          x: aside.x + (PLACES[this.dogPlace].x - aside.x) * k,
+          heading: aside.heading * (1 - k),
+        })
+        controls = { ...controls, dogAt: inTeam(this.team, this.dogWaits) }
+        this.dogAim = this.dogWaits
+      }
+    } else this.dogWaits = null
+    // Slowed down while the dog went its own way: on at the pace again once it is back.
+    if (current && 'walk' in current && current.untilDogJoins && !this.dogRun) done = true
     // Called while the handler runs on: up, and after them at a gallop — slowing to their pace
     // as it comes up, so it falls into heel — then the walk is over.
     if (current && 'walk' in current && current.dogChases && starting) {
       this.chasing = { at: null, speed: 0 }
+      // Called on the run it comes into heel — from in front too (FCI 411).
+      if (this.dogPlace === 'front') this.dogPlace = this.flipped ? 'right' : 'left'
       this.leftPosture = 'stand'
       this.recalling = true
       this.recallSpeed = RECALL_SPEED
@@ -2175,13 +2370,28 @@ export class ExercisePlayer {
           c.speed + CHASE_PICK_UP * dt,
           speed + Math.sqrt(2 * RECALL_BRAKING * far),
         )
+        // Facing away from where the team goes (FCI 411: standing facing the handler come up),
+        // it turns round on the spot first, then comes in.
+        const turnsRound = Math.abs(angleTo(dog.heading, this.team.heading)) > TURNS_ROUND_FROM
+        if (turnsRound) c.speed = 0
         const go = Math.min(far, c.speed * dt)
-        const way = Math.atan2(dx, dz)
+        // (Close by it faces the way the team goes, coming in alongside — not head first at them.)
+        const way =
+          turnsRound || (c.turnedRound && far < CHASE_ALONGSIDE)
+            ? this.team.heading
+            : Math.atan2(dx, dz)
+        if (turnsRound) c.turnedRound = true
         const span = Math.hypot(dx, dz) || 1
         const at = {
           x: dog.x + (dx / span) * go,
           z: dog.z + (dz / span) * go,
-          heading: dog.heading + angleTo(dog.heading, way) * Math.min(1, CHASE_TURN * dt),
+          // (Turning round from a stand, slower: its paws carry it round — FCI 411.)
+          heading: turnsRound
+            ? // Round towards the handler (FCI video, 411; the author).
+              dog.heading + Math.sign(PLACES[this.dogPlace].x) * TURNS_ROUND_RATE * dt
+            : dog.heading +
+              angleTo(dog.heading, way) *
+                Math.min(1, CHASE_TURN * Math.min(1, CHASE_TURN_FROM + c.speed) * dt),
         }
         c.at = at
         controls = { ...controls, dogAt: inTeam(this.team, at) }
@@ -2333,7 +2543,12 @@ export class ExercisePlayer {
       x: body.x - fold * Math.sin(body.heading),
       z: body.z - fold * Math.cos(body.heading),
     }
-    const frame = this.animator.pose(dt, controls, onField(this.team, this.offset), dog)
+    const frame = this.animator.pose(
+      dt,
+      this.exercise.longStride ? { ...controls, handlerStride: true } : controls,
+      onField(this.team, this.offset),
+      dog,
+    )
     frame.dog = { ...frame.dog, ...inTeam(this.team, dog) }
     // The handler's footfalls, as each foot comes down.
     frame.feet.handler.forEach((foot, i) => {

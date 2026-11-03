@@ -62,6 +62,15 @@ export type TeamControls = {
   dogAt?: { x: number; z: number; heading: number }
   /** The dog at heel this much further out to its side than its `place`, metres. */
   dogOut?: number
+  /**
+   * The handler standing in a long stride, the left foot this far ahead and the right one as
+   * far behind, metres (FCI 312).
+   */
+  handlerSplit?: { ahead: number; behind: number }
+  /** …and a foot left far behind is up on its toes (`handlerPose`'s `stride`). */
+  handlerStride?: boolean
+  /** The dog ducking its head, going in between the handler's legs (FCI 312). */
+  dogDucks?: boolean
   /** …going over sideways as the handler steps aside towards it (`SIDLING_REACH`). */
   dogSidles?: boolean
   /**
@@ -222,6 +231,9 @@ const forepawReach = (pose: Pose) => {
   return (frames.get('leftFrontPaw')!.position[2] + frames.get('rightFrontPaw')!.position[2]) / 2
 }
 const STANDING_REACH = forepawReach(DOG_POSTURES.stand)
+/** Ducking (`dogDucks`): the neck and head held level, low, and how fast it gets there, 1/s. */
+const DUCKED = { neck: 1.7, head: -0.6, crouch: 0.07 }
+const DUCK_RATE = 5
 /** A dog going over sideways reaches this many times further aside than trotting (`sidling`). */
 const SIDLING_REACH = 1.5
 /** Getting up folded back (`foldBack`), the dog has unfolded once this near standing, metres. */
@@ -282,6 +294,8 @@ export class TeamAnimator {
   private carriage: Carriage = { height: DOG_STANDING_HEIGHT, pitch: 0, flex: 0 }
   /** Out of a gallop: how far its neck, head and tail still are from the trot's, fading. */
   private headOff: { neck: number; head: number; tail: number } | null = null
+  /** How far it has its head ducked (`dogDucks`), 0–1. */
+  private ducking = 0
 
   /**
    * How far a dog lying down in front has moved its body back over its forelegs, metres. It
@@ -371,6 +385,7 @@ export class TeamAnimator {
       rest,
       controls.footstep,
       this.dogClearance,
+      controls.handlerSplit,
     )
     // How the pace looks changes over about a second, with the speed.
     this.style = blendPaceStyle(
@@ -383,14 +398,23 @@ export class TeamAnimator {
       pose: handlerPoseNow,
       pelvis,
       pitch,
-    } = handlerPose(feet, handler, this.style, this.handlerFeet.cycle, motion, {
-      pitch: this.footPitch,
-      maxChange: FOOT_PITCH_RATE * dt,
-      pelvis: this.pelvis,
-      // A runner bounds up off the foot quicker than a walker rises.
-      maxRise:
-        (this.style.run > 0.5 && motion > RUNNING_MOTION ? PELVIS_RISE_RUNNING : PELVIS_RISE) * dt,
-    })
+    } = handlerPose(
+      feet,
+      handler,
+      this.style,
+      this.handlerFeet.cycle,
+      motion,
+      {
+        pitch: this.footPitch,
+        maxChange: FOOT_PITCH_RATE * dt,
+        pelvis: this.pelvis,
+        // A runner bounds up off the foot quicker than a walker rises.
+        maxRise:
+          (this.style.run > 0.5 && motion > RUNNING_MOTION ? PELVIS_RISE_RUNNING : PELVIS_RISE) *
+          dt,
+      },
+      controls.handlerStride,
+    )
     this.pelvis = pelvis
     // Running, between steps both feet are off the ground: the body is that much higher
     // than standing on its lowest point would put it.
@@ -480,8 +504,10 @@ export class TeamAnimator {
         // Out of a gallop the trunk settles back to how it is carried standing.
         const settle = 1 - Math.exp(-SETTLE_RATE * dt)
         const c = this.carriage
+        // (Going in between the handler's legs, ducking, it crouches too.)
+        const height = DOG_STANDING_HEIGHT - DUCKED.crouch * this.ducking
         this.carriage = {
-          height: c.height + (DOG_STANDING_HEIGHT - c.height) * settle,
+          height: c.height + (height - c.height) * settle,
           pitch: c.pitch * (1 - settle),
           flex: c.flex * (1 - settle),
         }
@@ -497,6 +523,16 @@ export class TeamAnimator {
         }
         // …and so do its neck, head and tail.
         dogPose = blendPoses(this.dogPosture, this.withHeadOff(carried, dt), this.dogStanding)
+      }
+    }
+    // Going in between the handler's legs it ducks its head, and raises it again after.
+    this.ducking += ((controls.dogDucks ? 1 : 0) - this.ducking) * (1 - Math.exp(-DUCK_RATE * dt))
+    if (this.ducking > 1e-3) {
+      const k = this.ducking
+      dogPose = {
+        ...dogPose,
+        neck: (dogPose.neck ?? 0) + (DUCKED.neck - (dogPose.neck ?? 0)) * k,
+        head: (dogPose.head ?? 0) + (DUCKED.head - (dogPose.head ?? 0)) * k,
       }
     }
     // Turning, the tail swings out of the turn, the more the faster the dog turns — it trails
