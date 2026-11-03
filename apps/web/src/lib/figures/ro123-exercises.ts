@@ -351,7 +351,7 @@ const SIDE_STEP = 0.5
  * A side step set by hand, "ne diagonálně": the foot on that side steps straight out, the
  * other one closes up beside it.
  */
-const stepAside = (sign: 1 | -1): FootTarget[] => {
+export const stepAside = (sign: 1 | -1): FootTarget[] => {
   const [lead, close] = sign === RIGHT ? [1, 0] : [0, 1]
   const x = (foot: number) => (foot ? -0.1 : 0.1) + sign * SIDE_STEP
   return [
@@ -368,7 +368,7 @@ const stepAside = (sign: 1 | -1): FootTarget[] => {
  * with room to spare (`stopAt`, from the middle of the space; `z`: further back for a dog
  * in front).
  */
-const stopForSideStep = (sign: 1 | -1, z = 0) => ({ x: sign === RIGHT ? -0.35 : 0.04, z })
+export const stopForSideStep = (sign: 1 | -1, z = 0) => ({ x: sign === RIGHT ? -0.35 : 0.04, z })
 
 /**
  * The walk away at the end of an exercise taken round the cards ahead instead, bending

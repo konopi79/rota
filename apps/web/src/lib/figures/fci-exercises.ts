@@ -1,6 +1,7 @@
 import type { Exercise, ExerciseStep } from './exercise'
 import { EXERCISES } from './exercises'
-import { turnOnTheSpot } from './roz-exercises'
+import { LEFT, RIGHT, stepAside, stopForSideStep } from './ro123-exercises'
+import { stepsBack, stepsForward, turnOnTheSpot, turnSteps } from './roz-exercises'
 
 /**
  * FCI exercises (plan R19), from the national ones where the FCI rules describe the same
@@ -53,6 +54,12 @@ const SAME: [string, string, string?][] = [
   // "Tým společně provede těsný obrat o 180°" — within 50 cm (§4.6).
   ['105', 'Z-008'],
   ['106', 'Z-009'],
+  // 107 / 108 Smyčka vpravo / vlevo: "Tým společně provede těsný obrat (smyčku) vpravo tak, že
+  // překříží původní směr trasy. Úhel obratu (smyčky) musí být mezi 180° a 270°." On the spot as
+  // in the FCI video (the author), 225° as the card draws it — Z-028 / Z-029; the way on crosses
+  // the way in where the team turned.
+  ['107', 'Z-028'],
+  ['108', 'Z-029'],
   ['109', 'Z-011'],
   ['110', 'Z-012'],
   ['111', 'Z-013'],
@@ -64,6 +71,12 @@ const SAME: [string, string, string?][] = [
   ['117', 'Z-016'],
   ['118', 'Z-017', 'slow'],
   ['118', 'Z-017', 'fast'],
+  // 119 / 120 Spirála vpravo / vlevo: "Tým nejdříve obejde tři kužely po jejich levé straně,
+  // následně obejde bližší dva kužely, poté první kužel" — the national spiral's way (its
+  // execution diagram), out between the first and the second cone square to the way in, as in
+  // the FCI video. The cones 1.5 m apart ("1,5 – 2 m").
+  ['119', 'Z-018'],
+  ['120', 'Z-019'],
   // "první kužel se vždy nachází po jeho levé straně" — as the national slaloms.
   ['121', 'Z-020'],
   ['122', 'Z-021'],
@@ -211,6 +224,8 @@ const R208: Exercise = {
 const INTO_THE_SQUARE: Record<string, number> = {
   '105': 0.15,
   '106': 0.5,
+  '107': 0.4,
+  '108': 0.4,
   '109': 0.4,
   '110': 0.4,
   '113': 0.15,
@@ -251,6 +266,266 @@ const R416 = (() => {
   }
 })()
 
+/** The team arrives and stops, the dog sitting at heel (FCI: "pes si sedá u nohy psovoda"). */
+const stopSit = (card: 'side' | 'ahead' = 'side'): ExerciseStep[] => [
+  { walk: 3.5, caption: card === 'ahead' ? 'approachTurn' : 'approach' },
+  { stop: true, caption: card === 'ahead' ? 'stopAhead' : 'stop' },
+  { dog: 'sit', caption: 'sit' },
+  { wait: 1, caption: 'basePosition' },
+]
+
+/** The team walks on to the next card. */
+const leave = (card: 'side' | 'ahead' = 'side'): ExerciseStep => ({
+  walk: 3,
+  pace: 'normal',
+  caption: card === 'ahead' ? 'leaveTurn' : 'leave',
+})
+
+/**
+ * 305 Stop, 1 krok vzad, sedni, 2 kroky vzad, sedni: "Psovod udělá jeden krok vzad a zastaví se.
+ * Pes se pohybuje současně a rovnoběžně s psovodem a jakmile psovod zastaví, pes zaujímá pozici
+ * sedni. Poté psovod udělá dva kroky vzad" — the dog backing at heel as in 2-228.
+ */
+const R305: Exercise = {
+  code: '305',
+  ruleset: 'FCI',
+  steps: [
+    ...stopSit(),
+    { footwork: stepsBack(1), caption: 'oneStepBackHeelSit' },
+    { dog: 'sit', caption: 'oneStepBackHeelSit' },
+    { wait: 1, caption: 'basePosition' },
+    { footwork: stepsBack(2), caption: 'twoStepsBackHeelSit' },
+    { dog: 'sit', caption: 'twoStepsBackHeelSit' },
+    { wait: 1, caption: 'basePosition' },
+    leave(),
+  ],
+}
+
+/**
+ * 413 Stop, 1 krok zpět, stůj, 2 kroky zpět, sedni, 3 kroky zpět, lehni: 1-107's steps and
+ * positions, backwards — the dog backing at heel ("Pes se pohybuje současně a rovnoběžně s
+ * psovodem"), stopping into the position as the handler stops.
+ */
+const R413: Exercise = {
+  code: '413',
+  ruleset: 'FCI',
+  steps: [
+    ...stopSit(),
+    { footwork: stepsBack(1), caption: 'oneStepBackHeelStand' },
+    { wait: 1, caption: 'standHold' },
+    { footwork: stepsBack(2), caption: 'twoStepsBackHeelSit' },
+    { dog: 'sit', caption: 'twoStepsBackHeelSit' },
+    { wait: 1, caption: 'basePosition' },
+    { footwork: stepsBack(3), caption: 'threeStepsBackHeelDown' },
+    { dog: 'down', caption: 'threeStepsBackHeelDown' },
+    { wait: 1, caption: 'downHold' },
+    leave(),
+  ],
+}
+
+/**
+ * Side steps (302, 401–404): 1-102's step straight out and the other foot closing up, once or
+ * twice. `walking` (302, 401, 402 "Za stálého pohybu"): out of the walk with no stop — its last
+ * step with the foot away from the step, as 1-102 — and walking on; otherwise (403, 404 "Psovod
+ * se zastaví … udělá dva úkroky … a zastaví") from the base position, the dog sitting again.
+ * The team passes the card on the side away from the step, as 1-102 / 2-207 (FCI says nothing).
+ */
+const sideSteps = (code: string, sign: 1 | -1, count: 1 | 2, walking: boolean): Exercise => {
+  const caption = walking
+    ? sign === RIGHT
+      ? 'sideStepsWalkingRight'
+      : 'sideStepsWalkingLeft'
+    : sign === RIGHT
+      ? 'sideStepsRight'
+      : 'sideStepsLeft'
+  const steps: ExerciseStep[] = Array.from({ length: count }, (_, i) => ({
+    footwork: stepAside(sign),
+    ...(walking && i === 0 && { fromFoot: sign === RIGHT ? (0 as const) : (1 as const) }),
+    caption,
+  }))
+  const on: ExerciseStep = {
+    walk: 3,
+    pace: 'normal',
+    caption: sign === RIGHT ? 'passCardLeft' : 'passCardRight',
+  }
+  return {
+    code,
+    ruleset: 'FCI',
+    card: 'ahead',
+    // Into FCI's square before the card, as 301, 303, 304 (`INTO_THE_SQUARE`) — stepping left
+    // out of the walk, the handler walks on towards the card until the step: not as near.
+    stopAt: stopForSideStep(sign, walking && sign === LEFT ? 0.3 : SIDE_STEPS_NEARER),
+    steps: walking
+      ? [{ walk: 3.5, caption: 'approachTurn' }, ...steps, on]
+      : [
+          ...stopSit('ahead'),
+          ...steps,
+          { dog: 'sit', caption: 'finishSit' },
+          { wait: 1, caption: 'basePosition' },
+          on,
+        ],
+  }
+}
+
+/**
+ * 414 / 415 Stop, 90° vpravo / vlevo, stůj, … sedni, … lehni: "psovod provede na místě obrat o
+ * 90° vpravo a zastaví. Pes jej následuje …, jakmile psovod zastaví, pes zaujímá pozici stůj" —
+ * then sedni, then lehni, as the card draws it (the Czech title says "stůj" twice). Each turn in
+ * Z-030's three steps; "Nový směr postupu je 90° vlevo od původního směru trasy".
+ */
+const threeTurns = (code: string, sign: 1 | -1): Exercise => {
+  const side = sign === RIGHT ? 'Right' : 'Left'
+  // Turning right, on the spot (the handler pivoting, the dog round outside at heel): in the
+  // three steps the handler drifted aside out of the square (the author). Turning left, the
+  // three steps.
+  const turn = (sign: 1 | -1, caption: string): ExerciseStep[] =>
+    sign === RIGHT
+      ? [
+          { turn: 90, radius: 0, caption },
+          { stop: true, caption },
+        ]
+      : [{ footwork: turnSteps(sign), caption }]
+  return {
+    code,
+    ruleset: 'FCI',
+    card: 'ahead',
+    // Into the square before the card, as near it as it stays clear (measured as
+    // `INTO_THE_SQUARE`; at the edge of the square they were too far, the author): 0.8 m before
+    // it turning right, 0.7 m turning left.
+    stopAt: sign === RIGHT ? { x: 0, z: 0.4 } : { x: 0, z: 0.5 },
+    steps: [
+      ...stopSit('ahead'),
+      ...turn(sign, `turn${side}90Stand`),
+      { wait: 1, caption: 'standHold' },
+      ...turn(sign, `turn${side}90Sit`),
+      { dog: 'sit', caption: `turn${side}90Sit` },
+      { wait: 1, caption: 'basePosition' },
+      ...turn(sign, `turn${side}90Down`),
+      { dog: 'down', caption: `turn${side}90Down` },
+      { wait: 1, caption: 'downHold' },
+      leave('ahead'),
+    ],
+  }
+}
+
+/**
+ * 317 / 318 / 419 Odložení do stoje / lehu / sedu, okolo psa: "Za pohybu je pes velen do pozice
+ * stůj, zatímco psovod pokračuje bez zastavení vpřed, obchází psa zepředu, vrací se do výchozí
+ * pozice po boku psa a zastaví. Pes zůstává stát, dokud tým nepokračuje vpřed." The dog stops
+ * into its position within a body length as on 3-310–3-312 (`dropsDog`), the handler goes on
+ * round it (`roundLeftDog`).
+ */
+const dropAndRound = (code: string, posture: 'stand' | 'down' | 'sit'): Exercise => ({
+  code,
+  ruleset: 'FCI',
+  steps: [
+    { walk: 3.5, caption: 'approach' },
+    { walk: 0.2, dropsDog: posture, caption: DROP_CAPTION[posture] },
+    { roundLeftDog: true, caption: 'roundDogFront' },
+    { wait: 0.6, caption: HOLD_CAPTION[posture] },
+    leave(),
+  ],
+})
+const DROP_CAPTION = { sit: 'dropSit', down: 'dropDown', stand: 'dropStand' } as const
+const HOLD_CAPTION = { sit: 'basePosition', down: 'downHold', stand: 'standHold' } as const
+
+/**
+ * 405 Otočka od sebe: "Za stálého pohybu provede tým těsnou otočku o 180° přičemž se (pes i
+ * psovod) otáčí směrem od sebe a následně pokračují v opačném směru. Tato karta mění stranu
+ * vedení psa." 2-232 the other way round: the handler turns right on the spot, away from the
+ * dog, the dog left round its middle, away from the handler, moving a little out — each turns
+ * its back on the other and the dog ends at the right leg.
+ */
+const R405: Exercise = {
+  code: '405',
+  ruleset: 'FCI',
+  card: 'ahead',
+  // Into the square before the card as 313 / 314 (`INTO_THE_SQUARE`).
+  stopAt: { x: 0, z: 0.75 },
+  steps: [
+    { walk: 3.5, caption: 'approachTurn' },
+    {
+      turn: 180,
+      radius: 0,
+      dogTurns: { way: LEFT, pivot: { x: 0, z: 0 }, out: 0.15 },
+      bySide: true,
+      caption: 'turnAwayFromEachOther',
+    },
+    { walk: 3, pace: 'normal', caption: 'leaveTurnRight' },
+  ],
+}
+
+/**
+ * 412 3 kroky vzad: "Za pohybu psovod udělá minimálně tři kroky vzad. Pes jej následuje a
+ * pohybuje se současně a rovnoběžně s ním. Jakmile tým dokončí cvik, pokračuje vpřed." 3-306's
+ * three steps back with the dog backing at heel — out of the walk, the handler only halting to
+ * step back, the dog not sitting.
+ */
+const R412: Exercise = {
+  code: '412',
+  ruleset: 'FCI',
+  steps: [
+    { walk: 3.5, caption: 'approach' },
+    { stop: true, caption: 'threeStepsBackWalking' },
+    // The feet come to rest side by side before stepping back.
+    { wait: 0.5, caption: 'threeStepsBackWalking' },
+    { footwork: stepsBack(3), caption: 'threeStepsBackWalking' },
+    { wait: 0.4, caption: 'threeStepsBackWalking' },
+    leave(),
+  ],
+}
+
+/**
+ * 211 / 212 Stop, 1 krok vpřed, 90° vpravo / vlevo v bok, 1 krok, přivolání, stop: "Pes zůstává
+ * sedět, zatímco psovod provede 1 krok vpřed, zastaví se, následně provede obrat vpravo v bok o
+ * 90° a udělá opět 1 krok vpřed v novém směru a zastaví se. … Následně psovod přivolává psa,
+ * který usedá u stejné nohy psovoda jako na začátku cviku." 2-230 / 2-231 with the step forward
+ * first — the turn in Z-030's three steps ("Krok … může být proveden buď rovnou nebo se psovod
+ * otočí na místě a poté provede 1 krok"); a step ahead, turning left the handler is clear of
+ * the dog's head.
+ */
+const stepTurnStepRecall = (code: string, sign: 1 | -1): Exercise => ({
+  code,
+  ruleset: 'FCI',
+  card: 'ahead',
+  // As near the card as it stays clear (measured as `INTO_THE_SQUARE`). After the step towards
+  // it and a turn right the dog is called to the left leg — the side towards the card: the
+  // handler stops in the right of the square (the dog before the card), 0.9 m before it, and
+  // turns away from it. Straight before it they had to stop 1.4 m off, at the edge of the
+  // square (the author).
+  stopAt: sign === RIGHT ? { x: -0.5, z: 0.3 } : { x: 0, z: 0.2 },
+  steps: [
+    ...stopSit('ahead'),
+    { dogStays: true, caption: 'staySit' },
+    { footwork: stepsForward(1), caption: 'oneStepAlone' },
+    {
+      footwork: turnSteps(sign),
+      caption: sign === RIGHT ? 'turnRight90Alone' : 'turnLeft90Alone',
+    },
+    { footwork: stepsForward(1), caption: 'oneStepAlone' },
+    { recall: 'heel', caption: 'recallBase' },
+    { dog: 'sit', caption: 'finishSit' },
+    { wait: 1, caption: 'basePosition' },
+    leave('ahead'),
+  ],
+})
+
+/**
+ * 221 Rušivé vlivy: "Dva kužely jsou umístěny 2,5 - 3 m od sebe. Vzdálenost dalších dvou rušivých
+ * prvků je 1,5 - 2 m od sebe. Tým … kolem kuželů provede kompletní figuru 8, přičemž spojnici mezi
+ * rušivými prvky překročí celkem 3x." 1-117's figure eight — round the two on its long diagonal
+ * (3 m), three times between the two on its short one (1.5 m) — with cones where the team goes
+ * round and the distractions (in bowls) where it passes between.
+ */
+const R221 = (() => {
+  const from = fci('221', national('1-117'))
+  const [left, right, near, far] = from.bowls!
+  return { ...from, cones: [left!, right!], bowls: [near!, far!] }
+})()
+
+/** How much nearer the card the side steps begin than nationally, metres (301, 303, 304's). */
+const SIDE_STEPS_NEARER = 0.75
+
 /** The national exercise as FCI's card, a little nearer its card where it has to be. */
 const same = (code: string, from: string, variant?: string): Exercise => {
   const e = fci(code, national(from, variant))
@@ -271,4 +546,21 @@ export const FCI_EXERCISES: Exercise[] = [
   sitThenFront('209', 'D0a'),
   sitThenFront('210', 'D0b'),
   R208,
+  R305,
+  R413,
+  sideSteps('302', LEFT, 1, true),
+  sideSteps('401', RIGHT, 2, true),
+  sideSteps('402', LEFT, 2, true),
+  sideSteps('403', RIGHT, 2, false),
+  sideSteps('404', LEFT, 2, false),
+  threeTurns('414', RIGHT),
+  threeTurns('415', LEFT),
+  dropAndRound('317', 'stand'),
+  dropAndRound('318', 'down'),
+  dropAndRound('419', 'sit'),
+  R405,
+  R412,
+  stepTurnStepRecall('211', RIGHT),
+  stepTurnStepRecall('212', LEFT),
+  R221,
 ].sort((a, b) => a.code.localeCompare(b.code))

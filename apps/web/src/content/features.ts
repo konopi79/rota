@@ -20,7 +20,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'fci-animations'
+export const LATEST_FEATURE_ID = 'fci-animations-more'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -45,6 +45,11 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
         id: 'main-parts',
         title: 'Hlavní a vedlejší části cviku',
         desc: 'U národních karet vidíš, která část cviku je hlavní a která vedlejší – v detailu karty i v popisu pod kartou v balíčku. Chybí-li hlavní část, vyplatí se cvik zopakovat; u vedlejší opakováním nic nezískáš.',
+      },
+      {
+        id: 'fci-animations-more',
+        title: 'Další animace karet FCI',
+        desc: 'Animaci má dalších 21 karet FCI-ROB, sestavených podle oficiálního videa FCI: smyčky na místě (107, 108), spirály (119, 120), rušivé vlivy (221), úkroky za chůze i ze stoje (302, 401–404), kroky vzad (305, 412, 413), obraty na místě s polohami (414, 415), odložení za pochodu s obejitím psa (317, 318, 419), otočka od sebe (405) a krok, obrat, krok a přivolání (211, 212).',
       },
       {
         id: 'fci-animations',

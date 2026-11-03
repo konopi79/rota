@@ -105,6 +105,14 @@ export type ExerciseStep = { caption: string } & (
    * about there — the dog at heel again, and it goes on from there with the handler.
    */
   | { backToDog: true; pace?: HandlerPace }
+  /**
+   * Round the dog left on the move and back beside it (FCI 317, 318, 419: "psovod pokračuje bez
+   * zastavení vpřed, obchází psa zepředu, vrací se do výchozí pozice po boku psa a zastaví"):
+   * on from where the handler is, across in front of the dog, down its far side, round behind
+   * it and up to the handler's place at heel — stopping there, the dog still in its position
+   * until the team walks on.
+   */
+  | { roundLeftDog: true; pace?: HandlerPace }
   /** (Worked out from `backToDog`.) The handler beside the dog again: it is at heel. */
   | { dogJoins: true }
   /**
@@ -379,6 +387,35 @@ const RECALL_WALK = 0.7
 const RECALL_BRAKING = 4
 /** Back beside the dog left, the handler stands this much further from it than at heel, metres. */
 const BESIDE_DOG_ROOM = 0.04
+/**
+ * The handler side-stepping towards the dog at heel (`sidle`): the dog goes over no faster than
+ * this on average, m/s — its paws carry it so far sideways — and takes at least this long, s;
+ * a foot may come this near where the dog was before it is further over, metres.
+ */
+const SIDLE_SPEED = 0.3
+const SIDLE_MIN_TIME = 1
+const SIDLE_SLACK = 0.25
+/** Out of a walk it begins this share of the way over the walk's last this many metres. */
+const SIDLE_EARLY = 0.8
+const SIDLE_EARLY_OVER = 1.5
+
+/**
+ * How far steps set by hand take the handler aside towards the dog at heel (metres, + left), if
+ * that is what they do — a side step towards it (`sidle`) — else 0.
+ */
+const sidleWay = (footwork: FootTarget[], place: TeamControls['place']): number => {
+  const last = footwork.at(-1)!
+  const way = last.x - (last.foot ? -0.1 : 0.1)
+  const heel = place === 'left' ? 1 : place === 'right' ? -1 : 0
+  const aside = Math.abs(last.x) > Math.abs(last.z + 0.08)
+  return heel && aside && Math.sign(way) === heel ? way : 0
+}
+/**
+ * Round a dog left on the move (`roundLeftDog`), from its middle, metres: how far ahead of it
+ * the handler crosses, beside it and behind it they pass (`AROUND_DOG`'s round a dog at heel),
+ * and how far they walk straight up into their place beside it.
+ */
+const ROUND_DOG = { ahead: 0.95, beside: 0.7, behind: 1.2, walkIn: 0.5 }
 /**
  * A jump the dog is sent over stands at most this far to the side of the team's way, metres
  * (3-313: 2.4 m) — another card's, 3 m off, the dog went over instead.
@@ -906,6 +943,20 @@ export class ExercisePlayer {
   private footRest = 0
   /** How far out to the dog's side the handler's foot on that side stood at first. */
   private footRestOut = 0
+  /**
+   * The handler side-stepping towards the dog at heel (FCI 302, 402, 404; 2-229): the dog going
+   * over ahead of the steps, on the field — from where, to where, how far along (s) and over
+   * how long — and how far over it must be before each step's foot lifts (share of the way).
+   */
+  private sidle: {
+    from: Pose
+    to: Pose
+    time: number
+    duration: number
+    before: number[]
+  } | null = null
+  /** …how far over the body is, of the way (it never goes back). */
+  private sidleOver = 0
   private frontAim = { x: 0, z: 0 }
   private frontDog = { x: 0, z: 0 }
   /** Where the dog's body is in the team's frame, before it lies down over its forelegs. */
@@ -1237,8 +1288,45 @@ export class ExercisePlayer {
     )
   }
 
+  /**
+   * Round the dog left on the move (`roundLeftDog`): the way round it from where the handler is,
+   * worked out from where the dog stops — still stopping, where it will.
+   */
+  private expandRoundLeftDog() {
+    const step = this.steps[this.index] as Extract<ExerciseStep, { roundLeftDog: true }>
+    const d = this.dropping
+    const dog = d
+      ? forward(d.from, d.went + (d.speed * d.speed) / (2 * DROP_BRAKING))
+      : { ...this.left!, heading: this.leftWay }
+    const heel = PLACES[this.dogPlace]
+    // The dog's side (+1 left of the handler): the way round mirrored for the right.
+    const side = Math.sign(heel.x) || 1
+    const base = { x: -heel.x - side * BESIDE_DOG_ROOM, z: -heel.z }
+    const last = ROUND_DOG.walkIn
+    // In the dog's frame (+x its left, +z ahead): ahead of it, beside it, behind it, in line.
+    const round = [
+      { x: 0, z: ROUND_DOG.ahead, heading: (side * Math.PI) / 2 },
+      { x: side * ROUND_DOG.beside, z: 0, heading: Math.PI },
+      { x: 0, z: -ROUND_DOG.behind, heading: (-side * Math.PI) / 2 },
+      { x: base.x, z: base.z - last, heading: 0 },
+    ].map((p) => inTeam(this.team, onField(dog, p)))
+    const { caption, pace } = step
+    this.origins.splice(this.index, 1, ...Array(5).fill(this.origins[this.index]))
+    this.steps.splice(
+      this.index,
+      1,
+      { course: towards(...round), parts: [0, round.length], caption, ...(pace && { pace }) },
+      { walk: last, caption, ...(pace && { pace }) },
+      { stop: true, caption: 'backAtDog' },
+      { wait: 0.8, caption: 'backAtDog' },
+      { dogJoins: true, caption: 'backAtDog' },
+    )
+  }
+
   step(dt: number): ExerciseFrame {
     if (this.steps[this.index] && 'backToDog' in this.steps[this.index]!) this.expandBackToDog()
+    if (this.steps[this.index] && 'roundLeftDog' in this.steps[this.index]!)
+      this.expandRoundLeftDog()
     // The way to a place, worked out from where the team is as it sets off.
     if (this.steps[this.index] && 'walkTo' in this.steps[this.index]!) this.expandWalkTo()
     // Out of the walk on the other foot: that one closes up level first (`closeUp`).
@@ -1292,6 +1380,15 @@ export class ExercisePlayer {
       const braking = brakes ? speed / SETTLE_RATE : 0
       const toGo = current.walk - (travelled - this.stepStart)
       done = toGo <= braking
+      // A side step towards the dog coming out of the walk: the dog, expecting it, begins to
+      // make room over the last metre (`sidle`).
+      if (next && 'footwork' in next && next.fromFoot !== undefined) {
+        const way = sidleWay(next.footwork, this.dogPlace)
+        if (way) {
+          const u = Math.min(1, Math.max(0, (SIDLE_EARLY_OVER - toGo) / SIDLE_EARLY_OVER))
+          controls.dogOut = Math.abs(way) * SIDLE_EARLY * u * u * (3 - 2 * u)
+        }
+      }
       // Into steps set by hand the handler slows to a stand first — the steps then go on at
       // once, with no pause and the dog left standing.
       if (next && 'footwork' in next && !outOfWalk && done) {
@@ -1651,6 +1748,31 @@ export class ExercisePlayer {
         this.footworkTime = 0
         this.footworkSpeed = speed
         this.footworkDuration = current.footwork.length * STEP_TIME
+        this.sidle = null
+        // Stepping aside towards the dog at heel, the dog goes over first, smoothly and no
+        // faster than its paws carry it sideways, and each foot lifts once there is room for it
+        // (it went over in bursts as each foot came, its body waiting for its paws — the
+        // author, FCI 302 / 402).
+        const way = sidleWay(current.footwork, this.dogPlace)
+        if (way && feet) {
+          const from = onField(this.team, this.dogAt)
+          const to = onField(this.footworkTo, PLACES[this.dogPlace])
+          const far = Math.hypot(to.x - from.x, to.z - from.z)
+          const duration = Math.max(SIDLE_MIN_TIME, (1.5 * far) / SIDLE_SPEED)
+          // How far over each foot steps (from where it stands), and so how far over the dog
+          // must be by then — of its way over from where it is (it may have begun already).
+          const already = Math.abs(this.dogAt.x) - Math.abs(PLACES[this.dogPlace].x)
+          const before = current.footwork.map((t) => {
+            const out = Math.abs(t.x - (t.foot ? -0.1 : 0.1))
+            const left = Math.abs(way) - already
+            return Math.min(1, Math.max(0, (out - SIDLE_SLACK - already) / Math.max(left, 0.01)))
+          })
+          this.sidle = { from, to: { ...to, heading: from.heading }, time: 0, duration, before }
+          this.sidleOver = 0
+          // The body over the feet as they step (out of a walk it glides): no sooner than the
+          // dog lets them.
+          this.footworkDuration = Math.max(this.footworkDuration, duration)
+        }
       }
       this.footworkTime += dt
       const time = Math.min(1, this.footworkTime / this.footworkDuration)
@@ -1684,7 +1806,18 @@ export class ExercisePlayer {
         const a = from.z - to.z
         const b = this.footworkSpeed + OUT_OF_WALK_SETTLE * a
         const z = to.z + (a + b * t) * Math.exp(-OUT_OF_WALK_SETTLE * t)
-        const x = from.x + (to.x - from.x) * glide
+        // Going over with the dog (`sidle`) the feet wait for it, and the body goes over as they
+        // do — not ahead of the foot still planted.
+        let over = glide
+        if (this.sidle && feet && Math.abs(to.x - from.x) > 1e-3) {
+          const shares = feet.map((f, i) => {
+            const aside = inTeam(base, { ...f, heading: 0 }).x - (i ? -0.1 : 0.1)
+            return aside / (to.x - from.x)
+          })
+          const share = Math.min(1, Math.max(0, (shares[0]! + shares[1]!) / 2))
+          over = this.sidleOver = Math.max(this.sidleOver, share)
+        }
+        const x = from.x + (to.x - from.x) * over
         this.team = { ...onField(base, { x, z, heading: 0 }), heading: base.heading }
       }
       const moved = Math.hypot(this.team.x - this.footworkFrom.x, this.team.z - this.footworkFrom.z)
@@ -1697,11 +1830,31 @@ export class ExercisePlayer {
       if (this.dogPlace !== 'front' || this.posture === 'stand' || getsUp) this.posture = 'stand'
       const target = current.footwork[Math.min(this.footworkIndex, current.footwork.length - 1)]!
       const at = onField(this.footworkBase, { x: target.x, z: target.z, heading: target.yaw })
+      // Going over with the dog: the next foot lifts once the dog is far enough over for it.
+      let sidled = 1
+      if (this.sidle) {
+        const sd = this.sidle
+        sd.time += dt
+        sidled = ease(Math.min(1, sd.time / sd.duration))
+      }
+      const waits =
+        this.sidle !== null &&
+        this.footworkIndex < current.footwork.length &&
+        sidled < this.sidle.before[this.footworkIndex]!
       controls = {
         dog: this.posture === 'stand' ? dogGait(this.pace) : this.posture,
         place: this.dogPlace,
         handler: 'stand',
-        footstep: { foot: target.foot, x: at.x, z: at.z, yaw: at.heading },
+        // (Waiting, that foot stays where it stands.)
+        footstep:
+          waits && feet?.[target.foot]
+            ? {
+                foot: target.foot,
+                x: feet[target.foot]!.x,
+                z: feet[target.foot]!.z,
+                yaw: feet[target.foot]!.yaw,
+              }
+            : { foot: target.foot, x: at.x, z: at.z, yaw: at.heading },
       }
       // A dog in front keeps its distance from the handler's forward foot, not from the body
       // between the feet: following the handler back, it goes where that foot goes, smoothly
@@ -1712,13 +1865,29 @@ export class ExercisePlayer {
       // has moved; towards it, it moves out of the foot's way as the foot comes.
       if ((this.dogPlace === 'left' || this.dogPlace === 'right') && feet && !turning) {
         const side = this.dogPlace === 'left' ? 1 : -1
+        const outOf = (f: { x: number; z: number }) =>
+          side * inTeam(this.team, { ...f, heading: 0 }).x
         // Where that foot is going counts too: the dog makes room as the foot sets off.
-        const out = Math.max(
-          ...[...feet, at].map((f) => side * inTeam(this.team, { ...f, heading: 0 }).x),
-        )
+        const out = Math.max(...[...feet, at].map(outOf))
         controls.dogOut = Math.max(0, out - this.footRestOut)
+        // Stepping towards it, it goes over ahead of the steps (`sidle`), on the field.
+        // Aside it goes its own smooth way over; along it keeps level with the team as at heel.
+        if (this.sidle) {
+          const base = this.footworkBase
+          const from = inTeam(base, this.sidle.from)
+          const to = inTeam(base, this.sidle.to)
+          const heel = inTeam(base, onField(this.team, PLACES[this.dogPlace]))
+          const there = onField(base, {
+            x: from.x + (to.x - from.x) * sidled,
+            z: heel.z,
+            heading: 0,
+          })
+          controls.dogAt = inTeam(this.team, { ...there, heading: this.team.heading })
+          controls.dogSidles = true
+        }
       }
-      let followed = true
+      // (…and the steps are done once the dog going over with them is there too.)
+      let followed = sidled >= 1
       // Still sitting or getting up, it stays where it is.
       const onLegs = this.posture === 'stand' && (this.last?.feet.dogOnLegs ?? true)
       if (this.dogPlace === 'front' && feet && !onLegs) {
