@@ -93,6 +93,10 @@ No Next/Turbopack plugin.
 - The SW precaches with `cleanURLs` (`/trida/ro1` → `trida/ro1.html`) and **ignores all
   query parameters** — the deck lives in `?trida=…&seed=…`, client navigations add
   `?_rsc=…`. A page whose _content_ depended on the query would need a different rule.
+- **Pages and RSC payloads are network-first** (3 s timeout, then the precache): served from
+  the precache first, a plain reload showed the old version until the one after. Both kinds
+  together, so a page and the data its links load are always of one build. Scripts, styles and
+  card images stay precache-first.
 - Registered only in production (`components/pwa.tsx`); dev has no `sw.js`.
 - `skipWaiting` + `clientsClaim`: a new deploy takes over on the next load. nginx serves
   `/sw.js` and the manifest `no-cache`, the manifest with its proper MIME type.
