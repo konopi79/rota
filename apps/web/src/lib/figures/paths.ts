@@ -179,6 +179,18 @@ export const DOG_AROUND_HANDLER: Path = pathFromCurve(
 )
 
 /**
+ * The same round the handler, but closer behind them, metres: with the card standing behind the
+ * handler (FCI 322, a recall card before which the handler has turned about) the dog went round
+ * near it.
+ */
+export const DOG_AROUND_HANDLER_CLOSE: Path = pathFromCurve(
+  chain(bezier([0, FRONT], [0, FRONT - 0.15], [-0.45, 0.4], [-0.45, 0]), (u) => {
+    const angle = Math.PI / 2 + u * (Math.PI / 2 + 1.2)
+    return { x: -0.45 * Math.sin(angle), z: 0.45 * Math.cos(angle) }
+  }),
+)
+
+/**
  * Z-023 "Pes oběhne psovoda zepředu" (p. 26): from heel the dog goes ahead and across in front
  * of the handler, then round the handler's right side and behind them back into heel — the
  * same ellipse round the handler as for D0a.

@@ -5,6 +5,7 @@ import {
   AROUND_DOG,
   DOG_AROUND_FROM_HEEL,
   DOG_AROUND_HANDLER,
+  DOG_AROUND_HANDLER_CLOSE,
   DOG_BEHIND_TO_RIGHT,
   DOG_FRONT_TO_RIGHT,
   DOG_TO_FRONT,
@@ -87,6 +88,12 @@ export type ExerciseStep = { caption: string } & (
    */
   | { dogStays: true }
   /**
+   * The dog left, facing the handler, backs away from them this far, metres (FCI 422 "velí
+   * psovi chůzi vzad (couvání) alespoň o 1 délku těla psa"): it gets up and walks backwards,
+   * and is left there standing.
+   */
+  | { dogBacks: number }
+  /**
    * The dog called to the standing handler from where it was left (`dogStays`): into the front
    * (`front`, 2-214), or to the left leg (`heel`: round from the front to a handler facing it,
    * 2-216; up from behind to one with their back to it, 2-215). It gets up and runs.
@@ -98,6 +105,11 @@ export type ExerciseStep = { caption: string } & (
        * position the next step gives it.
        */
       recall: 'front' | 'heel' | 'halfway'
+      /**
+       * Over the jump standing off the way between them (FCI 421 "přivolává psa přes překážku",
+       * its near upright 2 m off the line): to it, over it, and on to the handler.
+       */
+      overJump?: true
     }
   /**
    * The handler back to the dog left (2-213 "se k němu vrací a postaví se vedle psa tak, jak
@@ -251,7 +263,13 @@ const otherSide = (place: TeamControls['place']): TeamControls['place'] =>
  * of the handler, or at heel.
  */
 export type DogPath =
-  'toFront' | 'aroundHandler' | 'toHeel' | 'aroundFromHeel' | 'behindToRight' | 'frontToRight'
+  | 'toFront'
+  | 'aroundHandler'
+  | 'aroundHandlerClose'
+  | 'toHeel'
+  | 'aroundFromHeel'
+  | 'behindToRight'
+  | 'frontToRight'
 /**
  * `even`: the dog goes the whole way at one pace, the pace of its tightest bend, rather than
  * slowing into each bend and picking up after it (1-125, the author).
@@ -259,6 +277,7 @@ export type DogPath =
 const DOG_PATHS: Record<DogPath, { path: Path; ends: TeamControls['place']; even?: boolean }> = {
   toFront: { path: DOG_TO_FRONT, ends: 'front' },
   aroundHandler: { path: DOG_AROUND_HANDLER, ends: 'left' },
+  aroundHandlerClose: { path: DOG_AROUND_HANDLER_CLOSE, ends: 'left' },
   toHeel: { path: DOG_TO_HEEL, ends: 'left' },
   aroundFromHeel: { path: DOG_AROUND_FROM_HEEL, ends: 'left' },
   behindToRight: { path: DOG_BEHIND_TO_RIGHT, ends: 'right' },
@@ -316,9 +335,11 @@ const SLOWING_AHEAD = 3
  * pace along its way is up to `JUMP_PACE` times as fast round the bar (`toBar` metres in).
  */
 const JUMP_PACE = 2.2
-const jumpPace = (route: Path, toBar: number): number[] => {
+const jumpPace = (route: Path, toBars: number[]): number[] => {
   const steps = 200
-  const pace = (s: number) => 1 + (JUMP_PACE - 1) * Math.exp(-(((s + toBar) / 1.4) ** 2))
+  // (Over two jumps, FCI 320, round each.)
+  const pace = (s: number) =>
+    1 + (JUMP_PACE - 1) * Math.max(...toBars.map((toBar) => Math.exp(-(((s + toBar) / 1.4) ** 2))))
   // Time (in team metres) to each point of the dog's way, at that pace…
   const time = [0]
   for (let i = 1; i <= steps; i++) {
@@ -387,6 +408,10 @@ const RECALL_WALK = 0.7
 const RECALL_BRAKING = 4
 /** Back beside the dog left, the handler stands this much further from it than at heel, metres. */
 const BESIDE_DOG_ROOM = 0.04
+/** Called over a jump on the run (`dogChases`), the dog heads past its middle by this much, metres. */
+const CHASE_PAST_BAR = 0.6
+/** Backing away from the handler (`dogBacks`), the dog walks this fast, m/s. */
+const DOG_BACKS_SPEED = 0.35
 /**
  * The handler side-stepping towards the dog at heel (`sidle`): the dog goes over no faster than
  * this on average, m/s — its paws carry it so far sideways — and takes at least this long, s;
@@ -992,6 +1017,9 @@ export class ExercisePlayer {
    * going down back over them — the paws stay where it stopped.
    */
   private leftOnTheMove = false
+  /** Left, backing away from the handler (`dogBacks`): how far it has still to go, metres. */
+  private backsLeft = 0
+  private leftBacking = false
   /** The handler beside the dog left again: it goes with them once they walk on. */
   private joining = false
   /** The dog going its own way at the pace of a recall (`recall`), not a trot. */
@@ -1013,7 +1041,12 @@ export class ExercisePlayer {
    * Called while the handler runs on (`dogChases`): where the dog's way has got to on the field
    * (its body follows) and how fast it goes.
    */
-  private chasing: { at: Pose | null; speed: number } | null = null
+  private chasing: {
+    at: Pose | null
+    speed: number
+    /** A jump between it and the handler (FCI 420): it runs over its middle first. */
+    over?: Bar | null
+  } | null = null
   /** Sent off to a place (`sendTo`): it is left there once it stops. */
   private sentOff = false
   /** Left on the move (`dropsDog`): where it began to stop, how far it has come and how fast. */
@@ -1196,6 +1229,14 @@ export class ExercisePlayer {
     return undefined
   }
 
+  /** The nearest jump to a dog at `dog`, its bar the way the dog goes over it from there. */
+  private barToward(dog: Pose): Bar | undefined {
+    const near = [...this.bars].sort(
+      (a, b) => Math.hypot(a.x - dog.x, a.z - dog.z) - Math.hypot(b.x - dog.x, b.z - dog.z),
+    )[0]
+    return near && { ...near, heading: near.heading + (alongBar(near, dog) < 0 ? 0 : Math.PI) }
+  }
+
   /** The jump between a dog at `dog` and a handler at `handler`, if the way crosses its bar. */
   private barBetween(dog: Pose, handler: Pose): Bar | undefined {
     for (const b of this.bars) {
@@ -1207,6 +1248,24 @@ export class ExercisePlayer {
         return { ...b, heading: b.heading + (from < 0 ? 0 : Math.PI) }
     }
     return undefined
+  }
+
+  /**
+   * The jumps on past `first` in line with it (FCI 320: "v přímce za sebou … od sebe vzdáleny
+   * minimálně 4 m"), within `within` metres of the team, nearest first.
+   */
+  private barsAfter(first: Bar, within: number): Bar[] {
+    const team = this.team
+    return this.bars
+      .filter((b) => Math.abs(Math.cos(b.heading - team.heading)) > 0.9)
+      .map((b) => ({ ...b, heading: team.heading }))
+      .filter(
+        (b) =>
+          alongBar(b, team) < alongBar({ ...first, heading: team.heading }, team) - 1 &&
+          -alongBar(b, team) < within &&
+          Math.abs(acrossBar(b, team) - acrossBar({ ...first, heading: team.heading }, team)) < 0.5,
+      )
+      .sort((a, b) => alongBar(b, team) - alongBar(a, team))
   }
 
   /** The jump ahead of a team at `team`, its bar across the team's way. */
@@ -1533,6 +1592,21 @@ export class ExercisePlayer {
       done = this.stepTime >= POSTURE_TIME
     } else if (current && 'wait' in current) {
       done = this.stepTime >= current.wait
+    } else if (current && 'dogBacks' in current) {
+      if (starting) {
+        this.leftPosture = 'stand'
+        this.backsLeft = current.dogBacks
+      }
+      // Up first, then back, at a walk, the way it faces away.
+      const onLegs = this.last?.feet.dogOnLegs ?? true
+      if (onLegs && this.left && this.backsLeft > 0) {
+        const d = Math.min(this.backsLeft, DOG_BACKS_SPEED * dt)
+        this.left = forward(this.left, -d)
+        this.backsLeft -= d
+        this.leftBacking = true
+      }
+      done = this.backsLeft <= 0 && this.stepTime > POSTURE_TIME
+      if (done) this.leftBacking = false
     } else if (current && 'dogStays' in current) {
       if (starting) {
         this.left = onField(this.team, this.dogAt)
@@ -1591,7 +1665,9 @@ export class ExercisePlayer {
             ? mirrored(own({ x: -from.x, z: from.z, heading: -from.heading }))
             : own(from)
         // A jump between the dog and the handler: it comes over it (2-218, 3-314).
-        const bar = this.barBetween(this.left!, this.team)
+        const bar =
+          this.barBetween(this.left!, this.team) ??
+          (current.overJump ? this.barToward(this.left!) : undefined)
         const front = bar ? overBar(at, inTeam(this.team, bar), rest) : rest(at)
         const path = kind === 'halfway' ? partOf(front, front.length * HALFWAY) : front
         this.dogWay = {
@@ -2036,14 +2112,25 @@ export class ExercisePlayer {
       const from = onField(this.team, this.dogAt)
       const bar = this.barAheadOf(this.team, current.dogJumps)!
       const end = onField(forward(this.team, current.dogJumps), PLACES[this.dogPlace])
-      const route = overBar(from, { ...bar, heading: this.team.heading }, (past) =>
-        runToPlace(past, end, end.heading),
-      )
+      // Over two in a row (FCI 320 "Pes je vyslán skočit přes dvě překážky"): one after the
+      // other, then back into heel.
+      const bars = [bar, ...this.barsAfter(bar, current.dogJumps)].map((b) => ({
+        ...b,
+        heading: this.team.heading,
+      }))
+      const over = (i: number, at: PathPoint): Path =>
+        i < bars.length
+          ? overBar(at, bars[i]!, (past) => over(i + 1, past))
+          : runToPlace(at, end, end.heading)
+      const route = over(0, from)
       this.jumpRun = {
         route,
         from: travelled,
         over: current.dogJumps,
-        pace: jumpPace(route, alongBar({ ...bar, heading: this.team.heading }, from)),
+        pace: jumpPace(
+          route,
+          bars.map((b) => alongBar(b, from)),
+        ),
       }
     }
     if (this.jumpRun) {
@@ -2070,8 +2157,19 @@ export class ExercisePlayer {
         const c = this.chasing
         const dog = (c.at ??= onField(this.team, this.dogAt))
         const heel = onField(this.team, PLACES[this.dogPlace])
-        const [dx, dz] = [heel.x - dog.x, heel.z - dog.z]
-        const far = Math.hypot(dx, dz)
+        // A jump between it and the handler: straight at the bar's middle and over it first,
+        // then after them (FCI 420 "Pes přeskakuje překážku a přiřazuje se").
+        if (c.over === undefined) c.over = this.barBetween(dog, heel) ?? null
+        if (c.over && alongBar(c.over, dog) > CHASE_PAST_BAR) c.over = null
+        const aim = c.over
+          ? {
+              x: c.over.x + CHASE_PAST_BAR * 2 * Math.sin(c.over.heading),
+              z: c.over.z + CHASE_PAST_BAR * 2 * Math.cos(c.over.heading),
+            }
+          : heel
+        const [dx, dz] = [aim.x - dog.x, aim.z - dog.z]
+        const toHeel = Math.hypot(heel.x - dog.x, heel.z - dog.z)
+        const far = c.over ? toHeel : Math.hypot(dx, dz)
         c.speed = Math.min(
           RECALL_SPEED,
           c.speed + CHASE_PICK_UP * dt,
@@ -2079,9 +2177,10 @@ export class ExercisePlayer {
         )
         const go = Math.min(far, c.speed * dt)
         const way = Math.atan2(dx, dz)
+        const span = Math.hypot(dx, dz) || 1
         const at = {
-          x: dog.x + (dx / (far || 1)) * go,
-          z: dog.z + (dz / (far || 1)) * go,
+          x: dog.x + (dx / span) * go,
+          z: dog.z + (dz / span) * go,
           heading: dog.heading + angleTo(dog.heading, way) * Math.min(1, CHASE_TURN * dt),
         }
         c.at = at
@@ -2135,7 +2234,8 @@ export class ExercisePlayer {
       this.posture = this.leftPosture
       controls = {
         ...controls,
-        dog: this.leftPosture,
+        // (Backing away, it walks.)
+        dog: this.leftBacking ? 'walk' : this.leftPosture,
         dogAt: inTeam(this.team, this.left),
         ...(this.leftOnTheMove && { foldBack: true }),
       }
