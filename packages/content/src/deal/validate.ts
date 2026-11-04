@@ -736,9 +736,10 @@ function validateRound(
       }
     }
   })
-  // National courses: the way between two stations passes clear of the other exercises,
-  // their cards and equipment (Směrnice §1.1.3: "Dráha v uličce s kartami musí být široká
-  // nejméně 1,5 m") — the cards' stands a little further (`STAND_SPACING`).
+  // The way between two stations passes clear of the other exercises, their cards and
+  // equipment (Směrnice §1.1.3: "Dráha v uličce s kartami musí být široká nejméně 1,5 m"; FCI
+  // courses as walked through in animation, R19) — the cards' stands a little further
+  // (`STAND_SPACING`).
   // (A jump: its middle and both uprights.)
   const equipment = props.flatMap((q) =>
     propPoints(q.p).map((p) => ({ label: q.owner, station: q.station, kind: q.p.kind, p })),
@@ -756,7 +757,7 @@ function validateRound(
     return (o: { station: number; p: Point }) =>
       o.station === station && standsAt.has(o.p) && !along(o.p)
   }
-  if (cls.ruleset === 'CZ') {
+  {
     const targets = [
       ...entries.map((e, i) => ({ label: label(i), i, to: e.withPrevious ? undefined : e.at })),
       { label: 'finish', i: entries.length, to: finish },
@@ -777,14 +778,14 @@ function validateRound(
     }
   }
 
-  // The dog called by a national follow-up runs straight from where it was left (over the
-  // leave card's jump), clear like a way walked.
-  if (cls.ruleset === 'CZ') {
+  // The dog called by a follow-up runs straight from where it was left (over the leave card's
+  // jump, or the follow-up's — FCI 421), clear like a way walked.
+  {
     entries.forEach((entry, i) => {
       const leave = entries[i - 1]?.at
       const leaveShape = shapes[i - 1]
       if (!cards[i]?.sequencing.onlyAfterLeave || !entry.at || !leave || !leaveShape) return
-      const way = dogWayOf(leave, leaveShape, entry.at)
+      const way = dogWayOf(leave, leaveShape, entry.at, shapes[i])
       const own = [stationOf[i], stationOf[i - 1]]
       for (const o of [...spots, ...equipment]) {
         if (!own.includes(o.station) && distanceToWay(o.p, way) < aside(o.p) - EPS) {

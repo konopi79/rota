@@ -136,19 +136,6 @@ export const RIGHT_SIDE_CARDS: readonly string[] = ANIMATED_CARDS.filter(
   (code) => code !== '3-324',
 )
 
-/**
- * Whether a deck can be walked through in animation (plan R16): laid out on one field, every
- * card animated — on the side the course has the dog there.
- */
-export const canWalkThrough = (deck: Deck): boolean =>
-  deck.layout?.rounds.length === 1 &&
-  deck.entries.every(
-    (e) =>
-      e.at &&
-      ANIMATED_CARDS.includes(e.code) &&
-      (e.side === 'left' || RIGHT_SIDE_CARDS.includes(e.code)),
-  )
-
 /** The supplementary cards: shown finishing Z-014 Předsednutí, never on their own. */
 const SUPPLEMENTARY = ['D0a', 'D0b', 'D0c', 'D0d']
 export const SUPPLEMENTARY_SHOWN_WITH = 'Z-014'
@@ -268,4 +255,26 @@ export const animationFor = (code: string, ruleset: 'CZ' | 'FCI' = 'CZ'): CardAn
     return { code: SUPPLEMENTARY_SHOWN_WITH, variant: code, ruleset }
   }
   return null
+}
+
+/**
+ * Whether a deck can be walked through in animation (plan R16, R19): laid out on one field,
+ * every card animated — on the side the course has the dog there.
+ */
+export const canWalkThrough = (deck: Deck): boolean => {
+  const fci = deck.options.classId === 'FCI-ROB'
+  const animated = fci ? FCI_ANIMATED_CARDS : ANIMATED_CARDS
+  const right = fci ? FCI_RIGHT_SIDE_CARDS : RIGHT_SIDE_CARDS
+  return (
+    deck.layout?.rounds.length === 1 &&
+    deck.entries.every(
+      (e) =>
+        e.at &&
+        animated.includes(e.code) &&
+        // (FCI 418 is done with the dog at the right leg only, 417 at the left.)
+        (fci && e.code === '418'
+          ? e.side === 'right'
+          : e.side === 'left' || right.includes(e.code)),
+    )
+  )
 }

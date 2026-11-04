@@ -17,6 +17,7 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       'Za stálého pohybu udělá psovod úkrok stranou doprava, pes jej následuje a pohybuje se současně a rovnoběžně s ním. Tým pokračuje parkurem po pravé straně karty.',
     ],
     sequencing: {},
+    geometry: { exit: 0.95, exitSide: -0.8 },
     image: '301',
     sourcePage: 25,
   },
@@ -32,6 +33,7 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       'Za stálého pohybu udělá psovod úkrok stranou doleva, pes jej následuje a pohybuje se současně a rovnoběžně s ním.',
     ],
     sequencing: {},
+    geometry: { exit: 0.95, exitSide: 0.55 },
     image: '302',
     sourcePage: 25,
   },
@@ -47,6 +49,7 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       'Psovod se zastaví a pes si sedá u nohy psovoda. Psovod udělá jeden krok vpravo a zastaví se. Pes se pohybuje současně a rovnoběžně s psovodem. Jakmile se psovod zastaví, pes znovu zaujímá pozici sedni u jeho nohy. Pes zůstává sedět, dokud tým nepokračuje vpřed.',
     ],
     sequencing: {},
+    geometry: { exit: 0.95, exitSide: -0.8 },
     image: '303',
     sourcePage: 25,
   },
@@ -62,6 +65,7 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       'Psovod se zastaví a pes si sedá u nohy psovoda. Psovod udělá jeden krok vlevo a zastaví se. Pes se pohybuje současně a rovnoběžně s psovodem. Jakmile se psovod zastaví, pes znovu zaujímá pozici sedni u jeho nohy. Pes zůstává sedět, dokud tým nepokračuje vpřed.',
     ],
     sequencing: {},
+    geometry: { exit: 0.95, exitSide: 0.55 },
     image: '304',
     sourcePage: 25,
   },
@@ -78,7 +82,7 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
     ],
     sequencing: {},
     // p. 26: 1 + 2 steps back.
-    geometry: { exit: -2 },
+    geometry: { exit: -1.05 },
     image: '305',
     sourcePage: 26,
   },
@@ -98,7 +102,7 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       endSide: 'left',
     },
     // p. 26: 1 + 2 + 3 steps back.
-    geometry: { exit: -4 },
+    geometry: { exit: -2.55 },
     image: '306',
     sourcePage: 26,
   },
@@ -115,7 +119,7 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
     ],
     sequencing: {},
     // p. 26: "obrat čelem vzad vpravo o 180°"
-    geometry: { turn: 180 },
+    geometry: { turn: 180, exit: 0.55 },
     image: '307',
     sourcePage: 26,
   },
@@ -132,7 +136,7 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
     ],
     sequencing: {},
     // p. 26: "obrat čelem vzad vlevo o 180°"
-    geometry: { turn: -180 },
+    geometry: { turn: -180, exit: 0.9 },
     image: '308',
     sourcePage: 26,
   },
@@ -167,7 +171,7 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       sideChange: true,
     },
     // p. 26: "otočku směrem proti sobě o 180° a pokračuje v opačném směru"
-    geometry: { turn: 180 },
+    geometry: { turn: 180, exit: 0.95 },
     image: '310',
     sourcePage: 26,
   },
@@ -186,6 +190,7 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       // p. 26: "Tímto cvikem se mění strana vedení psa."
       sideChange: true,
     },
+    geometry: { exit: 3.05 },
     image: '311',
     sourcePage: 26,
   },
@@ -204,6 +209,7 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       // p. 27: "Tímto cvikem se mění strana vedení psa."
       sideChange: true,
     },
+    geometry: { exit: 0.5 },
     image: '312',
     sourcePage: 27,
   },
@@ -223,7 +229,7 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       sideChange: true,
     },
     // p. 27: "těsný obrat o 180° doprava a pokračují v opačném směru"
-    geometry: { turn: 180 },
+    geometry: { turn: 180, exit: 0.95 },
     image: '313',
     sourcePage: 27,
   },
@@ -243,7 +249,7 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       sideChange: true,
     },
     // p. 27: "těsný obrat o 180° doleva a pokračují v opačném směru"
-    geometry: { turn: -180 },
+    geometry: { turn: -180, exit: 0.95 },
     image: '314',
     sourcePage: 27,
   },
@@ -329,7 +335,7 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
       mayBeFollowedBy: ['321', '322', '323', '421', '422'],
     },
     // §3.5 (p. 13), §4.8 (p. 18): the recall cone 5 m ahead unless a recall card follows.
-    geometry: { recallCone: true },
+    geometry: { rightStop: { ahead: 0, side: 0.25 }, recallCone: true },
     image: '319',
     sourcePage: 28,
   },
@@ -350,11 +356,12 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
     // p. 28: the card 2 m before the first jump, the jumps at least 4 m apart; §3.5
     // (p. 12): 2 m landing area, jumps on the dog's side.
     geometry: {
+      rightStop: { ahead: 0, side: 0.55 },
       props: [
-        { kind: 'jump', ahead: 2, side: 1 },
-        { kind: 'jump', ahead: 6, side: 1 },
+        { kind: 'jump', ahead: 2.5, side: 1 },
+        { kind: 'jump', ahead: 6.5, side: 1 },
       ],
-      exit: 8,
+      exit: 8.05,
     },
     image: '320',
     sourcePage: 28,
@@ -378,7 +385,7 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
     },
     // p. 28: "ve vzdálenosti 3 - 5 m od předchozí karty. Psovod se otáčí čelem vzad"
     // Either way: the regulation does not say which way the handler turns about.
-    geometry: { fromPrevious: 4, turn: [180, -180] },
+    geometry: { fromPrevious: 4, turn: [180, -180], exit: 0.65 },
     image: '321',
     sourcePage: 28,
   },
@@ -401,7 +408,7 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
     },
     // p. 28: "ve vzdálenosti 3 - 5 m od předchozí karty. Psovod se otáčí čelem vzad"
     // Either way: the regulation does not say which way the handler turns about.
-    geometry: { fromPrevious: 4, turn: [180, -180] },
+    geometry: { fromPrevious: 4, turn: [180, -180], exit: 0.55 },
     image: '322',
     sourcePage: 28,
   },
@@ -424,7 +431,7 @@ export const FCI_THREE_POINT_CARDS: Card[] = [
     },
     // p. 28: "ve vzdálenosti 3 - 5 m od předchozí karty. Psovod se otáčí čelem vzad"
     // Either way: the regulation does not say which way the handler turns about.
-    geometry: { fromPrevious: 4, turn: [180, -180] },
+    geometry: { fromPrevious: 4, turn: [180, -180], exit: 0.65 },
     image: '323',
     sourcePage: 28,
   },

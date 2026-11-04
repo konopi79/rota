@@ -71,6 +71,8 @@ export type TeamControls = {
   handlerStride?: boolean
   /** The dog ducking its head, going in between the handler's legs (FCI 312). */
   dogDucks?: boolean
+  /** The dog carrying its tail up — over a card's stand it would sweep through (`tailOver`). */
+  tailUp?: boolean
   /** …going over sideways as the handler steps aside towards it (`SIDLING_REACH`). */
   dogSidles?: boolean
   /**
@@ -151,6 +153,9 @@ const RISE_RATE = 9
 /** The tail swings out of a turn this far for each radian a second the dog turns, at most so far. */
 const TAIL_SWING = 0.35
 const TAIL_SWING_MOST = 0.9
+/** Carried up (`tailUp`), the tail is raised this much, radians, at this rate, 1/s. */
+const TAIL_UP = 1.3
+const TAIL_UP_RATE = 8
 /** How fast the tail follows the turn, 1/s. */
 const TAIL_SETTLES = 8
 
@@ -281,6 +286,8 @@ export class TeamAnimator {
   /** The dog's heading last frame, and how far its tail swings out of a turn (radians). */
   private lastDogHeading: number | null = null
   private tailYaw = 0
+  /** How far the tail is carried up now (`tailUp`), radians. */
+  private tailLift = 0
   /** How far a point on the ground is from the dog, as it was last frame. */
   private dogClearance: Clearance | undefined
   /** Galloping: the stride's state (the trot's stepper waits meanwhile). */
@@ -542,7 +549,14 @@ export class TeamAnimator {
     this.lastDogHeading = dog.heading
     const swing = Math.max(-TAIL_SWING_MOST, Math.min(TAIL_SWING_MOST, TAIL_SWING * spin))
     this.tailYaw += (swing - this.tailYaw) * (1 - Math.exp(-TAIL_SETTLES * dt))
-    dogPose = { ...dogPose, 'tail.yaw': this.tailYaw }
+    // Up over a card's stand, and down again: smoothly, never at once.
+    this.tailLift +=
+      ((controls.tailUp ? TAIL_UP : 0) - this.tailLift) * (1 - Math.exp(-TAIL_UP_RATE * dt))
+    dogPose = {
+      ...dogPose,
+      'tail.yaw': this.tailYaw,
+      ...(this.tailLift > 1e-6 && { tail: (dogPose.tail ?? 0) + this.tailLift }),
+    }
     // Sitting or lying: the paws are where the posture puts them, ready to carry the dog
     // from there when it gets up.
     if (sitting && this.dogStanding <= 0.02) this.dogFeet.plant(dogPawsOnGround(dogPose, dog), dog)

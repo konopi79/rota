@@ -4,6 +4,8 @@ import { geometry as layout, getCard, type Card } from '@rota/content'
 
 import { ExercisePlayer, type Exercise } from '../figures/exercise'
 import { EXERCISES, RIGHT_EXERCISES } from '../figures/exercises'
+import { FCI_EXERCISES, FCI_RIGHT_EXERCISES } from '../figures/fci-exercises'
+import { CONE } from '../figures/fci-leave-exercises'
 
 /**
  * What an exercise does on the field, read off its script: where the team is when it walks
@@ -119,6 +121,93 @@ describe('course plan geometry matches the animations (R14)', () => {
         const off = Math.hypot(p.ahead - a.ahead, p.side - a.side)
         expect([e.code, i, off < 0.1]).toEqual([e.code, i, true])
       })
+    }
+  })
+})
+
+describe('FCI course plan geometry matches the animations (R19)', () => {
+  // Each card once, and each leave card with its recall cone (its recall cards' pairs have the
+  // leave card's geometry up to where the dog is left).
+  const exercises = FCI_EXERCISES.filter(
+    (e, i) =>
+      FCI_EXERCISES.findIndex(
+        (f) => f.code === e.code && (f.pairedWith === CONE) === (e.pairedWith === CONE),
+      ) === i,
+  )
+  /** The recall cone the plan sets for a leave card without a recall card (`recallCone`). */
+  const recallCone = { kind: 'cone', ahead: layout.RECALL_CONE_AHEAD, side: -1 }
+
+  test('the turn, where the team walks off, and where the card stands', () => {
+    for (const e of exercises) {
+      const card = getCard('FCI', e.code) as Card
+      const g = card.geometry ?? {}
+      const { left, ahead, turn } = measure(e)
+      const turns = layout.turnsOf(card)
+      // (Turning in steps set by hand, within a degree or two.)
+      const turned = turns.some((t) => Math.abs(((mod360(turn - t) + 180) % 360) - 180) < 3)
+      expect([e.code, turned]).toEqual([e.code, true])
+      if (e.pairedWith === CONE || (g.recallCone && !e.parts)) {
+        // Called beside the recall cone, the dog catching up as the team walks on: past it.
+        expect([e.code, ahead >= layout.RECALL_CONE_AHEAD]).toEqual([e.code, true])
+        continue
+      }
+      const near = turns.some((t) => t % 360) ? 0.7 : 0.3
+      expect([e.code, Math.abs(ahead - (g.exit ?? 0)) < near]).toEqual([e.code, true])
+      expect([e.code, Math.abs(left - (g.exitSide ?? 0)) < near]).toEqual([e.code, true])
+      // Where the card stands when not in its usual place (beside a line of cones).
+      const { own } = ownPart(e)
+      const off =
+        own.cardAt && g.card && Math.hypot(g.card.ahead - own.cardAt.z, g.card.side - own.cardAt.x)
+      expect([e.code, !!g.card, (off ?? 0) < 0.1]).toEqual([e.code, !!own.cardAt, true])
+      // A recall card as far on from its leave card as the plan has it.
+      const next = e.parts?.[1]
+      if (next && next.exercise.code === e.code) {
+        expect([e.code, next.at]).toEqual([e.code, g.fromPrevious ?? NaN])
+      }
+    }
+  }, 120_000)
+
+  test('the same cones, bowls and jumps in the same places', () => {
+    const sorted = (props: { kind: string; ahead: number; side: number }[]) =>
+      [...props].sort((a, b) => a.ahead - b.ahead || a.side - b.side)
+    for (const e of exercises) {
+      const card = getCard('FCI', e.code) as Card
+      const { own } = ownPart(e)
+      // (From where the exercise is placed, as the plan has them: the animation's are from where
+      // the team stops.)
+      const off = own.stopAt ?? { x: 0, z: 0 }
+      const at = (c: { x: number; z: number }) => ({ ahead: c.z + off.z, side: c.x + off.x })
+      const animated = sorted([
+        ...(own.cones ?? []).map((c) => ({ kind: 'cone', ...at(c) })),
+        ...(own.bowls ?? []).map((c) => ({ kind: 'bowl', ...at(c) })),
+        ...(own.jumps ?? []).map((c) => ({ kind: 'jump', ...at(c) })),
+      ])
+      const planned = sorted([
+        ...(card.geometry?.props ?? []),
+        ...(e.pairedWith === CONE || (card.geometry?.recallCone && !e.parts) ? [recallCone] : []),
+      ])
+      expect([e.code, planned.map((p) => p.kind)]).toEqual([e.code, animated.map((p) => p.kind)])
+      planned.forEach((p, i) => {
+        const a = animated[i] as (typeof animated)[number]
+        const off = Math.hypot(p.ahead - a.ahead, p.side - a.side)
+        expect([e.code, i, off < 0.1]).toEqual([e.code, i, true])
+      })
+    }
+  })
+
+  test('with the dog on the right, the equipment from where the team stops (rightStop)', () => {
+    // A figure round cones stops to have its cones where the left's are (`asPlanned`).
+    for (const right of FCI_RIGHT_EXERCISES) {
+      const card = getCard('FCI', right.code) as Card
+      const g = card.geometry ?? {}
+      if ((!g.props?.length && !g.recallCone) || right.parts || right.cardAt) continue
+      const left = FCI_EXERCISES.find(
+        (l) => l.code === right.code && l.pairedWith === right.pairedWith,
+      )!
+      const [sl, sr] = [left.stopAt ?? { x: 0, z: 0 }, right.stopAt ?? { x: 0, z: 0 }]
+      const stop = g.rightStop ?? { ahead: 0, side: 0 }
+      const off = Math.hypot(sr.z - sl.z - stop.ahead, sr.x - sl.x - stop.side)
+      expect([right.code, off < 0.06]).toEqual([right.code, true])
     }
   })
 })

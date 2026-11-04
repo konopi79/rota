@@ -107,11 +107,14 @@ function MarkStand({ text, at }: { text: string; at: Pose }) {
   )
 }
 
-/** A card's stand at `at` (a place in the walkthrough's frame), facing the team coming. */
-function PlacedStand({ code, at }: { code: string; at: Pose }) {
+/**
+ * A card's stand at `at` (a place in the walkthrough's frame), facing the team coming — the
+ * card of `ruleset`, as large as its own (FCI's nearer A4).
+ */
+function PlacedStand({ code, at, ruleset }: { code: string; at: Pose; ruleset: 'CZ' | 'FCI' }) {
   return (
     <group position={[at.x, 0, at.z]} rotation-y={at.heading}>
-      <CardStand code={code} x={0} z={0} />
+      <CardStand code={code} x={0} z={0} ruleset={ruleset} />
     </group>
   )
 }
@@ -379,14 +382,16 @@ export function CourseWalkthrough({
             <meshStandardMaterial color="#86b86b" />
           </mesh>
           <Field corners={walkthrough.field.corners} />
-          <PlacedStand code="START" at={walkthrough.startCard} />
+          <PlacedStand code="START" at={walkthrough.startCard} ruleset={cls.ruleset} />
           {walkthrough.startMark && <MarkStand text="R" at={walkthrough.startMark} />}
-          <PlacedStand code="FINISH" at={walkthrough.finishCard} />
+          <PlacedStand code="FINISH" at={walkthrough.finishCard} ruleset={cls.ruleset} />
           {walkthrough.stations.map((s) => (
             <group key={`station ${s.index}`}>
-              <PlacedStand code={s.code} at={s.card} />
+              <PlacedStand code={s.code} at={s.card} ruleset={cls.ruleset} />
               <NumberTag number={s.index + 1} at={s.card} />
-              {s.supplementary && s.d0 && <PlacedStand code={s.supplementary} at={s.d0} />}
+              {s.supplementary && s.d0 && (
+                <PlacedStand code={s.supplementary} at={s.d0} ruleset={cls.ruleset} />
+              )}
               {s.cones.map((c, i) => (
                 <Cone key={`cone${i}`} x={c.x} z={c.z} colour={CONE_COLOURS[i % 2]!} />
               ))}

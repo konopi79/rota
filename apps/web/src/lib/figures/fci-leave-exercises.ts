@@ -356,3 +356,14 @@ export const FCI_RIGHT_LEAVE_EXERCISES: Exercise[] = [
   ]),
   ...FCI_FOLLOW_UP_PARTS.map((followUp) => fciPair(followUp.code, SHOWN_BEFORE, followUp, true)),
 ]
+
+/**
+ * The parts with the dog left at the right leg, for a course walked through (plan R19): the
+ * recall cards call it to the left leg (`toTheLeftLeg`).
+ */
+export const FCI_RIGHT_LEAVE_PARTS: Exercise[] = FCI_LEAVE_PARTS.map(fromTheRight)
+export const FCI_RIGHT_FOLLOW_UP_PARTS: Exercise[] = FCI_FOLLOW_UP_PARTS.map((f) => ({
+  ...fromTheRight(toTheLeftLeg(f)),
+  // (421's jump left of the way as from the left — `toTheLeftLeg`.)
+  ...(f.jumps && { jumps: f.jumps }),
+}))

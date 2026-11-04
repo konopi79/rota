@@ -23,6 +23,14 @@ import {
   type Pose,
 } from './exercise'
 import { EXERCISES, RIGHT_EXERCISES, RIGHT_PARTS, RIGHT_SIDE_CARDS } from './exercises'
+import { FCI_EXERCISES, FCI_RIGHT_EXERCISES } from './fci-exercises'
+import {
+  CONE,
+  FCI_FOLLOW_UP_PARTS,
+  FCI_LEAVE_PARTS,
+  FCI_RIGHT_FOLLOW_UP_PARTS,
+  FCI_RIGHT_LEAVE_PARTS,
+} from './fci-leave-exercises'
 import { FOLLOW_UP_PARTS, LEAVE_PARTS } from './leave-exercises'
 import { JUMP_WIDTH } from './leap'
 import { onField, PLACES } from './team'
@@ -116,10 +124,17 @@ const besideLine = (side: Side, further = 0): Pose => ({
 
 /**
  * Which animation a deck's card plays: with the dog on the side the course has it, with its
- * D0 card, after the pace the course brings it in — or `undefined` if there is none.
+ * D0 card, after the pace the course brings it in — or `undefined` if there is none. FCI's
+ * (`ruleset`): a leave card with its recall cone, or its part only when a recall card comes
+ * `next`.
  */
-export function animationOf(entry: DeckEntry): Exercise | undefined {
+export function animationOf(
+  entry: DeckEntry,
+  ruleset: 'CZ' | 'FCI' = 'CZ',
+  next?: DeckEntry,
+): Exercise | undefined {
   const right = entry.side === 'right'
+  if (ruleset === 'FCI') return fciAnimationOf(entry, next)
   if (right && !RIGHT_SIDE_CARDS.includes(entry.code)) return undefined
   // A leave card and its follow-up each play their own part, the dog left in between.
   const parts = (right ? RIGHT_PARTS : [...LEAVE_PARTS, ...FOLLOW_UP_PARTS]).filter(
@@ -134,7 +149,47 @@ export function animationOf(entry: DeckEntry): Exercise | undefined {
   return variants[0]
 }
 
+/** An FCI card's animation (`animationOf`). */
+function fciAnimationOf(entry: DeckEntry, next?: DeckEntry): Exercise | undefined {
+  const right = entry.side === 'right'
+  const leaveParts = right ? FCI_RIGHT_LEAVE_PARTS : FCI_LEAVE_PARTS
+  const followUps = right ? FCI_RIGHT_FOLLOW_UP_PARTS : FCI_FOLLOW_UP_PARTS
+  // Its recall card next: the dog left, called there.
+  const recallNext = next && followUps.some((f) => f.code === next.code)
+  const part = (recallNext ? leaveParts : followUps).find((e) => e.code === entry.code)
+  if (part) return part
+  // (418 is played from the right leg only, as `FCI_EXERCISES` has it.)
+  const all = right
+    ? [...FCI_RIGHT_EXERCISES, ...FCI_EXERCISES.filter((e) => e.dogStarts === 'right')]
+    : FCI_EXERCISES.filter((e) => e.dogStarts !== 'right')
+  const variants = all.filter((e) => e.code === entry.code && (!e.parts || e.pairedWith === CONE))
+  if (variants.some((e) => e.fromPace)) {
+    return variants.find((e) => e.fromPace === entry.pace) ?? variants[0]
+  }
+  return variants.find((e) => e.pairedWith === CONE) ?? variants[0]
+}
+
 export { canWalkThrough } from './animated'
+
+/**
+ * A step with places in its station's frame (`sendTo`, `dogRuns`) in the walkthrough's: the
+ * station `at` on the scene, `local` the scene into the walkthrough's frame.
+ */
+function inWalkthrough(step: ExerciseStep, at: Pose, local: (p: Pose) => Pose): ExerciseStep {
+  const place = (p: { x: number; z: number }) => local(onField(at, { ...p, heading: 0 }))
+  if ('sendTo' in step) return { ...step, sendTo: place(step.sendTo) }
+  if ('walk' in step && step.dogRuns) {
+    const via = step.dogRuns.via.map((p) => ({
+      ...place(p),
+      heading: p.heading + local(at).heading,
+    }))
+    return { ...step, dogRuns: { ...step.dogRuns, via } }
+  }
+  return step
+}
+
+/** The jumps a station sets out: its exercise's (`Station.jumps` lists them in order). */
+const jumpsOfStation = (exercise: Exercise) => exercise.jumps ?? []
 
 /** How many of an exercise's first steps are its way up to the card (`stationOf`). */
 function wayUp(exercise: Exercise): number {
@@ -166,17 +221,28 @@ function phaseOf(exercise: Exercise): Phase | null {
   {
     const player = new ExercisePlayer(exercise)
     let frame = player.step(0)
+    // Out of the walk into steps (`fromFoot`) the walk goes on till that foot lands, past the
+    // station (312: 0.37 m): lined up then is the last footfall before the station, and the walk
+    // goes on as in the animation (`Phase.on`) — lining up the footfall past it instead, the
+    // steps slowing into the stride came out shorter, the stride began short, and the dog went
+    // under it into the card.
+    const next = exercise.steps[first]
+    const outOfWalk = next && 'footwork' in next && next.fromFoot !== undefined
+    const station = stationOf(exercise)
     let last: { foot: 0 | 1; at: number } | null = null
     while (!frame.finished && frame.stepIndex < first) {
       const before = frame.feet.handler
       frame = player.step(1 / 60)
       frame.feet.handler.forEach((foot, i) => {
-        if (before[i]?.swing && !foot.swing) last = { foot: i as 0 | 1, at: frame.travelled }
+        if (before[i]?.swing && !foot.swing && !(outOfWalk && frame.travelled > station + 1e-6))
+          last = { foot: i as 0 | 1, at: frame.travelled }
       })
     }
     if (last) {
       const { foot, at } = last as { foot: 0 | 1; at: number }
-      phase = { foot, since: frame.travelled - at }
+      phase = outOfWalk
+        ? { foot, since: station - at, on: Math.max(0, frame.travelled - station) }
+        : { foot, since: frame.travelled - at }
     }
   }
   phases.set(exercise, phase)
@@ -226,7 +292,7 @@ export function walkthroughOf(deck: Deck, cls: RoClass, start = 0): Walkthrough 
 
   // Where each exercise starts, on the scene: the plan's station, and the handler stopping
   // where the exercise's script has it (`stopAt`, from the right in the square).
-  const exercises = entries.map((e) => animationOf(e)!)
+  const exercises = entries.map((e, i) => animationOf(e, cls.ruleset, entries[i + 1])!)
   const plans = entries.map((e) => fromPlan(e.at!))
   const stationsOnScene = entries.map((e, i) => {
     const plan = fromPlan(e.at!)
@@ -244,9 +310,16 @@ export function walkthroughOf(deck: Deck, cls: RoClass, start = 0): Walkthrough 
   const steps: ExerciseStep[] = []
   const stations: Station[] = []
   let leaving: string | undefined = from === 0 ? 'courseStart' : undefined
+  // Each station's jumps, by index into all of them (`Walkthrough.exercise.jumps`): a card goes
+  // over its own and its leave card's only — no other station's on the way (`onlyJumps`).
+  const jumpsAt: number[][] = []
+  let jumpCount = 0
   for (let i = from; i < entries.length; i++) {
     const entry = entries[i]!
     const exercise = exercises[i]!
+    const ownJumps = jumpsOfStation(exercise).map(() => jumpCount++)
+    jumpsAt[i] = ownJumps
+    const follows = card(entry.code).sequencing.onlyAfterLeave ? (jumpsAt[i - 1] ?? []) : []
     const firstStep = steps.length
     // Several cards at one station (CNDC): the next exercise right where the one before ends,
     // after a dynamic one a step on ("krok dopředu pro ukončení cviku", řád p. 16) — no way
@@ -266,8 +339,7 @@ export function walkthroughOf(deck: Deck, cls: RoClass, start = 0): Walkthrough 
       const own = ownSteps(exercise, after)
       // Where the team is now, as the plan has it: the frame of the exercise's own steps.
       const here = fromPlan(entry.at!)
-      const place = (p: { x: number; z: number }) => local(onField(here, { ...p, heading: 0 }))
-      steps.push(...own.steps.map((s) => ('sendTo' in s ? { ...s, sendTo: place(s.sendTo) } : s)))
+      steps.push(...own.steps.map((s) => inWalkthrough(s, here, local)))
       leaving = own.leaving
       // Beside the card before (and its D0 card), facing the same way.
       const before = stations.at(-1)!
@@ -302,6 +374,7 @@ export function walkthroughOf(deck: Deck, cls: RoClass, start = 0): Walkthrough 
     if (jump) steps.push({ walk: jump.z + geometry.PAST_THE_JUMP, caption: leaving ?? 'toCard' })
     steps.push({
       walkTo: local(at),
+      onlyJumps: [...follows, ...ownJumps],
       ...(aside ? { slant: true as const } : { along: local(plans[i]!) }),
       ...(phase && { phase }),
       pace: entry.pace,
@@ -313,8 +386,9 @@ export function walkthroughOf(deck: Deck, cls: RoClass, start = 0): Walkthrough 
     const exerciseStep = steps.length
     const own = ownSteps(exercise, after)
     const place = (p: { x: number; z: number }) => local(onField(at, { ...p, heading: 0 }))
-    // A place an exercise sends the dog to, from its station into the walkthrough's frame.
-    steps.push(...own.steps.map((s) => ('sendTo' in s ? { ...s, sendTo: place(s.sendTo) } : s)))
+    // A place an exercise sends the dog to, and the way it runs on its own (FCI 417 / 418),
+    // from its station into the walkthrough's frame.
+    steps.push(...own.steps.map((s) => inWalkthrough(s, at, local)))
     leaving = own.leaving
     const d0 = supplementaryPlace(exercise)
     stations.push({
@@ -360,7 +434,13 @@ export function walkthroughOf(deck: Deck, cls: RoClass, start = 0): Walkthrough 
       return things.every((q) => Math.hypot(q.x - stop.x, q.z - stop.z) >= RUN_OUT_CLEAR)
     }) ?? RUN_OUTS.at(-1)!
   steps.push(
-    { walkTo: local(finishLine), along: local(finishLine), pace, caption: leaving ?? 'toFinish' },
+    {
+      walkTo: local(finishLine),
+      onlyJumps: [],
+      along: local(finishLine),
+      pace,
+      caption: leaving ?? 'toFinish',
+    },
     { walk: runOut, caption: 'finishLine' },
     { stop: true, caption: 'finishLine' },
   )
@@ -377,6 +457,14 @@ export function walkthroughOf(deck: Deck, cls: RoClass, start = 0): Walkthrough 
       code: 'course',
       steps,
       ...(entries[from]!.side === 'right' && { dogStarts: 'right' }),
+      // (The cards as large as the class's — FCI's nearer A4 — for the dog's tail to keep over
+      // every one of them, the start's and the finish's too.)
+      ...(cls.ruleset === 'FCI' && { ruleset: 'FCI' }),
+      stands: [
+        ...stations.flatMap((s) => [s.card, ...(s.d0 ? [s.d0] : [])]),
+        local(onField(startLine, besideLine(deck.options.startSide))),
+        local(onField(finishLine, besideLine(finishSide(deck)))),
+      ],
       // The jumps on the course, for the dog to leap over (the walkthrough's frame: it starts
       // walking, so its station is where it sets off).
       jumps: stations.flatMap((s) => s.jumps),

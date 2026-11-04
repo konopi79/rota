@@ -3,15 +3,28 @@ import { describe, expect, test } from 'bun:test'
 import { dealDeck, getClass, type ClassId } from '@rota/content'
 
 import { DOG } from '../figures/dog'
-import { ExercisePlayer, type Pose } from '../figures/exercise'
+import { cardFootprint, ExercisePlayer, offStand, tailTip, type Pose } from '../figures/exercise'
 import { acrossBar, alongBar, BAR_HEIGHT, JUMP_WIDTH } from '../figures/leap'
 import { apply } from '../figures/math'
 import { jointFrames, lowestPoint } from '../figures/rig'
 import { canWalkThrough, walkthroughOf } from '../figures/walkthrough'
 import { onField } from '../figures/team'
 
-/** A dealt course, the start "R" every third one — with several cards at one station (CNDC). */
-const courseOf = (classId: ClassId, seed: number, cndc = false) => {
+/** The dog's parts that reach out furthest (as in figures.test.ts). */
+const DOG_REACH = ['head', 'leftFrontPaw', 'rightFrontPaw', 'leftHindPaw', 'rightHindPaw']
+
+/**
+ * Out of the walk into steps the steps begin where the foot lands, as in the card's animation —
+ * up to this far before or past the station, metres (302 / 402 from the left before, from the
+ * right and 312 past).
+ */
+const WALKS_ON_TO_THE_FOOT = 0.6
+
+/**
+ * A dealt course, the start "R" every third one — with several cards at one station (CNDC), on
+ * the class's larger field (`big`, FCI's 20 × 30 m).
+ */
+const courseOf = (classId: ClassId, seed: number, cndc = false, big = false) => {
   const cls = getClass(classId)!
   const deck = dealDeck({
     classId,
@@ -22,6 +35,7 @@ const courseOf = (classId: ClassId, seed: number, cndc = false) => {
     competition: true,
     seed,
     cndc,
+    ...(big && { field: cls.course.fields!.at(-1)! }),
   })
   return { cls, deck }
 }
@@ -67,34 +81,44 @@ function overBar(
 }
 
 /** The first `n` courses of a class that can be walked through (some need a card not animated yet on the right). */
-const walkable = (classId: ClassId, n: number, cndc = false) => {
+const walkable = (classId: ClassId, n: number, cndc = false, big = false) => {
   const seeds: number[] = []
   for (let seed = 0; seeds.length < n && seed < 30; seed++)
-    if (canWalkThrough(courseOf(classId, seed, cndc).deck)) seeds.push(seed)
+    if (canWalkThrough(courseOf(classId, seed, cndc, big).deck)) seeds.push(seed)
   return seeds
 }
 
-describe('a course walked through in animation (R16, R17)', () => {
+describe('a course walked through in animation (R16, R17, R19)', () => {
   const courses = [
     ...(['RO-Z', 'RO1', 'RO2', 'RO3', 'RO-V'] as const).flatMap((classId) =>
       walkable(classId, classId === 'RO3' ? 3 : 4).map(
-        (seed) => [`${classId} seed ${seed}`, classId, seed, false] as const,
+        (seed) => [`${classId} seed ${seed}`, classId, seed, false, false] as const,
       ),
+    ),
+    // FCI's (R19), the start "R" every third one, on both fields.
+    ...walkable('FCI-ROB', 8).map(
+      (seed) => [`FCI-ROB seed ${seed}`, 'FCI-ROB' as const, seed, false, false] as const,
+    ),
+    ...walkable('FCI-ROB', 3, false, true).map(
+      (seed) =>
+        [`FCI-ROB seed ${seed} on 20 × 30 m`, 'FCI-ROB' as const, seed, false, true] as const,
     ),
     // Several cards at one station (CNDC, R18).
     ...(['RO1', 'RO2', 'RO3', 'RO-V'] as const).flatMap((classId) =>
       walkable(classId, 2, true).map(
-        (seed) => [`${classId} seed ${seed} with CNDC`, classId, seed, true] as const,
+        (seed) => [`${classId} seed ${seed} with CNDC`, classId, seed, true, false] as const,
       ),
     ),
   ]
 
   test.each(courses)(
     '%s: goes card by card to the finish',
-    (_, classId, seed, cndc) => {
-      const { cls, deck } = courseOf(classId, seed, cndc)
+    (_, classId, seed, cndc, big) => {
+      const { cls, deck } = courseOf(classId, seed, cndc, big)
       expect(canWalkThrough(deck)).toBe(true)
       const w = walkthroughOf(deck, cls)
+      // A body's middle off a card's stand by half its width and 5 cm (FCI's card is smaller).
+      const clear = cardFootprint({ ...(cls.ruleset === 'FCI' && { ruleset: 'FCI' }) }).half + 0.05
       const player = new ExercisePlayer(w.exercise)
       let frame = player.step(0)
       let frames = 0
@@ -117,8 +141,13 @@ describe('a course walked through in animation (R16, R17)', () => {
           next++
         }
         if (watching) {
+          // (Along the way only across it, a step before or past it: `WALKS_ON_TO_THE_FOOT`.)
           const at = w.stations[watching.i]!.at
-          const miss = Math.hypot(frame.team.x - at.x, frame.team.z - at.z)
+          const [dx, dz] = [frame.team.x - at.x, frame.team.z - at.z]
+          const ahead = dx * Math.sin(at.heading) + dz * Math.cos(at.heading)
+          const across = dx * Math.cos(at.heading) - dz * Math.sin(at.heading)
+          const miss =
+            Math.abs(ahead) < WALKS_ON_TO_THE_FOOT ? Math.abs(across) : Math.hypot(dx, dz)
           nearest[watching.i] = Math.min(nearest[watching.i]!, miss)
           if (frames >= watching.until) watching = null
         }
@@ -126,17 +155,33 @@ describe('a course walked through in animation (R16, R17)', () => {
         const bodies = [onField(frame.team, frame.handler), onField(frame.team, frame.dog)]
         for (const b of bodies)
           for (const q of [w.startCard, w.finishCard, ...(w.startMark ? [w.startMark] : [])])
-            expect(Math.hypot(b.x - q.x, b.z - q.z)).toBeGreaterThan(0.3)
+            expect(Math.hypot(b.x - q.x, b.z - q.z)).toBeGreaterThan(clear)
         // Nobody into a jump's uprights; the dog over each bar, clear of it.
         for (const b of bodies)
           for (const q of uprights) expect(Math.hypot(b.x - q.x, b.z - q.z)).toBeGreaterThan(0.25)
         bars.forEach((bar, i) => {
           cleared[i] = Math.min(cleared[i]!, overBar(frame as never, bar))
         })
+        // …nor the dog's tail through one (carried up over it, `tailUp`).
+        const tip = tailTip(frame.team, frame.dog as never)
+        for (const q of w.exercise.stands ?? [])
+          expect(offStand(tip, q, q.heading, cardFootprint(w.exercise))).toBeGreaterThan(0.005)
+        // …nor its head and paws (312's dog went under the handler into its card: the long
+        // stride ended short of where the animation has it) — a centimetre off, where the
+        // card's own animation keeps two (the ways between the cards join it a little aside:
+        // 418's dog, 2.5 cm off its card alone, came 1.6 cm off).
+        const dog = bodies[1]!
+        const joints = jointFrames(DOG, frame.dog.pose)
+        for (const joint of DOG_REACH) {
+          const [x, , z] = joints.get(joint)!.position
+          const at = { ...onField(dog, { x, z, heading: 0 }), y: 0 }
+          for (const q of w.exercise.stands ?? [])
+            expect(offStand(at, q, q.heading, cardFootprint(w.exercise))).toBeGreaterThan(0.01)
+        }
         for (const st of w.stations) {
           const stands = [st.card, ...(st.d0 ? [st.d0] : [])]
           for (const b of bodies) {
-            for (const q of stands) expect(Math.hypot(b.x - q.x, b.z - q.z)).toBeGreaterThan(0.3)
+            for (const q of stands) expect(Math.hypot(b.x - q.x, b.z - q.z)).toBeGreaterThan(clear)
             for (const q of [...st.cones, ...st.bowls])
               expect(Math.hypot(b.x - q.x, b.z - q.z)).toBeGreaterThan(0.2)
           }

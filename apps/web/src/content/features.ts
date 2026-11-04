@@ -24,7 +24,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'animations'
+export const LATEST_FEATURE_ID = 'course-walkthrough'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -121,9 +121,10 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
       {
         id: 'course-walkthrough',
         title: 'Parkur v animaci',
-        desc: 'Tréninkový parkur národních tříd si projdeš celý v 3D animaci: tým jde po plánku od startu ke každé kartě, provede cvik a pokračuje do cíle.',
+        desc: 'Tréninkový parkur si projdeš celý v 3D animaci – národní třídy i FCI-ROB: tým jde po plánku od startu ke každé kartě, provede cvik a pokračuje do cíle.',
         points: [
           'Pes zůstane odložený u své karty a psovod ho od další přivolá nebo se k němu vrátí; překážky a kužely stojí podle plánku.',
+          'U FCI i přivolání u kuželu, vyslání ke kuželu a skoky; plánek FCI odpovídá tomu, jak cviky provádí animace.',
           'I se psem vpravo po startu „R“ nebo uprostřed parkuru.',
           'Kamera za týmem (natočíš si ji) nebo nad celou plochou, pauza, rychlost a přeskakování po kartách.',
         ],

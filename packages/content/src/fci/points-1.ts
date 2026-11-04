@@ -80,7 +80,7 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
       paceCompatible: true,
     },
     // p. 20: "těsný obrat o 180° doprava"
-    geometry: { turn: 180 },
+    geometry: { turn: 180, exitSide: -0.4 },
     image: '105',
     sourcePage: 20,
   },
@@ -99,7 +99,7 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
       paceCompatible: true,
     },
     // p. 20: "těsný obrat o 180° doleva"
-    geometry: { turn: -180 },
+    geometry: { turn: -180, exit: 0.55, exitSide: 0.4 },
     image: '106',
     sourcePage: 20,
   },
@@ -120,7 +120,7 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
       paceCompatible: true,
     },
     // p. 20: "Úhel obratu (smyčky) musí být mezi 180° a 270°."
-    geometry: { turn: [180, 225, 270] },
+    geometry: { turn: 225, exit: 0.6 },
     image: '107',
     sourcePage: 20,
   },
@@ -141,7 +141,7 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
       paceCompatible: true,
     },
     // p. 20: "Úhel obratu (smyčky) musí být mezi 180° a 270°."
-    geometry: { turn: [-180, -225, -270] },
+    geometry: { turn: -225, exit: 0.6 },
     image: '108',
     sourcePage: 20,
   },
@@ -162,7 +162,7 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
       paceCompatible: true,
     },
     // p. 20: "Nový směr je 90° vlevo od původního směru trasy."
-    geometry: { turn: 270 },
+    geometry: { turn: 270, exit: 0.6 },
     image: '109',
     sourcePage: 20,
   },
@@ -183,7 +183,7 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
       paceCompatible: true,
     },
     // p. 20: "Nový směr je 90° vpravo od původního směru trasy."
-    geometry: { turn: -270 },
+    geometry: { turn: -270, exit: 0.6 },
     image: '110',
     sourcePage: 20,
   },
@@ -246,7 +246,7 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
       paceCompatible: true,
     },
     // p. 21: "společně pokračují v opačném směru"
-    geometry: { turn: 180 },
+    geometry: { turn: 180, exitSide: 0.4 },
     image: '113',
     sourcePage: 21,
   },
@@ -263,7 +263,7 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
     ],
     sequencing: {},
     // p. 21: "obrat vpravo v bok o 90°"
-    geometry: { turn: 90 },
+    geometry: { turn: 90, exit: 0.65 },
     image: '114',
     sourcePage: 21,
   },
@@ -280,7 +280,7 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
     ],
     sequencing: {},
     // p. 21: "obrat vlevo v bok o 90°"
-    geometry: { turn: -90 },
+    geometry: { turn: -90, exit: 1.1 },
     image: '115',
     sourcePage: 21,
   },
@@ -299,6 +299,7 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
       // p. 15: pace holds "dokud jej nezmění karta s novým tempem nebo … Cíl".
       pace: 'slow',
     },
+    geometry: { exit: 1.5 },
     image: '116',
     sourcePage: 21,
   },
@@ -317,6 +318,7 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
       // p. 15: pace holds "dokud jej nezmění karta s novým tempem nebo … Cíl".
       pace: 'fast',
     },
+    geometry: { exit: 1.6 },
     image: '117',
     sourcePage: 21,
   },
@@ -333,6 +335,7 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
       // p. 15: pace holds "dokud jej nezmění karta s novým tempem nebo … Cíl".
       pace: 'normal',
     },
+    geometry: { exit: 1.55 },
     image: '118',
     sourcePage: 21,
   },
@@ -353,12 +356,30 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
     // p. 21: three cones 1.5–2 m apart; §3.5 (p. 13): the card 1.5–2 m before the first
     // cone. The team leaves past the last cone.
     geometry: {
-      props: [
-        { kind: 'cone', ahead: 2, side: 0 },
-        { kind: 'cone', ahead: 4, side: 0 },
-        { kind: 'cone', ahead: 6, side: 0 },
+      via: [
+        [6.0, -0.2],
+        [6.1, -0.9],
+        [5.5, -1.3],
+        [2.3, -1.3],
+        [1.9, -0.6],
+        [2.3, 0],
+        [4.1, 0],
+        [4.6, -0.5],
+        [4.2, -1.3],
+        [2.4, -1.3],
+        [1.9, -0.9],
+        [2.0, -0.2],
+        [3.1, -0.4],
       ],
-      exit: 7,
+      props: [
+        { kind: 'cone', ahead: 2.5, side: -0.65 },
+        { kind: 'cone', ahead: 4, side: -0.65 },
+        { kind: 'cone', ahead: 5.5, side: -0.65 },
+      ],
+      card: { ahead: 0.5, side: -0.65 },
+      turn: 90,
+      exit: 3.15,
+      exitSide: -3.15,
     },
     image: '119',
     sourcePage: 21,
@@ -380,12 +401,31 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
     // p. 21: three cones 1.5–2 m apart; §3.5 (p. 13): the card 1.5–2 m before the first
     // cone. The team leaves past the last cone.
     geometry: {
-      props: [
-        { kind: 'cone', ahead: 2, side: 0 },
-        { kind: 'cone', ahead: 4, side: 0 },
-        { kind: 'cone', ahead: 6, side: 0 },
+      via: [
+        [6.2, 0.3],
+        [6.4, 1.3],
+        [5.5, 1.9],
+        [2.1, 1.8],
+        [1.6, 1.2],
+        [1.8, 0.3],
+        [4.1, 0],
+        [4.8, 0.5],
+        [4.8, 1.4],
+        [4.0, 1.9],
+        [2.0, 1.8],
+        [1.6, 0.6],
+        [2.4, 0],
+        [3.3, 0.5],
       ],
-      exit: 7,
+      props: [
+        { kind: 'cone', ahead: 2.5, side: 0.95 },
+        { kind: 'cone', ahead: 4, side: 0.95 },
+        { kind: 'cone', ahead: 5.5, side: 0.95 },
+      ],
+      card: { ahead: 0.5, side: 0.95 },
+      turn: -90,
+      exit: 3.45,
+      exitSide: 3.45,
     },
     image: '120',
     sourcePage: 21,
@@ -406,13 +446,21 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
     },
     // p. 21: four cones 1.5–2 m apart; §3.5 (p. 13): the card 1.5–2 m before the first cone.
     geometry: {
-      props: [
-        { kind: 'cone', ahead: 2, side: 0 },
-        { kind: 'cone', ahead: 4, side: 0 },
-        { kind: 'cone', ahead: 6, side: 0 },
-        { kind: 'cone', ahead: 8, side: 0 },
+      via: [
+        [2.6, 0],
+        [4.0, 1.6],
+        [5.6, 0],
+        [6.8, 1.5],
       ],
-      exit: 9,
+      props: [
+        { kind: 'cone', ahead: 2.5, side: 1 },
+        { kind: 'cone', ahead: 4, side: 1 },
+        { kind: 'cone', ahead: 5.5, side: 1 },
+        { kind: 'cone', ahead: 7, side: 1 },
+      ],
+      card: { ahead: 0.5, side: 1 },
+      exit: 8,
+      exitSide: 1.55,
     },
     image: '121',
     sourcePage: 21,
@@ -434,13 +482,27 @@ export const FCI_ONE_POINT_CARDS: Card[] = [
     // p. 22: "poslední kužel obejde a prochází mezi všemi čtyřmi kužely zpět" — the team
     // comes back past the card in the opposite direction.
     geometry: {
-      props: [
-        { kind: 'cone', ahead: 2, side: 0 },
-        { kind: 'cone', ahead: 4, side: 0 },
-        { kind: 'cone', ahead: 6, side: 0 },
-        { kind: 'cone', ahead: 8, side: 0 },
+      via: [
+        [2.6, 0],
+        [4.0, 1.6],
+        [5.4, 0],
+        [6.9, 1.5],
+        [7.6, 0.9],
+        [6.8, 0.5],
+        [5.5, 2.0],
+        [3.9, 0.4],
+        [2.7, 1.9],
       ],
+      props: [
+        { kind: 'cone', ahead: 2.5, side: 1 },
+        { kind: 'cone', ahead: 4, side: 1 },
+        { kind: 'cone', ahead: 5.5, side: 1 },
+        { kind: 'cone', ahead: 7, side: 1 },
+      ],
+      card: { ahead: 0.5, side: 1 },
       turn: 180,
+      exit: 1.5,
+      exitSide: 2,
     },
     image: '122',
     sourcePage: 22,

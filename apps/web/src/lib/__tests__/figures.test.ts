@@ -19,6 +19,8 @@ import {
   spacesOf,
   spaceSide,
   cardFootprint,
+  offStand,
+  tailTip,
   type Exercise,
   type ExerciseFrame,
 } from '../figures/exercise'
@@ -641,6 +643,10 @@ describe('every exercise', () => {
           const dz = Math.max(0, card.z - at.z, at.z - card.z - depth)
           expect(Math.hypot(dx, dz)).toBeGreaterThan(0.02)
         }
+        // …nor its tail: over the stand (carried up, `tailUp`), round it or off it (it swept
+        // through it turning or sitting down by the card, the author).
+        const tip = tailTip(f.team, f.dog as never)
+        expect(offStand(tip, card, 0, cardFootprint(exercise))).toBeGreaterThan(0.005)
       }
       // …nor knocks over a cone (the bodies' middles, a body's half width off it).
       for (const cone of [...conesOf(exercise), ...(exercise.bowls ?? [])]) {

@@ -143,8 +143,24 @@ export const bearing = (a: Point, b: Point) =>
  */
 export const D0_BESIDE = 0.55
 
-/** How far the card stands from where its exercise is done (FCI). */
-const SIGN_OFFSET = 1.1
+/**
+ * FCI cards (§4.3 and its pictures A / B): the exercise is done in a 1 × 1 m square "na levé
+ * straně karty" — the card right of it at its front edge — or straight before the card, as in
+ * the animations (R19).
+ */
+const FCI_SIGN = { ahead: 0.5, right: 0.75, before: 1.2 }
+/** The recall cone "přibližně 5 m za kartou" (§3.5): this far ahead of where the exercise is done. */
+export const RECALL_CONE_AHEAD = FCI_SIGN.ahead + RECALL_DISTANCE
+/** The start and finish cards, as the plan has them (beside their line). */
+const LINE_SIGN = { ahead: 0.2, right: 1.1 }
+/**
+ * The start and finish cards stand at their lines this far right of the handler, and as far
+ * again as the dog walks beside them on the right (as walked through in animation, R16).
+ */
+export const LINE_CARD = 0.75
+export const DOG_BESIDE = 0.42
+/** An FCI team turned about within this of where its exercise is placed walks back beside its way in, metres. */
+const FCI_TURNED_NEAR = 1
 /**
  * National cards (§5.3.1, p. 8): the exercise starts in a 120 cm square "vlevo před kartou"
  * — the card at its front right corner, as in the animations — or, for a change of
@@ -155,20 +171,26 @@ const NATIONAL_SIGN = { ahead: 0.45, right: 0.75, before: 1.2 }
 type Placed = Pick<Card, 'ruleset' | 'placement' | 'geometry'>
 
 /**
- * The way a card's sideways distances point: FCI towards the dog's side, national always
- * to the left — national cards keep their layout with the dog on the right.
- */
-/**
- * Which way the dog's side is (1 right, −1 left) for an exercise's geometry: FCI's follows the
- * dog, national geometry is the card's own — a turn to the right stays one with the dog on the
- * right — but for a jump, which stands on the dog's side: the dog goes over it beside the
- * handler (walked through in animation, R17).
+ * Which way the dog's side is (1 right, −1 left) for an exercise's geometry. It is the card's
+ * own — a turn to the right stays one with the dog on the right, its cones where they are —
+ * but for a jump, which stands on the dog's side: the dog goes over it beside the handler
+ * (walked through in animation, R17). A national card with a jump mirrors all of it; an FCI
+ * card only its props on the dog's side (`Prop.dogSide`, read off the animations, R19).
  */
 const toDogOf = (card: Pick<Card, 'ruleset' | 'geometry'>, side: Side) =>
-  (card.ruleset === 'FCI' || !!card.geometry?.props?.some((p) => p.kind === 'jump')) &&
+  card.ruleset === 'CZ' &&
+  !!card.geometry?.props?.some((p) => p.kind === 'jump') &&
   side === 'right'
     ? 1
     : -1
+
+/** …and for one of its props: FCI's on the dog's side are a jump's and those marked so. */
+const propToDog = (card: Pick<Card, 'ruleset' | 'geometry'>, prop: Prop, side: Side) =>
+  card.ruleset === 'FCI'
+    ? (prop.dogSide ?? prop.kind === 'jump') && side === 'right'
+      ? 1
+      : -1
+    : toDogOf(card, side)
 
 /**
  * Where the card itself stands. FCI §4.3: "Pokud se směr trasy nemění, provádí se cvik na
@@ -186,7 +208,10 @@ export function signOf(card: Placed | undefined, at: Pose): Point {
       ? offset(at, at.heading, NATIONAL_SIGN.before)
       : offset(at, at.heading, NATIONAL_SIGN.ahead, NATIONAL_SIGN.right)
   }
-  return before ? offset(at, at.heading, SIGN_OFFSET) : offset(at, at.heading, 0.2, SIGN_OFFSET)
+  if (!card) return offset(at, at.heading, LINE_SIGN.ahead, LINE_SIGN.right)
+  return before
+    ? offset(at, at.heading, FCI_SIGN.before)
+    : offset(at, at.heading, FCI_SIGN.ahead, FCI_SIGN.right)
 }
 
 /** The stand of the D0 card dealt with a national card that needs one, beside the card. */
@@ -319,10 +344,14 @@ export function turnsOf(card: Card): number[] {
 export function shapeOf(card: Card, at: Placement, side: Side, recallFollows: boolean): Shape {
   const geometry = card.geometry ?? {}
   const toDog = toDogOf(card, side)
+  // (The equipment from where the team stops, with the dog on the right off where the
+  // exercise is placed — `rightStop`.)
+  const stop = side === 'right' && geometry.rightStop
+  const from = stop ? offset(at, at.heading, stop.ahead, -stop.side) : at
   const props: PlacedProp[] = (geometry.props ?? []).map((p) => ({
     kind: p.kind,
     heading: at.heading,
-    ...offset(at, at.heading, p.ahead, p.side * toDog),
+    ...offset(from, at.heading, p.ahead, p.side * propToDog(card, p, side)),
     ...(p.clear && { clear: p.clear }),
   }))
   // After steps back the team walks on forward, past its own card.
@@ -331,28 +360,45 @@ export function shapeOf(card: Card, at: Placement, side: Side, recallFollows: bo
   let ahead = Math.max(geometry.exit ?? 0, 0)
   const recallCone = !!geometry.recallCone && !recallFollows
   if (recallCone) {
+    // On the other side than the dog.
+    const dogRight = side === 'right' ? 1 : -1
     props.push({
       kind: 'cone',
       heading: at.heading,
-      ...offset(at, at.heading, RECALL_DISTANCE, -RECALL_CONE_SIDE * toDog),
+      ...offset(from, at.heading, RECALL_CONE_AHEAD, -RECALL_CONE_SIDE * dogRight),
     })
-    ahead = Math.max(ahead, RECALL_DISTANCE)
+    ahead = Math.max(ahead, RECALL_CONE_AHEAD)
   }
   const across = (geometry.exitSide ?? 0) * toDog
   // Turned about where the exercise is done: a right turn brings the team back on the
-  // right of its way in, which is the left of the way out.
+  // right of its way in, which is the left of the way out. (FCI's teams turn about a little
+  // nearer their card than where the exercise is placed, and as much aside — R19.)
+  const near = card.ruleset === 'FCI' ? FCI_TURNED_NEAR : 0
   const hairpin =
-    !ahead && !across && normalize(at.turn) === 180 ? (at.turn > 0 ? -1 : 1) : undefined
+    ahead <= near && Math.abs(across) <= near && normalize(at.turn) === 180
+      ? at.turn > 0
+        ? -1
+        : 1
+      : undefined
+  // (The team walks off from where it stopped: with the dog on the right a little aside, the
+  // next card — a recall card — in line with it.)
   const exit = {
-    ...offset(at, at.heading, ahead, across),
+    ...offset(from, at.heading, ahead, across),
     heading: normalize(at.heading + at.turn),
   }
   const minNext = geometry.gap && Math.max(0, geometry.gap - distance(at, exit))
-  const via = (geometry.via ?? []).map(([a, s]) => offset(at, at.heading, a, s * toDog))
-  const walk =
-    card.ruleset === 'CZ' && (via.length || distance(at, exit) >= 1)
-      ? [at, ...via, exit]
-      : undefined
+  // (FCI: from where the team stops, and to the dog's side with its equipment there — 410's dog
+  // out to its cone and back.)
+  const viaToDog =
+    card.ruleset === 'FCI'
+      ? geometry.props?.some((p) => p.dogSide) && side === 'right'
+        ? 1
+        : -1
+      : toDog
+  const via = (geometry.via ?? []).map(([a, s]) =>
+    offset(card.ruleset === 'FCI' ? from : at, at.heading, a, s * viaToDog),
+  )
+  const walk = via.length || distance(at, exit) >= 1 ? [at, ...via, exit] : undefined
   const followUp = geometry.followUp && {
     ahead: geometry.followUp.ahead,
     ...(geometry.followUp.sides && { shifts: geometry.followUp.sides.map((s) => s * toDog) }),
@@ -442,8 +488,14 @@ export function wayTo(
  * handler's way (at a slant to a card set aside, 3-301, 3-314): it is kept clear like a way
  * walked (walked through in animation, a dog ran past another station's card).
  */
-export function dogWayOf(leave: Placement, leaveShape: Shape, to: Point): Point[] {
-  const jump = leaveShape.props.find((p) => p.kind === 'jump')
+export function dogWayOf(
+  leave: Placement,
+  leaveShape: Shape,
+  to: Point,
+  /** The follow-up's own (FCI 421: "přivolává psa přes překážku", its jump aside). */
+  shape?: Shape,
+): Point[] {
+  const jump = [...leaveShape.props, ...(shape?.props ?? [])].find((p) => p.kind === 'jump')
   return [leave, ...(jump ? [jump] : []), to]
 }
 

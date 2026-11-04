@@ -1,6 +1,7 @@
 import type { Exercise, ExerciseStep } from './exercise'
 import { EXERCISES, RIGHT_EXERCISES, fromTheRight } from './exercises'
 import { FCI_LEAVE_EXERCISES, FCI_RIGHT_LEAVE_EXERCISES } from './fci-leave-exercises'
+import { asPlanned } from './fci-planned'
 import { LEFT, RIGHT, stepAside, stopForSideStep } from './ro123-exercises'
 import { STRIDE, STRIDE_LAG, STRIDE_LEAN } from './paths'
 import { stepsBack, stepsForward, turnOnTheSpot, turnSteps } from './roz-exercises'
@@ -397,8 +398,9 @@ const threeTurns = (code: string, sign: 1 | -1, dogRight = false): Exercise => {
     card: 'ahead',
     // Into the square before the card, as near it as it stays clear (measured as
     // `INTO_THE_SQUARE`; at the edge of the square they were too far, the author): 0.8 m before
-    // it turning right, 0.7 m turning left.
-    stopAt: sign === RIGHT ? { x: 0, z: 0.4 } : { x: 0, z: 0.5 },
+    // it turning right, 0.85 m turning left — sitting after the second turn, the dog's tail lay
+    // across the stand 0.15 m nearer (the author).
+    stopAt: sign === RIGHT ? { x: 0, z: 0.4 } : { x: 0, z: 0.35 },
     steps: [
       ...stopSit('ahead'),
       ...turn(sign, `turn${side}90Stand`),
@@ -657,7 +659,6 @@ const r312 = (right: boolean): Exercise => {
   return {
     code: '312',
     ruleset: 'FCI',
-    longStride: true,
     ...(right && { dogStarts: 'right' as const }),
     // The long stride takes the team on past where it would stop: the card stands that much on.
     stopAt: { x: 0, z: -STRIDE.ahead },
@@ -673,17 +674,20 @@ const r312 = (right: boolean): Exercise => {
         fromFoot: right ? 0 : 1,
         lean: STRIDE_LEAN,
         dogLags: STRIDE_LAG,
+        stride: true,
         caption: 'longStride',
       },
       {
         dogPath: 'betweenLegs',
         // (`split` is the left foot's ahead and the right one's behind.)
         split: right ? { ahead: -STRIDE.behind, behind: -STRIDE.ahead } : STRIDE,
+        stride: true,
         caption: 'dogBetweenLegs',
       },
       // On at once out of the stride, the right foot first — the dog falling in at the right leg
-      // as the handler comes level (the author: no closing up and standing first).
-      { walk: 3, pace: 'normal', caption: 'leaveRightAfterLegs' },
+      // as the handler comes level (the author: no closing up and standing first). (The foot
+      // behind comes down off its toes as it steps.)
+      { walk: 3, pace: 'normal', stride: true, caption: 'leaveRightAfterLegs' },
     ],
   }
 }
@@ -904,4 +908,13 @@ export const FCI_RIGHT_EXERCISES: Exercise[] = [
   r221(true),
   ...FCI_RIGHT_LEAVE_EXERCISES,
   fromTheRight(r312(true)),
-].sort((a, b) => a.code.localeCompare(b.code))
+]
+  // (Its equipment as the plan has it — `asPlanned`; a leave card and its recall card shown
+  // together keep theirs.)
+  .map((e) => {
+    const left = FCI_EXERCISES.find(
+      (l) => l.code === e.code && l.pairedWith === e.pairedWith && l.fromPace === e.fromPace,
+    )
+    return left && !e.parts ? asPlanned(left, e) : e
+  })
+  .sort((a, b) => a.code.localeCompare(b.code))
