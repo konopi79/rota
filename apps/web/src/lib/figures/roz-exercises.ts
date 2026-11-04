@@ -590,3 +590,11 @@ export const ROZ_EXERCISES: Exercise[] = [
   Z032_D0C,
   Z032_D0D,
 ]
+
+// ——— 2027 (VDH Regelwerk 2027, plan R22b) ———
+
+/** Z-028 / Z-029 210° vpravo / vlevo (VDH 2027, S. 36): the loop of 2026 at 210°, not 225°. */
+export const ROZ_EXERCISES_2027: Exercise[] = [
+  turnOnTheSpot('Z-028', 210, 'turnRight210', 'ahead'),
+  turnOnTheSpot('Z-029', -210, 'turnLeft210', 'ahead'),
+]

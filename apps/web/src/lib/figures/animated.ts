@@ -253,18 +253,34 @@ export const FCI_RIGHT_SIDE_CARDS: readonly string[] = FCI_ANIMATED_CARDS.filter
 )
 
 /**
- * The animations there are: the national cards' and FCI's. A national ruleset other than
- * `CZ` (`CZ-2027`, plan R21) plays the national ones for now.
+ * The animations there are: the national cards' of 2026, of 2027 (its own where it does a card
+ * differently, the 2026 ones otherwise — `exercisesOf`, plan R22b) and FCI's.
  */
-export type AnimationSet = 'CZ' | 'FCI'
+export type AnimationSet = 'CZ' | 'CZ-2027' | 'FCI'
 
 export const animationSetOf = (ruleset: RulesetId): AnimationSet =>
-  isNational(ruleset) ? 'CZ' : 'FCI'
+  ruleset === 'CZ-2027' ? 'CZ-2027' : isNational(ruleset) ? 'CZ' : 'FCI'
+
+/**
+ * The cards the 2027 regulation does differently that have their 2027 animation
+ * (`EXERCISES_2027`; a test keeps the two in step).
+ */
+export const ANIMATED_IN_2027: readonly string[] = [
+  ...['Z-028', 'Z-029'],
+  ...['1-103', '1-104', '1-105', '1-106', '1-119', '1-120'],
+  ...['2-201', '2-202', '2-223', '2-224'],
+]
 
 /** What to play for a card: its own animation, or for a D0 card Z-014 ending with it. */
 export type CardAnimation = { code: string; variant?: string; ruleset: AnimationSet }
 
 export const animationFor = (code: string, ruleset: AnimationSet = 'CZ'): CardAnimation | null => {
+  if (ruleset === 'CZ-2027') {
+    if (ANIMATED_IN_2027.includes(code)) return { code, ruleset }
+    if (notYetAnimated(ruleset, code)) return null
+    const as2026 = animationFor(code, 'CZ')
+    return as2026 && { ...as2026, ruleset }
+  }
   if (ruleset === 'FCI') return FCI_ANIMATED_CARDS.includes(code) ? { code, ruleset } : null
   if (ANIMATED_CARDS.includes(code)) return { code, ruleset }
   if (SUPPLEMENTARY.includes(code)) {
@@ -274,17 +290,38 @@ export const animationFor = (code: string, ruleset: AnimationSet = 'CZ'): CardAn
 }
 
 /**
- * A 2027 card that is not the 2026 exercise as it was (new, rewritten, changed footwork): no
- * animation until R22b — the 2026 one would show the old exercise (the author, 2026-11-04).
+ * Revised 2027 cards whose 2026 animation still shows the 2027 exercise (R22b): their text
+ * changed but not what the team does — the animations already take no step back into the front
+ * ("jen jeden krok vzad", 2027), turn 180° on the spot ("na ploše listu A4"), keep the 5 m to the
+ * jump (2027: at least 2 m) and 3-324's cone within the 3–5 m; the rest are wording, D0a–e,
+ * follow-up lists, the bowls' contents, a marked line beside the space.
  */
-const notYetAnimated = (ruleset: RulesetId, code: string) =>
-  ruleset === 'CZ-2027' && CZ_2027_REVISED.has(code)
+const SAME_IN_2027: ReadonlySet<string> = new Set([
+  ...['Z-014', 'Z-016', 'Z-022', 'Z-025', 'Z-032'],
+  ...['1-101', '1-108', '1-111', '1-112', '1-113', '1-114', '1-115', '1-117'],
+  ...['1-121', '1-122', '1-123', '1-125'],
+  ...['2-203', '2-204', '2-205', '2-206', '2-208', '2-211', '2-212', '2-214', '2-217'],
+  ...['2-218', '2-220', '2-221', '2-222', '2-225', '2-226'],
+  ...['3-301', '3-307', '3-308', '3-309', '3-310', '3-311', '3-312', '3-314', '3-316'],
+  ...['3-317', '3-319', '3-320', '3-321', '3-323', '3-324'],
+])
+
+/**
+ * A 2027 card that is not the 2026 exercise as it was (new, rewritten, changed footwork) and
+ * has no 2027 animation yet: the 2026 one would show the old exercise (the author, 2026-11-04).
+ */
+function notYetAnimated(ruleset: RulesetId, code: string): boolean {
+  return (
+    ruleset === 'CZ-2027' &&
+    CZ_2027_REVISED.has(code) &&
+    !SAME_IN_2027.has(code) &&
+    !ANIMATED_IN_2027.includes(code)
+  )
+}
 
 /** What to play for a card of any ruleset — `animationFor` with the card's own set. */
 export const animationOfCard = (card: Pick<Card, 'code' | 'ruleset'>): CardAnimation | null =>
-  notYetAnimated(card.ruleset, card.code)
-    ? null
-    : animationFor(card.code, animationSetOf(card.ruleset))
+  animationFor(card.code, animationSetOf(card.ruleset))
 
 /**
  * Whether a deck can be walked through in animation (plan R16, R19): laid out on one field,

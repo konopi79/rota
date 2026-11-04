@@ -796,7 +796,9 @@ R22a — content, rules, dealer, plan (2026-11-04):
 
 R22b — animations:
 
-- [ ] The new and changed cards animated (90° from a stop in one foot movement, 180° on an A4 sheet, one step back into the front, D0e, …), the 2027 walkthroughs
+- [x] A 2027 animation set (`AnimationSet` `CZ-2027`, `exercisesOf`, `EXERCISES_IN_2027`): its own exercises where 2027 does a card differently, the 2026 ones otherwise, captions stating a 2026 rule swapped (180° "na ploše listu A4"). The revised cards whose 2026 animation already shows the 2027 exercise keep it (`SAME_IN_2027`: no step back into the front in any animation, 180° turned on the spot, the 5 m to a jump, the 3–5 m cone, …)
+- [x] 90° from a stop in one foot movement (1-103–106, 1-119/120, 2-201/202, 2-223/224, `higherExercises2027`): turning away from the dog the foot on the turning side turned on its heel, the dog given a moment to come round before the team walks on; turning towards it the other foot across in front (a T — the author, 2026-11-04), half a metre ahead so the closing foot does not sweep under it. Z-028/029 at 210°. Every frame checked from either leg (216 tests)
+- [ ] The new cards (B-033–036, 1-116, 1-126–130, 2-233, 2-234, 3-302, 3-328–332, D0e) and 2-230/231; the 2027 walkthroughs; 2027 geometry kept in step with its animations (`figures-geometry.test.ts`)
 
 ### R23 — National 2026 / 2027 switch
 

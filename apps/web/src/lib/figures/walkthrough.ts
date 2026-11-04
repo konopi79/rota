@@ -22,8 +22,8 @@ import {
   type Phase,
   type Pose,
 } from './exercise'
-import { animationSetOf } from './animated'
-import { EXERCISES, RIGHT_EXERCISES, RIGHT_PARTS, RIGHT_SIDE_CARDS } from './exercises'
+import { animationSetOf, type AnimationSet } from './animated'
+import { exercisesOf, RIGHT_PARTS, RIGHT_SIDE_CARDS } from './exercises'
 import { FCI_EXERCISES, FCI_RIGHT_EXERCISES } from './fci-exercises'
 import {
   CONE,
@@ -131,7 +131,7 @@ const besideLine = (side: Side, further = 0): Pose => ({
  */
 export function animationOf(
   entry: DeckEntry,
-  ruleset: 'CZ' | 'FCI' = 'CZ',
+  ruleset: AnimationSet = 'CZ',
   next?: DeckEntry,
 ): Exercise | undefined {
   const right = entry.side === 'right'
@@ -142,7 +142,7 @@ export function animationOf(
     (e) => e.code === entry.code,
   )
   if (parts.length) return parts.find((e) => e.supplementary === entry.supplementary) ?? parts[0]
-  const variants = (right ? RIGHT_EXERCISES : EXERCISES).filter((e) => e.code === entry.code)
+  const variants = exercisesOf(ruleset, right).filter((e) => e.code === entry.code)
   if (entry.supplementary) return variants.find((e) => e.supplementary === entry.supplementary)
   if (variants.some((e) => e.fromPace)) {
     return variants.find((e) => e.fromPace === entry.pace) ?? variants[0]

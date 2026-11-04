@@ -8,9 +8,16 @@ import {
   pair,
   stayTurnStepRecall,
 } from './leave-exercises'
-import { HIGHER_EXERCISES, LEFT, RIGHT, turnAboutChange } from './ro123-exercises'
+import {
+  HIGHER_EXERCISES,
+  higherExercises2027,
+  LEFT,
+  RIGHT,
+  turnAboutChange,
+} from './ro123-exercises'
 import {
   ROZ_EXERCISES,
+  ROZ_EXERCISES_2027,
   circleSpiralExercise,
   eightExercise,
   slalomExercise,
@@ -137,3 +144,54 @@ export const RIGHT_EXERCISES: Exercise[] = EXERCISES.filter((e) =>
 
 /** The leave cards' and the follow-ups' parts with the dog on the right (a course walked through). */
 export const RIGHT_PARTS: Exercise[] = [...LEAVE_PARTS, ...FOLLOW_UP_PARTS].map(fromTheRight)
+
+// ——— 2027 (plan R22b) ———
+
+/** The exercises the 2027 regulation does differently, in card order. */
+export const EXERCISES_2027: Exercise[] = [
+  ...ROZ_EXERCISES_2027,
+  ...higherExercises2027('left'),
+].sort((a, b) => cardOrder(a.code).localeCompare(cardOrder(b.code)))
+const OWN_2027 = new Set(EXERCISES_2027.map((e) => e.code))
+
+/**
+ * Captions that state a 2026 rule, and what 2027 says instead: 180° "auf einem DIN A 4 Blatt"
+ * (VDH 2027, S. 17), not "max. 4 kroky nohou".
+ */
+const CAPTIONS_2027: Record<string, string> = {
+  turnRight180OnSpot: 'turnRight180OnA4',
+  turnLeft180OnSpot: 'turnLeft180OnA4',
+}
+
+const in2027 = (e: Exercise): Exercise => ({
+  ...e,
+  steps: e.steps.map((step) =>
+    CAPTIONS_2027[step.caption] ? { ...step, caption: CAPTIONS_2027[step.caption]! } : step,
+  ),
+  ...(e.parts && { parts: e.parts.map((p) => ({ ...p, exercise: in2027(p.exercise) })) }),
+})
+
+/** Every exercise of the 2027 regulation: its own, and the 2026 ones it does the same way. */
+export const EXERCISES_IN_2027: Exercise[] = [
+  ...EXERCISES.filter((e) => !OWN_2027.has(e.code)).map(in2027),
+  ...EXERCISES_2027,
+].sort((a, b) => cardOrder(a.code).localeCompare(cardOrder(b.code)))
+
+/** …with the dog starting at the right leg. */
+export const RIGHT_EXERCISES_IN_2027: Exercise[] = [
+  ...RIGHT_EXERCISES.filter((e) => !OWN_2027.has(e.code)).map(in2027),
+  // (The turns' footwork depends on the dog's side: built for the dog at the right leg.)
+  ...[...ROZ_EXERCISES_2027, ...higherExercises2027('right')]
+    .filter((e) => RIGHT_SIDE_CARDS.includes(e.code))
+    .map(fromTheRight),
+].sort((a, b) => cardOrder(a.code).localeCompare(cardOrder(b.code)))
+
+/** The exercises of an animation set, with the dog at the left leg or the right one. */
+export const exercisesOf = (set: 'CZ' | 'CZ-2027', right: boolean): Exercise[] =>
+  set === 'CZ-2027'
+    ? right
+      ? RIGHT_EXERCISES_IN_2027
+      : EXERCISES_IN_2027
+    : right
+      ? RIGHT_EXERCISES
+      : EXERCISES

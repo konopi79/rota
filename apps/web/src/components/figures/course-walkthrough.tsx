@@ -29,7 +29,7 @@ import {
 } from '@/components/figures/exercise-animation'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { animationSetOf } from '@/lib/figures/animated'
+import { animationSetOf, type AnimationSet } from '@/lib/figures/animated'
 import { DOG } from '@/lib/figures/dog'
 import { ExercisePlayer, type Pose } from '@/lib/figures/exercise'
 import { HANDLER } from '@/lib/figures/handler'
@@ -112,7 +112,7 @@ function MarkStand({ text, at }: { text: string; at: Pose }) {
  * A card's stand at `at` (a place in the walkthrough's frame), facing the team coming — the
  * card of `ruleset`, as large as its own (FCI's nearer A4).
  */
-function PlacedStand({ code, at, ruleset }: { code: string; at: Pose; ruleset: 'CZ' | 'FCI' }) {
+function PlacedStand({ code, at, ruleset }: { code: string; at: Pose; ruleset: AnimationSet }) {
   return (
     <group position={[at.x, 0, at.z]} rotation-y={at.heading}>
       <CardStand code={code} x={0} z={0} ruleset={ruleset} />
