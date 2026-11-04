@@ -1,4 +1,4 @@
-import type { Deck } from '@rota/content'
+import { isNational, type Deck, type RulesetId } from '@rota/content'
 
 /**
  * Which cards have an exercise animation — kept light on purpose (no three.js, no scripts)
@@ -245,10 +245,19 @@ export const FCI_RIGHT_SIDE_CARDS: readonly string[] = FCI_ANIMATED_CARDS.filter
   (code) => code !== '417' && code !== '418',
 )
 
-/** What to play for a card: its own animation, or for a D0 card Z-014 ending with it. */
-export type CardAnimation = { code: string; variant?: string; ruleset: 'CZ' | 'FCI' }
+/**
+ * The animations there are: the national cards' and FCI's. A national ruleset other than
+ * `CZ` (`CZ-2027`, plan R21) plays the national ones for now.
+ */
+export type AnimationSet = 'CZ' | 'FCI'
 
-export const animationFor = (code: string, ruleset: 'CZ' | 'FCI' = 'CZ'): CardAnimation | null => {
+export const animationSetOf = (ruleset: RulesetId): AnimationSet =>
+  isNational(ruleset) ? 'CZ' : 'FCI'
+
+/** What to play for a card: its own animation, or for a D0 card Z-014 ending with it. */
+export type CardAnimation = { code: string; variant?: string; ruleset: AnimationSet }
+
+export const animationFor = (code: string, ruleset: AnimationSet = 'CZ'): CardAnimation | null => {
   if (ruleset === 'FCI') return FCI_ANIMATED_CARDS.includes(code) ? { code, ruleset } : null
   if (ANIMATED_CARDS.includes(code)) return { code, ruleset }
   if (SUPPLEMENTARY.includes(code)) {

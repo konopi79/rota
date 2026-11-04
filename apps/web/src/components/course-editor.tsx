@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  RULESETS,
   customDeck,
   customDeckIssues,
   getCard,
@@ -167,7 +168,7 @@ function Editor({ cls, initial }: { cls: RoClass; initial: CustomCourse }) {
   const deck = useMemo(() => customDeck(cls.id, course.startSide, course.cards), [cls.id, course])
   // The judges' guidelines exist for the national classes only, the safe side of CNDC where
   // the class has them.
-  const hasGuidelines = cls.ruleset === 'CZ'
+  const hasGuidelines = RULESETS[cls.ruleset].national
   const hasCndc = !!cls.course.cndc
   const level = checkLevel(course, hasGuidelines, hasCndc)
   const guidelines = level === 'guidelines' || level === 'strict'

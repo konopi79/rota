@@ -22,6 +22,7 @@ import {
   type Phase,
   type Pose,
 } from './exercise'
+import { animationSetOf } from './animated'
 import { EXERCISES, RIGHT_EXERCISES, RIGHT_PARTS, RIGHT_SIDE_CARDS } from './exercises'
 import { FCI_EXERCISES, FCI_RIGHT_EXERCISES } from './fci-exercises'
 import {
@@ -292,7 +293,9 @@ export function walkthroughOf(deck: Deck, cls: RoClass, start = 0): Walkthrough 
 
   // Where each exercise starts, on the scene: the plan's station, and the handler stopping
   // where the exercise's script has it (`stopAt`, from the right in the square).
-  const exercises = entries.map((e, i) => animationOf(e, cls.ruleset, entries[i + 1])!)
+  const exercises = entries.map((e, i) =>
+    animationOf(e, animationSetOf(cls.ruleset), entries[i + 1])!,
+  )
   const plans = entries.map((e) => fromPlan(e.at!))
   const stationsOnScene = entries.map((e, i) => {
     const plan = fromPlan(e.at!)

@@ -1,4 +1,5 @@
 import {
+  isNational,
   geometry,
   stationsOf,
   type Card,
@@ -114,12 +115,13 @@ export function FieldPlan({
     }
     const across = walkOf(from, to)?.across ?? 0
     const before = items[i - 1]
-    if (before?.shape.hairpin && Math.abs(across) > 0.05 && before.card.ruleset === 'CZ') {
+    if (before?.shape.hairpin && Math.abs(across) > 0.05 && isNational(before.card.ruleset)) {
       const [, join] = wayTo(before.shape, from, to, i === items.length)
       slants.push([from, join!])
       walks.push([join!, to])
     } else if (
-      before?.card.ruleset === 'CZ' &&
+      !!before &&
+      isNational(before.card.ruleset) &&
       !before.shape.hairpin &&
       wayTo(before.shape, from, to).length > 2
     ) {

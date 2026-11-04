@@ -1,6 +1,6 @@
 'use client'
 
-import { CZ_RULESET, FCI_RULESET, type Card } from '@rota/content'
+import { RULESETS, type Card } from '@rota/content'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -16,9 +16,8 @@ import { SubParts } from '@/components/sub-parts'
 import { Button } from '@/components/ui/button'
 import { catalogueFromQuery, classesWith, sequencingNotes } from '@/lib/catalogue'
 import { cardHref, classSlug } from '@/lib/classes'
+import { animationSetOf } from '@/lib/figures/animated'
 import { navigate } from '@/lib/stale-page'
-
-const RULESETS = { CZ: CZ_RULESET, FCI: FCI_RULESET }
 
 export function CardDetail({ card }: { card: Card }) {
   const { t } = useTranslation()
@@ -76,7 +75,7 @@ export function CardDetail({ card }: { card: Card }) {
         <section className="space-y-2">
           <h2 className="font-semibold">{t('card.diagram')}</h2>
           <Image
-            src={`/cards/${card.ruleset.toLowerCase()}/${card.diagram}.webp`}
+            src={`/cards/${RULESETS[card.imageSet ?? card.ruleset].slug}/${card.diagram}.webp`}
             alt={t('card.diagram')}
             width={1600}
             height={1131}
@@ -85,7 +84,7 @@ export function CardDetail({ card }: { card: Card }) {
         </section>
       )}
 
-      <CardAnimation code={card.code} ruleset={card.ruleset} />
+      <CardAnimation code={card.code} ruleset={animationSetOf(card.ruleset)} />
 
       {card.subParts && (
         <section className="space-y-2">

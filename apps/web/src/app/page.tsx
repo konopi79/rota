@@ -1,6 +1,6 @@
 'use client'
 
-import { CLASS_IDS, getClass } from '@rota/content'
+import { getClass } from '@rota/content'
 import { ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { FeedbackLink } from '@/components/feedback'
 import { InstallHint, MovedHint } from '@/components/pwa'
 import { Button } from '@/components/ui/button'
-import { classSlug } from '@/lib/classes'
+import { classSlug, LISTED_CLASS_IDS } from '@/lib/classes'
 
 export default function HomePage() {
   const { t } = useTranslation()
@@ -26,7 +26,7 @@ export default function HomePage() {
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">{t('home.chooseClass')}</h2>
         <div className="grid gap-2">
-          {CLASS_IDS.map((id) => {
+          {LISTED_CLASS_IDS.map((id) => {
             const cls = getClass(id)
             const label = t(`classes.${id}`)
             if (!cls) {

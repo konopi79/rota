@@ -1,10 +1,10 @@
-import type { Card } from '@rota/content'
+import { RULESETS, type Card } from '@rota/content'
 import Image from 'next/image'
 
 import { cn } from '@/lib/utils'
 
 export const cardImageUrl = (card: Card, size: 'full' | 'thumb' = 'full') =>
-  `/cards/${card.ruleset.toLowerCase()}/${size === 'thumb' ? 'thumb/' : ''}${card.image}.webp`
+  `/cards/${RULESETS[card.imageSet ?? card.ruleset].slug}/${size === 'thumb' ? 'thumb/' : ''}${card.image}.webp`
 
 /** A card scaled to fit its box without cropping. The box must have a size. */
 export function CardImage({ card, className }: { card: Card; className?: string }) {

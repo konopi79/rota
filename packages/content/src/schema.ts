@@ -2,7 +2,13 @@ import { z } from 'zod/v4'
 
 import { CLASS_IDS } from './classes'
 
-export const RULESET_IDS = ['CZ', 'FCI'] as const
+/**
+ * The regulations ROTA deals cards for (plan R21): `CZ` the Czech national one of 2026,
+ * `CZ-2027` the coming one (taken over from the German VDH 2027), `FCI` the international one.
+ * `CZ` stays the 2026 one's id so links, stored courses and quiz answers from before keep
+ * meaning what they meant.
+ */
+export const RULESET_IDS = ['CZ', 'CZ-2027', 'FCI'] as const
 export const rulesetIdSchema = z.enum(RULESET_IDS)
 export type RulesetId = z.infer<typeof rulesetIdSchema>
 
@@ -203,6 +209,8 @@ export const cardSchema = z
     geometry: geometrySchema.optional(),
     /** Image file stem under `/cards/<ruleset>/`, e.g. `z-001`. */
     image: z.string().min(1),
+    /** The ruleset whose image folder holds `image`, if not the card's own (an unchanged card). */
+    imageSet: rulesetIdSchema.optional(),
     /** Execution diagram image stem, if the regulation has one. */
     diagram: z.string().min(1).optional(),
     /** Page of the regulation the description comes from (for proofreading). */
