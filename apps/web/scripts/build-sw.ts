@@ -5,6 +5,8 @@
  */
 import { injectManifest } from '@serwist/build'
 
+import { inPrecache } from '../src/lib/offline-card-path'
+
 const OUT = 'out'
 const SW = `${OUT}/sw.js`
 
@@ -24,6 +26,10 @@ const { count, size, warnings } = await injectManifest({
   globIgnores: ['sw.js', '404.html'],
   // Card images are the bulk; the default 2 MB per file is plenty, the total is what matters.
   maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+  // Card pages come from the one offline card page instead (plan R20).
+  manifestTransforms: [
+    (entries) => ({ manifest: entries.filter((entry) => inPrecache(entry.url)), warnings: [] }),
+  ],
 })
 for (const w of warnings) console.warn(w)
 console.log(`sw.js: ${count} files precached, ${(size / 1024 / 1024).toFixed(1)} MB`)
