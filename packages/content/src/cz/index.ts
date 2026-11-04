@@ -16,10 +16,3 @@ export const CZ_CARDS: Card[] = [
   ...RO2_CARDS,
   ...RO3_CARDS,
 ]
-
-export const CZ_RULESET = {
-  id: 'CZ',
-  name: 'Zkušební řád Rally Obedience v ČR',
-  validFrom: '2026-04-01', // "nabývá účinnosti dne 01.04.2026"
-  source: 'Zkušební řád Rally Obedience v ČR, 2026 — příloha 1: Popis cviků',
-} as const

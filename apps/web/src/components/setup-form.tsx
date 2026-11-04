@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  isNational,
   EQUIPMENT,
   fieldKey,
   getCard,
@@ -235,7 +236,7 @@ function SetupFields({ classId, initial }: { classId: ClassId; initial: Setup })
       {fields.length > 1 && (
         <Field
           label={t('setup.field')}
-          hint={t(cls.ruleset === 'CZ' ? 'setup.fieldHintCz' : 'setup.fieldHint')}
+          hint={t(isNational(cls.ruleset) ? 'setup.fieldHintCz' : 'setup.fieldHint')}
         >
           <ToggleGroup
             variant="outline"

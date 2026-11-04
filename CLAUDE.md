@@ -165,6 +165,11 @@ Everything is prebuilt; there is no server at runtime. Consequences:
   check a new version with `scripts/content/strikethrough.py <pdf>` (PyMuPDF in
   `.cache/venv`: `python3 -m venv .cache/venv && .cache/venv/bin/pip install pymupdf`) and
   drop the struck runs — in FCI a struck sentence changed the pace rule.
+- **Rulesets** (`rulesets.ts`, plan R21): `CZ` (2026), `CZ-2027`, `FCI`. Ask `isNational(ruleset)`,
+  never `ruleset === 'CZ'` — `CZ-2027` is national too. `cz-2027/` derives from `cz/` and
+  overrides what 2027 changes; its classes have ids of their own (`RO1-2027`), so pages,
+  addresses and local storage keep the regulation. Card codes are not stable across rulesets
+  (1-116, 3-302 mean other exercises in 2027): a card is `(ruleset, code)`.
 - FCI's (A)/(B)/(C)/(D) letters are **placements** (`placement`), not the national
   static/dynamic `exerciseType` — never mix them up.
 - Class card lists are explicit; never derive them from code ranges at runtime.

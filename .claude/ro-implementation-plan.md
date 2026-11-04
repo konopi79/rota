@@ -44,7 +44,7 @@ committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 | R18 | CNDC (several cards at one station)                            | ⏳            |
 | R19 | FCI animations + walkthrough                                   | ⏳            |
 | R20 | Card details offline from one page                             | ✅ 2026-11-04 |
-| R21 | Regulations as data (edition, card identity, languages)        | ⏳            |
+| R21 | Regulations as data (edition, card identity, languages)        | ✅ 2026-11-04 |
 | R22 | Regulation 2027 (shared by CZ and VDH)                         | ⏳            |
 | R23 | National 2026 / 2027 switch                                    | ⏳            |
 | R24 | German UI                                                      | ⏳ VDH        |
@@ -756,10 +756,12 @@ with the dog on the right too, then the walkthrough on the FCI plan.
 
 ### R21 — Regulations as data
 
-- [ ] A regulation (`CZ-2026`, later `CZ-2027`, `VDH-2027`, `FCI`) owns its cards and classes; a card is `(regulation, code)` — 1-116 and 3-302 mean other exercises in 2027
-- [ ] Classes per regulation (names: RO-Z…RO-V, VDH Beginner, Klasse 1–3, Senioren); routes, deck and course URLs, local storage and quiz stats carry the regulation; every link and stored course from before reads as `CZ-2026`
-- [ ] Card texts per language (`cs`, `de`), the national/FCI checks (`ruleset === 'CZ'`, ~40 places) asked of the regulation instead
-- [ ] Nothing visible changes: decks, courses and layouts identical seed by seed with `main`
+- [x] A ruleset registry (`rulesets.ts`: slug, name, validity, source, `national`, language of its card texts) and `isNational` instead of `ruleset === 'CZ'` (geometry, plan, setup, course, editor); the animations keep their two sets, `CZ` and `FCI` (`animationSetOf`)
+- [x] `CZ-2027`, hidden: until R22 the 2026 regulation under its own ids (`cz-2027/index.ts`) — every card (images from `CZ`, `Card.imageSet`) and every class (`RO-Z-2027` … `RO-V-2027`, `lastOnly` mapped); a card is `(ruleset, code)` as before (`getCard`, `/karta/<slug>/<card>`, quiz stats `CZ-2027:1-116`)
+- [x] The regulation rides on the class: a 2027 class has its own id, so its pages (`/trida/ro1-2027`), deck and course addresses (`trida=RO1-2027`), set-ups and hand-made courses in local storage are its own — no `rad=` parameter needed; every link and stored course from before is `CZ` (2026). Not on the home page until R23 (`LISTED_CLASS_IDS`)
+- [x] Nothing visible changes: `cz-2027.test.ts` deals every 2027 class's decks and courses (both fields, CNDC, competition) and gets the 2026 decks and layouts seed by seed; a 2027 course plan and its walkthrough button checked in the browser
+- [ ] ⏭️ Card texts per language moved to R25: a regulation's cards are in its own language (VDH's will be German cards of their own), only FCI needs both — done with the German FCI texts
+- Precache 11.6 → 13.0 MB: the hidden 2027 class pages (100 files)
 
 ### R22 — Regulation 2027 (CZ and VDH)
 

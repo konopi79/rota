@@ -29,6 +29,7 @@ import {
 } from '@/components/figures/exercise-animation'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { animationSetOf } from '@/lib/figures/animated'
 import { DOG } from '@/lib/figures/dog'
 import { ExercisePlayer, type Pose } from '@/lib/figures/exercise'
 import { HANDLER } from '@/lib/figures/handler'
@@ -382,15 +383,27 @@ export function CourseWalkthrough({
             <meshStandardMaterial color="#86b86b" />
           </mesh>
           <Field corners={walkthrough.field.corners} />
-          <PlacedStand code="START" at={walkthrough.startCard} ruleset={cls.ruleset} />
+          <PlacedStand
+            code="START"
+            at={walkthrough.startCard}
+            ruleset={animationSetOf(cls.ruleset)}
+          />
           {walkthrough.startMark && <MarkStand text="R" at={walkthrough.startMark} />}
-          <PlacedStand code="FINISH" at={walkthrough.finishCard} ruleset={cls.ruleset} />
+          <PlacedStand
+            code="FINISH"
+            at={walkthrough.finishCard}
+            ruleset={animationSetOf(cls.ruleset)}
+          />
           {walkthrough.stations.map((s) => (
             <group key={`station ${s.index}`}>
-              <PlacedStand code={s.code} at={s.card} ruleset={cls.ruleset} />
+              <PlacedStand code={s.code} at={s.card} ruleset={animationSetOf(cls.ruleset)} />
               <NumberTag number={s.index + 1} at={s.card} />
               {s.supplementary && s.d0 && (
-                <PlacedStand code={s.supplementary} at={s.d0} ruleset={cls.ruleset} />
+                <PlacedStand
+                  code={s.supplementary}
+                  at={s.d0}
+                  ruleset={animationSetOf(cls.ruleset)}
+                />
               )}
               {s.cones.map((c, i) => (
                 <Cone key={`cone${i}`} x={c.x} z={c.z} colour={CONE_COLOURS[i % 2]!} />

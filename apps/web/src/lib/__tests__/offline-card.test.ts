@@ -1,4 +1,4 @@
-import { CZ_CARDS, FCI_CARDS } from '@rota/content'
+import { RULESET_CARDS } from '@rota/content'
 import { describe, expect, test } from 'bun:test'
 
 import { cardHref } from '../classes'
@@ -7,7 +7,7 @@ import { inPrecache, isCardPage, OFFLINE_CARD_PATH } from '../offline-card-path'
 
 describe('offline card page (R20)', () => {
   test('every card is found from its own address', () => {
-    for (const card of [...CZ_CARDS, ...FCI_CARDS]) {
+    for (const card of Object.values(RULESET_CARDS).flat()) {
       expect(cardFromPath(cardHref(card))).toBe(card)
     }
   })
@@ -15,6 +15,7 @@ describe('offline card page (R20)', () => {
   test('an address served as a file or with a slash finds the card too', () => {
     expect(cardFromPath('/karta/cz/z-014.html')?.code).toBe('Z-014')
     expect(cardFromPath('/karta/cz/z-014/')?.code).toBe('Z-014')
+    expect(cardFromPath('/karta/cz-2027/z-014')?.ruleset).toBe('CZ-2027')
   })
 
   test('nothing for unknown cards, rulesets or other pages', () => {

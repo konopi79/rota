@@ -12,9 +12,18 @@ export {
   type RoClass,
   type RulesetId,
 } from './schema'
-export { CZ_CARDS, CZ_CLASSES, CZ_RULESET } from './cz'
-export { FCI_CARDS, FCI_CLASSES, FCI_RULESET } from './fci'
-export { CLASSES, getCard, getClass } from './registry'
+export { CZ_CARDS, CZ_CLASSES } from './cz'
+export { CZ_2027_CARDS, CZ_2027_CLASSES } from './cz-2027'
+export { FCI_CARDS, FCI_CLASSES } from './fci'
+export { CLASSES, classesOf, getCard, getClass, RULESET_CARDS } from './registry'
+export {
+  CZ_2027_RULESET,
+  CZ_RULESET,
+  FCI_RULESET,
+  isNational,
+  RULESETS,
+  type Ruleset,
+} from './rulesets'
 export {
   cndcAllowed,
   customDeck,

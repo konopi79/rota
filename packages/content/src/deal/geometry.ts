@@ -1,3 +1,4 @@
+import { isNational } from '../rulesets'
 import type { Card, Prop } from '../schema'
 import type { Placement, Point, Pose, Side } from './types'
 
@@ -178,7 +179,7 @@ type Placed = Pick<Card, 'ruleset' | 'placement' | 'geometry'>
  * card only its props on the dog's side (`Prop.dogSide`, read off the animations, R19).
  */
 const toDogOf = (card: Pick<Card, 'ruleset' | 'geometry'>, side: Side) =>
-  card.ruleset === 'CZ' &&
+  isNational(card.ruleset) &&
   !!card.geometry?.props?.some((p) => p.kind === 'jump') &&
   side === 'right'
     ? 1
@@ -203,7 +204,7 @@ export function signOf(card: Placed | undefined, at: Pose): Point {
   const own = card?.geometry?.card
   if (own) return offset(at, at.heading, own.ahead, own.side * toDogOf(card, 'left'))
   const before = card?.placement === 'B'
-  if (card?.ruleset === 'CZ') {
+  if (card && isNational(card.ruleset)) {
     return before
       ? offset(at, at.heading, NATIONAL_SIGN.before)
       : offset(at, at.heading, NATIONAL_SIGN.ahead, NATIONAL_SIGN.right)
@@ -216,7 +217,7 @@ export function signOf(card: Placed | undefined, at: Pose): Point {
 
 /** The stand of the D0 card dealt with a national card that needs one, beside the card. */
 export function d0StandOf(card: Placed & Pick<Card, 'sequencing'>, at: Pose): Point | undefined {
-  if (card.ruleset !== 'CZ' || !card.sequencing.requiresSupplementary) return undefined
+  if (!isNational(card.ruleset) || !card.sequencing.requiresSupplementary) return undefined
   return offset(signOf(card, at), at.heading, 0, D0_BESIDE)
 }
 
@@ -238,7 +239,7 @@ export function standsOf(
   return station.map(({ card }) => {
     const sign = next
     const d0 =
-      card.ruleset === 'CZ' && card.sequencing.requiresSupplementary
+      isNational(card.ruleset) && card.sequencing.requiresSupplementary
         ? offset(sign, heading, 0, D0_BESIDE)
         : undefined
     next = offset(d0 ?? sign, heading, 0, D0_BESIDE)

@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  isNational,
   customDeckIssues,
   finishSide,
   isCardIssue,
@@ -110,12 +111,11 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
   const side = (s: 'left' | 'right') => t(s === 'right' ? 'course.right' : 'course.left')
 
   // Several cards at one station (CNDC) say so under the plan.
-  const caption =
-    cls.ruleset !== 'CZ'
-      ? 'plan.caption'
-      : deck.entries.some((e) => e.withPrevious)
-        ? 'plan.captionCzCndc'
-        : 'plan.captionCz'
+  const caption = !isNational(cls.ruleset)
+    ? 'plan.caption'
+    : deck.entries.some((e) => e.withPrevious)
+      ? 'plan.captionCzCndc'
+      : 'plan.captionCz'
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-5 px-4 py-6 print:max-w-none print:py-0">
       <header className="space-y-2">

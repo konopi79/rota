@@ -81,10 +81,3 @@ export const FCI_CLASSES: RoClass[] = [
     sourcePage: 12,
   },
 ]
-
-export const FCI_RULESET = {
-  id: 'FCI',
-  name: 'FCI Rally Obedience',
-  validFrom: '2025-02-01', // "Účinnost od 01. 02. 2025"
-  source: 'Zkušební řád & Směrnice pro Mezinárodní soutěže FCI Rally Obedience (CZ překlad)',
-} as const
