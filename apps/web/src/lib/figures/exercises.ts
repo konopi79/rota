@@ -106,7 +106,10 @@ const STEP_LATER = new Set(['Z-018', 'Z-026', '1-123', '3-327'])
 export const fromTheRight = (e: Exercise): Exercise => {
   const own = OWN_WAY[e.code] ?? e
   const card = own.cardAt ? null : (own.card ?? 'side')
-  const goesRound = own.steps.some((step) => 'around' in step || 'roundLeftDog' in step)
+  // (Back to a dog left in front, D0e, is no way round a dog at heel.)
+  const goesRound = own.steps.some(
+    (step) => 'around' in step || ('roundLeftDog' in step && !step.beside),
+  )
   const room =
     card === 'side' ? (goesRound ? ROOM_TO_GO_ROUND : ROOM_BY_THE_CARD) : card && ROOM_AHEAD
   const more = MORE_ROOM[e.code] ?? { x: 0, z: 0 }
@@ -170,6 +173,47 @@ const in2027 = (e: Exercise): Exercise => ({
   ),
   ...(e.parts && { parts: e.parts.map((p) => ({ ...p, exercise: in2027(p.exercise) })) }),
 })
+
+/**
+ * D0e "Zurück zum Hund" (VDH 2027, S. 29): "Nach Vollendung der Frontposition signalisiert der HF
+ * dem Hund zu bleiben. Der HF begibt sich neben seinen Hund auf die ursprüngliche Fußseite …
+ * Kein Seitenwechsel … Das Team nimmt die Grundstellung ein und bewegt sich anschließend in die
+ * neue Richtung" — each exercise into the front as with D0a, its finish replaced: the dog left
+ * there, the handler round it behind it and up beside it, on the other way (`roundLeftDog.beside`).
+ */
+const withD0e = (e: Exercise): Exercise | null => {
+  const finish = e.steps.findLastIndex(
+    (step) => 'dogPath' in step && (step.dogPath === 'aroundHandler' || step.dogPath === 'toHeel'),
+  )
+  // (3-323's dog comes into the front on the run, too near the handler's way round it: not yet.)
+  if (finish < 0 || e.parts || e.code === '3-323') return null
+  return {
+    ...e,
+    supplementary: 'D0e',
+    steps: [
+      ...e.steps.slice(0, finish),
+      // "Das Team nimmt die Grundstellung ein": a dog lying or standing in front sits up first.
+      { dog: 'sit', caption: 'frontSit' },
+      { dogStays: true, caption: 'frontHold' },
+      {
+        roundLeftDog: true,
+        beside: 'left',
+        way: e.card === 'ahead' ? 'front' : 'behind',
+        caption: 'backToDogFront',
+      },
+      { walk: 3, caption: 'leaveTurn' },
+    ],
+  }
+}
+
+/**
+ * The exercises into the front with D0e (2027), from the left leg — not played yet (R22b): from
+ * right in front of the dog the way round it still goes too near its head or loops, so they are
+ * left out of `EXERCISES_IN_2027` until it is worked out (`D0E_ANIMATED` empty).
+ */
+export const D0E_EXERCISES: Exercise[] = EXERCISES.filter((e) => e.supplementary === 'D0a')
+  .map(withD0e)
+  .filter((e): e is Exercise => e !== null)
 
 /** Every exercise of the 2027 regulation: its own, and the 2026 ones it does the same way. */
 export const EXERCISES_IN_2027: Exercise[] = [

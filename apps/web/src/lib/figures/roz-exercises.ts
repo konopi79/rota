@@ -593,8 +593,52 @@ export const ROZ_EXERCISES: Exercise[] = [
 
 // ——— 2027 (VDH Regelwerk 2027, plan R22b) ———
 
-/** Z-028 / Z-029 210° vpravo / vlevo (VDH 2027, S. 36): the loop of 2026 at 210°, not 225°. */
+/**
+ * Z-033 / Z-034 Cik-cak (VDH 2027, S. 37): "Hund und HF biegen vor dem Schild nach rechts ab,
+ * gehen zwei Schritte in die neue Richtung und biegen dann nach links ab … Das Team bleibt in
+ * Bewegung" — Z-006's turn, two steps, Z-007's (and the other way round).
+ */
+const zigZag = (code: string, first: 90 | -90): Exercise => ({
+  code,
+  card: 'ahead',
+  steps: [
+    { walk: 3.5, caption: 'approachTurn' },
+    { turn: first, radius: ARC[90], caption: first > 0 ? 'turnRight90' : 'turnLeft90' },
+    { walk: 1.0, caption: 'twoStepsOn' },
+    {
+      turn: -first as 90 | -90,
+      radius: ARC[90],
+      caption: first > 0 ? 'turnLeft90' : 'turnRight90',
+    },
+    { walk: 3, caption: 'leaveTurn' },
+  ],
+})
+
+/**
+ * Z-035 Stop – 1 krok vpřed – lehni (S. 38): Z-024's step, and "der Hund legt sich direkt ins
+ * Platz" — down without sitting first.
+ */
+const Z035: Exercise = {
+  code: 'Z-035',
+  steps: [
+    { walk: 3.5, caption: 'approach' },
+    { stop: true, caption: 'stop' },
+    { dog: 'sit', caption: 'sit' },
+    { wait: 1, caption: 'basePosition' },
+    { walk: 0.3, pace: 'slow', caption: 'oneStep' },
+    { stop: true, caption: 'oneStep' },
+    { dog: 'down', caption: 'down' },
+    { wait: 1, caption: 'downHold' },
+    { walk: 3, pace: 'normal', caption: 'leave' },
+  ],
+}
+
+/** The RO-Z exercises the 2027 regulation does differently or adds, in card order. */
 export const ROZ_EXERCISES_2027: Exercise[] = [
+  // Z-028 / Z-029 210° vpravo / vlevo (S. 36): the loop of 2026 at 210°, not 225°.
   turnOnTheSpot('Z-028', 210, 'turnRight210', 'ahead'),
   turnOnTheSpot('Z-029', -210, 'turnLeft210', 'ahead'),
+  zigZag('Z-033', 90),
+  zigZag('Z-034', -90),
+  Z035,
 ]

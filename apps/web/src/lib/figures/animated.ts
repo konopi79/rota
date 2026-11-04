@@ -262,6 +262,13 @@ export const animationSetOf = (ruleset: RulesetId): AnimationSet =>
   ruleset === 'CZ-2027' ? 'CZ-2027' : isNational(ruleset) ? 'CZ' : 'FCI'
 
 /**
+ * The cards played with D0e (2027) in animation — none yet (`D0E_EXERCISES` is not played: the
+ * way round the dog in front still goes too near its head); then those into the front whose
+ * finish is their own, not the recall cards of a leave pair, nor 3-323.
+ */
+export const D0E_ANIMATED: readonly string[] = []
+
+/**
  * The cards the 2027 regulation does differently that have their 2027 animation
  * (`EXERCISES_2027`; a test keeps the two in step).
  */
@@ -269,6 +276,8 @@ export const ANIMATED_IN_2027: readonly string[] = [
   ...['Z-028', 'Z-029'],
   ...['1-103', '1-104', '1-105', '1-106', '1-119', '1-120'],
   ...['2-201', '2-202', '2-223', '2-224'],
+  // New in 2027, or another exercise under its code.
+  ...['Z-033', 'Z-034', 'Z-035', 'Z-036', '1-116', '2-234', '3-330', '3-331', '3-332'],
 ]
 
 /** What to play for a card: its own animation, or for a D0 card Z-014 ending with it. */
@@ -276,6 +285,12 @@ export type CardAnimation = { code: string; variant?: string; ruleset: Animation
 
 export const animationFor = (code: string, ruleset: AnimationSet = 'CZ'): CardAnimation | null => {
   if (ruleset === 'CZ-2027') {
+    // D0e is shown finishing Z-014, as D0a–d are (once it is animated).
+    if (code === 'D0e') {
+      return D0E_ANIMATED.includes(SUPPLEMENTARY_SHOWN_WITH)
+        ? { code: SUPPLEMENTARY_SHOWN_WITH, variant: code, ruleset }
+        : null
+    }
     if (ANIMATED_IN_2027.includes(code)) return { code, ruleset }
     if (notYetAnimated(ruleset, code)) return null
     const as2026 = animationFor(code, 'CZ')
@@ -313,6 +328,7 @@ const SAME_IN_2027: ReadonlySet<string> = new Set([
 function notYetAnimated(ruleset: RulesetId, code: string): boolean {
   return (
     ruleset === 'CZ-2027' &&
+    !(code === 'D0e' && D0E_ANIMATED.length > 0) &&
     CZ_2027_REVISED.has(code) &&
     !SAME_IN_2027.has(code) &&
     !ANIMATED_IN_2027.includes(code)
@@ -334,7 +350,8 @@ export const canWalkThrough = (deck: Deck): boolean => {
     deck.entries.some(
       (e) =>
         notYetAnimated(ruleset, e.code) ||
-        (!!e.supplementary && notYetAnimated(ruleset, e.supplementary)),
+        (!!e.supplementary && notYetAnimated(ruleset, e.supplementary)) ||
+        (e.supplementary === 'D0e' && !D0E_ANIMATED.includes(e.code)),
     )
   ) {
     return false

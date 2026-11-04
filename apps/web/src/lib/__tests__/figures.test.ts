@@ -5,6 +5,7 @@ import { getCard, type Card } from '@rota/content'
 import {
   ANIMATED_CARDS,
   ANIMATED_IN_2027,
+  D0E_ANIMATED,
   FCI_ANIMATED_CARDS,
   FCI_RIGHT_SIDE_CARDS,
   animationFor,
@@ -32,6 +33,7 @@ import { jointFrames, jointNames, lowestPoint, type Joint, type Pose } from '../
 import {
   EXERCISES,
   EXERCISES_2027,
+  EXERCISES_IN_2027,
   RIGHT_EXERCISES,
   RIGHT_EXERCISES_IN_2027,
 } from '../figures/exercises'
@@ -546,7 +548,8 @@ describe('every exercise', () => {
   test.each(PLAYED)('%s plays to the end', (_, exercise) => {
     const frames = playAll(exercise)
     expect(frames.at(-1)!.finished).toBe(true)
-    expect(frames.length / 60).toBeLessThan(40)
+    // (1-108 with D0e, 2027: its three steps back and the way round the dog — 42 s.)
+    expect(frames.length / 60).toBeLessThan(45)
   })
 
   // FCI asks less (§4.3): "alespoň v jednom okamžiku musí část týmu nacházet v prostoru".
@@ -904,6 +907,9 @@ describe('animations in the card details', () => {
     expect([...ANIMATED_IN_2027].sort()).toEqual(
       [...new Set(EXERCISES_2027.map((e) => e.code))].sort(),
     )
+    // (D0e not played yet: none listed, and none in the 2027 set.)
+    expect(D0E_ANIMATED).toEqual([])
+    expect(EXERCISES_IN_2027.some((e) => e.supplementary === 'D0e')).toBe(false)
   })
 
   // §3.5 "Všechny cviky (kromě 417 a 418) lze provádět se psem na levé nebo pravé straně": each

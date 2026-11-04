@@ -955,6 +955,68 @@ const standTurnStand2027 = (code: string, sign: 1 | -1, dog: DogLeg): Exercise =
 })
 
 /**
+ * Z-036 Doppelkehrt (VDH 2027, S. 38): 2026's 1-116, now a Beginner card — "Wenn der Hund die
+ * Fußposition wieder erreicht hat, zeigt das Team 2 Schritte Fußarbeit und führt die
+ * Kehrtwendungsübung erneut aus".
+ */
+const Z036_2027: Exercise = {
+  ...R1_116,
+  code: 'Z-036',
+  steps: R1_116.steps.flatMap((step, i) =>
+    i > 0 && 'turn' in step && R1_116.steps[i - 1] && 'turn' in R1_116.steps[i - 1]!
+      ? [{ walk: 0.7, pace: 'slow' as const, caption: 'twoStepsOn' }, step]
+      : [step],
+  ),
+}
+
+/** 1-116 Steh – 1 Schritt vorwärts – Steh (S. 43): another exercise under 2026's code. */
+const R1_116_2027: Exercise = {
+  code: '1-116',
+  steps: [
+    ...stopStand(),
+    ...forward(1, 'oneStepStand'),
+    { wait: 1, caption: 'standHold' },
+    leave(),
+  ],
+}
+
+/** 2-234 In Bewegung – Schritt zur Seite – links (S. 54): 1-102 to the left, past the card on the right. */
+const R2_234_2027: Exercise = {
+  code: '2-234',
+  card: 'ahead',
+  stopAt: stopForSideStep(LEFT),
+  steps: [
+    { walk: 3.5, caption: 'approachTurn' },
+    { footwork: stepAside(LEFT), fromFoot: 1, caption: 'sideStepWalkingLeft' },
+    { walk: 3, pace: 'normal', caption: 'passCardRight' },
+  ],
+}
+
+/**
+ * 3-330 / 3-331 / 3-332 Sitz / Platz / Steh aus der Bewegung – um den Hund herum (S. 62–63): "Der
+ * HF gibt, ohne anzuhalten … dem Hund das Signal … Der Hundeführer geht im Abstand von höchstens
+ * 50 cm um den Hund herum, zurück in die Fußposition und bleibt stehen" — FCI's 419 / 318 / 317
+ * (`dropsDog`, `roundLeftDog`), with the national card.
+ */
+const dropAndRound2027 = (code: string, posture: 'stand' | 'down' | 'sit'): Exercise => ({
+  code,
+  steps: [
+    { walk: 3.5, caption: 'approach' },
+    {
+      walk: 0.2,
+      dropsDog: posture,
+      caption: posture === 'sit' ? 'dropSit' : posture === 'down' ? 'dropDown' : 'dropStand',
+    },
+    { roundLeftDog: true, caption: 'roundDogFront' },
+    {
+      wait: 0.6,
+      caption: posture === 'sit' ? 'basePosition' : posture === 'down' ? 'downHold' : 'standHold',
+    },
+    leave(),
+  ],
+})
+
+/**
  * RO1–RO3 exercises the 2027 regulation does differently, in card order — with the footwork
  * for the dog at the left leg, or (`'right'`, then played from the right) at the right one.
  */
@@ -969,4 +1031,11 @@ export const higherExercises2027 = (dog: DogLeg): Exercise[] => [
   stopTurnStepStop2027('2-202', LEFT, dog),
   standTurnStand2027('2-223', RIGHT, dog),
   standTurnStand2027('2-224', LEFT, dog),
+  // New in 2027, or another exercise under its code (the same from either leg).
+  Z036_2027,
+  R1_116_2027,
+  R2_234_2027,
+  dropAndRound2027('3-330', 'sit'),
+  dropAndRound2027('3-331', 'down'),
+  dropAndRound2027('3-332', 'stand'),
 ]
