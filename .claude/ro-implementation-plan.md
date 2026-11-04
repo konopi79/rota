@@ -43,6 +43,14 @@ committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 | R17 | Animations: leave, recall, jumps + walkthroughs RO2, RO3, RO-V | ✅ 2026-10-30 |
 | R18 | CNDC (several cards at one station)                            | ⏳            |
 | R19 | FCI animations + walkthrough                                   | ⏳            |
+| R20 | Card details offline from one page                             | ✅ 2026-11-04 |
+| R21 | Regulations as data (edition, card identity, languages)        | ⏳            |
+| R22 | Regulation 2027 (shared by CZ and VDH)                         | ⏳            |
+| R23 | National 2026 / 2027 switch                                    | ⏳            |
+| R24 | German UI                                                      | ⏳ VDH        |
+| R25 | VDH content (+ FCI in German)                                  | ⏳ VDH        |
+| R26 | Offline packs per regulation                                   | ⏳ if needed  |
+| R27 | Launch in Germany                                              | ⏳            |
 
 > **Order:** R3 is built before R2 so the national classes are usable end to end first;
 > FCI plugs into the same dealer afterwards.
@@ -741,6 +749,51 @@ with the dog on the right too, then the walkthrough on the FCI plan.
 - [x] Every FCI card with the dog on the right (2026-11-03, `FCI_RIGHT_EXERCISES`): "Všechny cviky (kromě 417 a 418) lze provádět se psem na levé nebo pravé straně psovoda" (§3.5) — 417 only from the left leg, 418 only from the right (played so already). The cards FCI shares with the national ones play the national exercise from the right (its own way round cones, its side change the other way), the rest FCI's own scripts with the national room by the card (`fromTheRight`, now exported; going round a dog left on the move, 317 / 318 / 419, takes the room of Z-004's way round). Going round the dog "zepředu" (103, 104, 208) the handler passes the card's side: past the dog only as far as at heel (`AROUND_DOG_CLOSE`, the author: "obchází velkým obloukem"), so the team stops 0.4 m left in the square and 0.1 m short of its middle — round Z-004's wide way it stood 0.55 m left and 0.4 m short, a foot outside. Measured as `INTO_THE_SQUARE`: turning left before the card the dog swings out over where it stands, as turning right from the left, so each card comes as near the card as its mirror image does from the left (`MIRROR`: 106 as 105, 214 as 213, …; 212, 302, 415 `RIGHT_STOP`). 312 the mirror image — the right foot ahead, the dog under from right to left. Jumps on the dog's side; 222 / 320 send the dog as it is level with the card, which stands on its side too (`SENT_AT_THE_CARD`, "nejdříve až vedle karty"), the team further left. Leave cards: the recall cone on the other side ("na opačné straně, než je veden pes"), back to the right leg; the recall cards 321–323, 421, 422 and 411 call the dog to the left leg ("Návrat k vedení na levé straně", §4.8 — the player no longer brings a dog from the front to the leg it came from), 421's jump left of the way (on the right it stood beyond the leave card, the dog ran over its card). 410 the mirror image, its cone on the dog's side. Captions read with the sides swapped (some national ones were missing too: 2-208's, 1-116's second turn, 2-215, 3-319). Reviewed card by card by the author (2026-11-03): where the dog on the right needs no room by the card the team stops in the middle or nearer (112, 113, 115, 209–211, 218, 301, 303, 306, 309, 315, 316, 401; `RIGHT_STOP`), 212 the mirror image of 211 from the left; 415 turns on the spot like 414 from the left (in three steps it drifted out of the square); 306 and 309 also from the left in the middle of the square (`STOP`). Side steps towards the dog out of a walk (301 / 401 right, 302 / 402 left, 1-102 right): the dog went over 1.5 m before the step, a step more where the walk took one to land on the right foot — now during the handler's last step, settled as that foot lifts, a little quicker (`SIDLE_SPEED_WALKING`; with no head start the stepping foot waited for the dog, into a lunge, and quicker its paws slipped). 411's dog turned only partly round and slid back sideways into heel ("zadriftuje"): it turns round on the spot all the way and waits facing the way till the handler comes up (`TURNED_ROUND`, `WAITS_FOR_HEEL`), from either side. A test checks every FCI card ends with the dog at the leg its card says, from either side; national animations unchanged but 1-102 from the right (compared frame by frame with `main`)
 - [x] Walkthrough on the FCI field plan (2026-11-04): an FCI course is walked through like a national one (`canWalkThrough`, `animationOf` → `fciAnimationOf`: from either leg, 418 from the right only; a leave card with its recall cone, or its part when its recall card comes next). For the team to walk the plan, the plan had to be what the animations do — as R14 did nationally, the FCI geometry is now **read off the animations** and kept so by a test (`figures-geometry.test.ts`, R19 block): the card where the animation has it (`FCI_SIGN`: A 0.5 m ahead and 0.75 m right, B 1.2 m ahead), each card's turn (107 / 108 225° only), where the team walks off (`exit` / `exitSide`: the paces, side changes on the move, side steps, the turns before a card a little nearer it), cones and jumps where they stand, the figures' cards beside their cones, the recall cone 5 m past its card (`RECALL_CONE_AHEAD`). With the dog on the right an FCI card keeps its layout — its turns, cones and side steps are its own — but for a jump and props marked so (`Prop.dogSide`: 410's cone; 421's jump stays left, `dogSide: false`), from where the team stops with room by the card (`rightStop`, checked against the animations), and the figures stop so their cones come where the left's do (`asPlanned`). The ways walked are kept clear as nationally (`WALK_SPACING`, `STAND_SPACING`; FCI layouts had skipped it — walked through, the team went through other stations' cards), with the ways the dog runs on its own (`via`: round the cones as the national figures, 410's out to its cone and back, 417 / 418's round the cone; 421's over its jump, `dogWayOf`), and the finish card off them. A recall card instead of the recall cone no longer counts the way on to the cone as walked (it stood on it, 4 m on: no 321–323, 422 was dealt). In the walkthrough a dog's way of its own is set from its station (`dogRuns`, as `sendTo`), 312's long stride is a step's (`stride`), 421's dog goes over the jump off its way the least (`barToward` — another station's was nearer), and a station's dog is sent or called over its own jumps and its leave card's only (`onlyJumps` on the way to it, `liveBars` while it goes over — the author: at heel it passed 320's jump a little off and began to leap, "držet pořadí cviků bez ohledu na ostatní cviky, předměty"), and the walkthrough test measures FCI's smaller card as it is. Two more found walking courses through, both sides: 420's dog called over its jump on the run went at a slant and came within 2 cm of the bar — it heads 1.8 m past it now (`CHASE_AIM_PAST`); and the dog's tail swept through a card's stand turning or sitting by it (415 at a course's card 3, the author — also Z-013, Z-023, 3-319's finish): it is carried up over the stand and down again (`tailUp`, `TAIL_UP`; the author: "pes ocasem hýbe"), raised only where it would go into one (52 of the 592 animations, either side), and the tests now keep the tail out of every stand like the head and paws. 415 from the left turns 0.15 m further from its card (its tail lay across the stand as it sat). Out of the walk into steps a card's animation walks on till that foot lands (312: 0.37 m past where it begins): a course lines up the footfall before it and walks on as the animation does (`Phase.on`), a foot short of it stepping on first (`CATCH_UP`) — 312's long stride began up to a step short and the dog went under the handler into its card (the author, card 16); the walkthrough test now keeps the dog's head and paws off every stand too. Between the cards a team only a little aside goes over mostly once past a card beside its way (2-207 after its side step, `pastStand`), not further aside (it went the rest nearly sideways before 115 and 406, the author). National decks and courses unchanged (500 compared seed by seed with `main`). FCI courses (20 × 20 / 20 × 30 m, `main` in brackets): leave cards 1.24 / 1.32 (1.25 / 1.33), recall cards 0.81 / 0.85 (0.67 / 0.71), jumps 0.79 / 0.91 (0.83 / 0.95), figures 0.68 / 0.89 (0.86 / 0.99); weights re-calibrated, 0.10 / 0.06 off the judges (0.08 / 0.06). The cost: on 20 × 20 m they deal slower, median ~85 ms and one in ten over 0.3 s (~6 / 30 ms); 20 × 30 m about as before. 50 courses walked through without anyone near a card, cone or upright. Feature item `course-walkthrough`
 
+### R20 — Card details offline from one page
+
+- [x] The service worker answers a card page it has not precached with one page, `/karta/_/_`, that draws the card named in the address from the data (`lib/offline-card*.ts`, `components/offline-card.tsx`); a client navigation's page data fails offline, so the router loads the address as a whole page and gets it. The prerendered card pages stay for search engines and online visits, out of the precache (`build-sw.ts` `manifestTransforms`)
+- [x] Precache 19.8 MB → 11.6 MB (1 697 → 637 files; the 213 card pages were ~44 kB each: the HTML and its page data three times). Tested offline on the built site with the server stopped (2026-11-04): a card opened by its address, from the catalogue, the next card, back, an FCI card with its animation
+
+### R21 — Regulations as data
+
+- [ ] A regulation (`CZ-2026`, later `CZ-2027`, `VDH-2027`, `FCI`) owns its cards and classes; a card is `(regulation, code)` — 1-116 and 3-302 mean other exercises in 2027
+- [ ] Classes per regulation (names: RO-Z…RO-V, VDH Beginner, Klasse 1–3, Senioren); routes, deck and course URLs, local storage and quiz stats carry the regulation; every link and stored course from before reads as `CZ-2026`
+- [ ] Card texts per language (`cs`, `de`), the national/FCI checks (`ruleset === 'CZ'`, ~40 places) asked of the regulation instead
+- [ ] Nothing visible changes: decks, courses and layouts identical seed by seed with `main`
+
+### R22 — Regulation 2027 (CZ and VDH)
+
+- [ ] Card by card: VDH 2027 against CZ 2026 — same, reworded, changed (B-010, B-018, B-019, B-025, B-026, B-027, 1-116, 2-230, 2-231, 3-302), new (B-033–036, 1-126–130, 2-233, 2-234, 3-328–332, Z-0e, start "R")
+- [ ] Classes and course rules from §5: sizes, side changes (now in the regulation), at most twice a card, Senioren 12–14 cards with Z-a/c/e and its own list (Anhang 3), no main/minor parts
+- [ ] Z-0e in the dealer and validator: type A, the dog keeps its side, the team goes on the other way (a turn about for the plan)
+- [ ] Geometry, animations and walkthroughs of the new and changed cards
+- [ ] Czech texts of the new and changed cards translated by us (marked so until the Czech regulation), German ones verbatim from VDH
+
+### R23 — National 2026 / 2027 switch
+
+- [ ] Regulation choice in the setup (remembered); 2027 marked "připravovaný, podle německého řádu"; 2026 the default until April 2027
+- [ ] Card images of new and changed cards: VDH stand-ins (only with VDH's consent) or text-only cards until the Czech set
+- [ ] Feature item, guide, About page
+
+### R24 — German UI
+
+- [ ] VDH's consent to use its cards and texts (letter 2026-11-04)
+- [ ] `de.json`, language choice (default from the browser), German announcements (`announce.ts`, de-DE voice), About page, guide and feature list in German, feedback in German
+- [ ] Review by a German speaker (none yet)
+
+### R25 — VDH content
+
+- [ ] VDH card images (`VDH_RO_RW_2027_Schilder.pdf`: vector, page → code from the text layer) and German texts proofread
+- [ ] FCI descriptions in German
+
+### R26 — Offline packs per regulation
+
+- [ ] Only if the precache passes 25 MB: the core plus the chosen regulation's cards offline, another regulation's fetched when chosen
+
+### R27 — Launch in Germany
+
+- [ ] Credits to VDH, a German tester, announced where German handlers are; `rotapp.de` maybe
+
 Each phase ends green on `bun run format && bun run typecheck && bun run lint` plus its
 own tests, and is committed separately.
 
@@ -818,3 +871,31 @@ animations, the national classes animations (R12) but no plan.
 - **The dog on the right first** (the author, 2026-10-27): a walkthrough follows the dog's
   side, and RO-Z and RO1 courses may start "R" — so R15 before the walkthroughs.
 - **Order:** R13 → R14 → R15 → R16 → R17 → R18 (when the answers come) → R19.
+
+## 15. Regulations and languages (R20–R27)
+
+The Czech regulation from April 2027 takes over the German VDH Regelwerk Rally Obedience 2027
+(announced by the Czech club on 2026-11-02; VDH valid from 2027-01-01; both PDFs in
+`podklady/2027/`), and FCI is the same everywhere — so the author's idea (2026-11-04): offer
+ROTA to German handlers too, with the VDH regulation and a German UI, next to a national
+2026 / 2027 switch.
+
+- **2027 is one piece of work for both.** The Czech 2027 regulation is VDH 2027 in Czech: the
+  dealer's rules, the new cards, the geometry and the animations are done once; the German
+  version adds texts, a translated UI, card images and VDH's consent.
+- **Three separate things**, until now one: the regulation (cards and rules — CZ 2026, CZ 2027,
+  VDH 2027, FCI), the language of the card texts (Czech, German; FCI both) and the language of
+  the UI (by the browser by default). The user picks the regulation; its classes follow.
+- **Codes are not stable across regulations**: 1-116 is "2 × čelem vzad" in CZ 2026, "Steh – 1
+  Schritt vorwärts – Steh" in VDH 2027 (the double about turn moved to B-036); 3-302 is a recall
+  from an angle in CZ 2026 and two jumps in VDH 2027. A card is therefore `(regulation, code)`.
+- **Rights.** The VDH regulation: "Die Nutzung dieser Satzung durch die dem VDH angeschlossenen
+  Mitgliedsvereine im Rahmen der Verbandsarbeit ist gestattet. Im Übrigen bleiben alle Rechte
+  vorbehalten." — no VDH card or text ships before VDH agrees (letter 2026-11-04). R20–R23 do
+  not wait for it: they are needed for the Czech 2027 anyway.
+- **Offline size.** The last build (2026-10-29) was 23 MB: card detail pages 9.9 MB (215
+  prerendered pages, ~46 kB each), card images 8 MB, JS 2.5 MB. VDH's cards are simple vector
+  graphics (~3–4 MB for 141 cards, estimated); two more regulations' detail pages would add ~17
+  MB — hence R20 first, and packs per regulation (R26) only if still needed.
+- **Order** (author, 2026-11-04): R20 → R21 → R22 → R23 (the Czech 2027 done), then R24–R27 once
+  VDH answers. No German tester yet.

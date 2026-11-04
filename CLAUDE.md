@@ -87,7 +87,7 @@ No runtime env vars. Health check: `GET /healthz` → `ok`.
 
 `bun run build` in `apps/web` = `next build` **then** `scripts/build-sw.ts`: Bun bundles
 `src/sw.ts` into `out/sw.js` and `@serwist/build` injects the precache manifest of
-everything in `out/` (pages, their `.txt` RSC payloads, JS, CSS, card images — ~18 MB).
+everything in `out/` but the card pages (pages, their `.txt` RSC payloads, JS, CSS, card images — ~12 MB).
 No Next/Turbopack plugin.
 
 - The SW precaches with `cleanURLs` (`/trida/ro1` → `trida/ro1.html`) and **ignores all
@@ -97,6 +97,10 @@ No Next/Turbopack plugin.
   the precache first, a plain reload showed the old version until the one after. Both kinds
   together, so a page and the data its links load are always of one build. Scripts, styles and
   card images stay precache-first.
+- **Card pages are not precached** (R20): offline, any `/karta/<ruleset>/<card>` gets the one
+  page `/karta/_/_`, which reads the card from the address (`lib/offline-card-path.ts`, no card
+  data there — the service worker imports it). A new page type with one page per item should
+  do the same rather than grow the precache.
 - Registered only in production (`components/pwa.tsx`); dev has no `sw.js`.
 - `skipWaiting` + `clientsClaim`: a new deploy takes over on the next load. nginx serves
   `/sw.js` and the manifest `no-cache`, the manifest with its proper MIME type.

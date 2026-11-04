@@ -12,6 +12,8 @@
  */
 import { Serwist, type PrecacheEntry } from 'serwist'
 
+import { isCardPage, OFFLINE_CARD_PATH } from './lib/offline-card-path'
+
 declare const self: ServiceWorkerGlobalScope & {
   __SW_MANIFEST: (PrecacheEntry | string)[]
 }
@@ -49,6 +51,16 @@ const fromNetwork = (request: Request): Promise<Response | undefined> =>
       .finally(() => clearTimeout(timer))
   })
 
+/**
+ * A card's own page is not precached (plan R20): without signal its address gets the one
+ * offline card page, which reads the card from the address. Its page data (a client
+ * navigation) gets an error, so the router loads the address as a whole page — and so this.
+ */
+const offlineCard = async (request: Request) =>
+  request.mode === 'navigate' && isCardPage(new URL(request.url).pathname)
+    ? serwist.matchPrecache(`${OFFLINE_CARD_PATH}.html`)
+    : undefined
+
 // Before Serwist's own listener: the first to respond wins.
 self.addEventListener('fetch', (event) => {
   if (!isPage(event.request)) return
@@ -57,6 +69,7 @@ self.addEventListener('fetch', (event) => {
       (await fromNetwork(event.request)) ??
       // Without signal, slow, or an error page: the precached one, as before.
       (await serwist.handleRequest({ request: event.request, event })) ??
+      (await offlineCard(event.request)) ??
       Response.error())(),
   )
 })

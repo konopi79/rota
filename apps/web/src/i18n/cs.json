@@ -212,6 +212,7 @@
   },
   "card": {
     "back": "Zpět",
+    "notFound": "Tuhle kartu ROTA nezná. Zkontroluj adresu, nebo ji najdi v katalogu třídy.",
     "diagram": "Nákres provedení",
     "animation": "Jak cvik vypadá",
     "animationWith": "Ukázka s předsednutím {{code}}.",
