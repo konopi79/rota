@@ -1,4 +1,11 @@
-import { isNational, type Deck, type RulesetId } from '@rota/content'
+import {
+  CZ_2027_REVISED,
+  getClass,
+  isNational,
+  type Card,
+  type Deck,
+  type RulesetId,
+} from '@rota/content'
 
 /**
  * Which cards have an exercise animation — kept light on purpose (no three.js, no scripts)
@@ -267,10 +274,34 @@ export const animationFor = (code: string, ruleset: AnimationSet = 'CZ'): CardAn
 }
 
 /**
+ * A 2027 card that is not the 2026 exercise as it was (new, rewritten, changed footwork): no
+ * animation until R22b — the 2026 one would show the old exercise (the author, 2026-11-04).
+ */
+const notYetAnimated = (ruleset: RulesetId, code: string) =>
+  ruleset === 'CZ-2027' && CZ_2027_REVISED.has(code)
+
+/** What to play for a card of any ruleset — `animationFor` with the card's own set. */
+export const animationOfCard = (card: Pick<Card, 'code' | 'ruleset'>): CardAnimation | null =>
+  notYetAnimated(card.ruleset, card.code)
+    ? null
+    : animationFor(card.code, animationSetOf(card.ruleset))
+
+/**
  * Whether a deck can be walked through in animation (plan R16, R19): laid out on one field,
  * every card animated — on the side the course has the dog there.
  */
 export const canWalkThrough = (deck: Deck): boolean => {
+  const ruleset = getClass(deck.options.classId)?.ruleset
+  if (
+    ruleset &&
+    deck.entries.some(
+      (e) =>
+        notYetAnimated(ruleset, e.code) ||
+        (!!e.supplementary && notYetAnimated(ruleset, e.supplementary)),
+    )
+  ) {
+    return false
+  }
   const fci = deck.options.classId === 'FCI-ROB'
   const animated = fci ? FCI_ANIMATED_CARDS : ANIMATED_CARDS
   const right = fci ? FCI_RIGHT_SIDE_CARDS : RIGHT_SIDE_CARDS

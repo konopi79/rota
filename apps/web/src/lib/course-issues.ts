@@ -110,6 +110,12 @@ export function issueMessage(issue: DeckIssue, cls: RoClass, t: TFunction): stri
           : 'issues.rightPattern.withMid',
         { cls: cl },
       )
+    // The 2027 regulation's own rule for the side (VDH §5.2–5.5).
+    case 'sides':
+      return t(
+        `issues.sides.${issue.broken === 'stretch' && issue.limit === 0 ? 'stretch0' : issue.broken}`,
+        { cls: cl, limit: issue.limit },
+      )
     // Several cards at one station (CNDC): the regulation's, the guidelines', the safe side's.
     case 'cndc':
       if (issue.reason === 'too-many') {

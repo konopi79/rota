@@ -16,7 +16,7 @@ import { SubParts } from '@/components/sub-parts'
 import { Button } from '@/components/ui/button'
 import { catalogueFromQuery, classesWith, sequencingNotes } from '@/lib/catalogue'
 import { cardHref, classSlug } from '@/lib/classes'
-import { animationSetOf } from '@/lib/figures/animated'
+import { animationOfCard, animationSetOf } from '@/lib/figures/animated'
 import { navigate } from '@/lib/stale-page'
 
 export function CardDetail({ card }: { card: Card }) {
@@ -84,7 +84,9 @@ export function CardDetail({ card }: { card: Card }) {
         </section>
       )}
 
-      <CardAnimation code={card.code} ruleset={animationSetOf(card.ruleset)} />
+      {animationOfCard(card) && (
+        <CardAnimation code={card.code} ruleset={animationSetOf(card.ruleset)} />
+      )}
 
       {card.subParts && (
         <section className="space-y-2">

@@ -332,6 +332,28 @@ export function afterDynamicStation(approach: Approach): Approach {
   return { ...approach, min: approach.min + CNDC_EXTRA, max: approach.max + CNDC_EXTRA }
 }
 
+/**
+ * A station's card as laid out: the card itself — or, with a D0 card that turns the team
+ * (D0e "Zpět ke psu", 2027: the handler goes back beside the dog sitting in front and the team
+ * goes on "in die neue Richtung"), its turns with the D0 card's added and no steps back left to
+ * walk past the card (the handler walks up to the dog first).
+ */
+export function withSupplementary(card: Card, supplementary: Card | undefined): Card {
+  const extra = supplementary?.geometry?.turn
+  if (extra === undefined) return card
+  const by = Array.isArray(extra) ? extra[0]! : extra
+  const turns = turnsOf(card).map((t) => t + by)
+  const { exit, ...geometry } = card.geometry ?? {}
+  return {
+    ...card,
+    geometry: {
+      ...geometry,
+      ...(exit !== undefined && exit > 0 && { exit }),
+      turn: turns.length === 1 ? turns[0]! : turns,
+    },
+  }
+}
+
 /** The turns a card allows (0 for cards done without turning). */
 export function turnsOf(card: Card): number[] {
   const turn = card.geometry?.turn ?? 0

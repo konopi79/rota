@@ -12,7 +12,7 @@ import {
 import { cardImageUrl } from '@/components/deck/card-image'
 import { cn } from '@/lib/utils'
 
-const { bearing, offset, shapeOf, signOf, walkOf, wayTo } = geometry
+const { bearing, offset, shapeOf, signOf, walkOf, wayTo, withSupplementary } = geometry
 
 /**
  * Drawing margin around the field, in metres: room for the cards that stand over the edge
@@ -69,9 +69,10 @@ export function FieldPlan({
     const next = entries[r.first + i + 1]
     const recallFollows =
       r.first + i + 1 < end && !!next && !!card(next.code).sequencing.onlyAfterLeave
-    const c = card(entry.code)
-    const shape = shapeOf(c, at, entry.side, recallFollows)
     const supplementary = entry.supplementary ? card(entry.supplementary) : undefined
+    // (With a D0 card that turns the team — D0e, 2027 — the exercise as laid out.)
+    const c = withSupplementary(card(entry.code), supplementary)
+    const shape = shapeOf(c, at, entry.side, recallFollows)
     return [{ index: r.first + i, card: c, supplementary, at, shape, joined: !!entry.withPrevious }]
   })
   // Several cards at one station (CNDC): drawn side by side from where the first one stands,

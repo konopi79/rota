@@ -765,11 +765,38 @@ with the dog on the right too, then the walkthrough on the FCI plan.
 
 ### R22 — Regulation 2027 (CZ and VDH)
 
-- [ ] Card by card: VDH 2027 against CZ 2026 — same, reworded, changed (B-010, B-018, B-019, B-025, B-026, B-027, 1-116, 2-230, 2-231, 3-302), new (B-033–036, 1-126–130, 2-233, 2-234, 3-328–332, Z-0e, start "R")
-- [ ] Classes and course rules from §5: sizes, side changes (now in the regulation), at most twice a card, Senioren 12–14 cards with Z-a/c/e and its own list (Anhang 3), no main/minor parts
-- [ ] Z-0e in the dealer and validator: type A, the dog keeps its side, the team goes on the other way (a turn about for the plan)
-- [ ] Geometry, animations and walkthroughs of the new and changed cards
-- [ ] Czech texts of the new and changed cards translated by us (marked so until the Czech regulation), German ones verbatim from VDH
+The card-by-card comparison (2026-11-04; reports in `.cache/vdh2027/diff/`, not committed): RO-Z
+with start and D0 31 same / 7 changed / 6 new, RO1 11 / 13 / 6, RO2 19 / 13 / 2, RO3 11 / 15 / 6;
+Senioren 76 exercise cards + D0a, D0c, D0e. Many "changes" are places where the Czech 2026 text
+had left the German original (předsednutí "až čtyři kroky vzad" — German one step; "max. 4 kroky
+nohou" for 180° turns — German "auf einem DIN A4 Blatt"; 225° — German 210°; the card 5 m before
+a jump — German 2 m). The author's decisions (2026-11-04):
+
+- **The German text rules** where the Czech 2026 text differed; the Czech text, when it comes,
+  is diffed again.
+- **Competition courses 2027 follow the 2027 regulation and the club's slides only** — the
+  Směrnice 2025 rules (required exercises, RO-Z's A/B balance, its repeat list) are dropped until
+  new guidelines: their lists name codes that mean other exercises in 2027.
+- **Senioren: one of 1-123, 1-124, 1-126, 2-232 first or last is required** on a competition
+  course (§5.5; the club's slide writes it as a requirement).
+- **R22a content first, R22b animations**: until R22b a changed or new 2027 card has no
+  animation (rather than one with the 2026 footwork), and a 2027 course with one is not walked
+  through.
+
+R22a — content, rules, dealer, plan (2026-11-04):
+
+- [x] Cards (`cz-2027/ro-z.ts` … `ro3.ts`, each change citing its VDH page; `index.ts` merges them): 80 of 139 revised — new B-033–036, 1-126–130, 2-233, 2-234, 3-328–332, D0e; 1-116 and 3-302 rewritten as their 2027 exercises; the changes (one step back into the front, 90° from a stop in one foot movement, 180° "na ploše listu A4", 210° loops, the 2-230/231 execution, D0a–e, follow-ups); no sub-parts, no last-card rule; texts of new and changed cards our translation. New cards have no image yet (R23)
+- [x] Classes from §5 (`CZ_2027_CLASSES`): card lists (Senioren after Anhang 3, B-028 for its misprinted "B-027"), sizes, D0a–e (Senioren a, c, e), CNDC (Beginner none, RO1 at most four two-card groups), each card at most twice on a competition course (`maxRepeats`, D0 cards included — national courses count it in `NationalCourse.left`)
+- [x] D0e: no `endSide`, so the dog keeps its side (`sideAfter` as it was); `geometry.turn: 180` — `withSupplementary` adds a D0 card's turn to its card, and where a class has such a D0 card the dealer chooses it as it places the card (`deal.ts`), so the plan turns the team about; on a stretch on the right a course deals a front exercise with D0e only (`NationalCourse.supplementaries`)
+- [x] Side changes on competition courses (`course.sides`, `planSides`, `sidesBroken`; the validator's `sides` issue, Czech messages in `issues.sides`): RO1 stretch 0 and two changes to the right (one after a start "R"), at least one change; RO2 stretch 1, at least one exercise on the right; RO3 3 to a third; Senioren one change by the first or the last card
+- [x] Follow-ups: 3-301 / 3-314 / 3-324 → 2-214 instead of 3-302, 3-329 like 3-301, 2-211 + 3-308 / 3-309, 2-212 − 3-302 + 3-321, 3-321 `endSide: 'left'`
+- [x] Geometry by hand for the new cards (no animations yet); Z-028/029 turn 210
+- [x] Revised 2027 cards have no animation (`animationOfCard`, `CZ_2027_REVISED`), a 2027 course with one is not walked through (`canWalkThrough`)
+- [x] Tests (`cz-2027.test.ts`): data, the codes that changed meaning, D0e, the side rules card by card and the planner, ~250 decks and courses of every class and field valid and laid out (D0e dealt and turned), at most twice a card; 2026 and FCI decks identical to `main` (1 200 compared seed by seed)
+
+R22b — animations:
+
+- [ ] The new and changed cards animated (90° from a stop in one foot movement, 180° on an A4 sheet, one step back into the front, D0e, …), the 2027 walkthroughs
 
 ### R23 — National 2026 / 2027 switch
 

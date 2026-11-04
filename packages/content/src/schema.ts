@@ -310,6 +310,37 @@ export const roClassSchema = z
           .strict()
           .optional(),
         /**
+         * National competition courses under the 2027 regulation (VDH §5.2–5.5): where the dog
+         * may be led on the right — the regulation's own rule, replacing the guidelines'
+         * `rightHand`. A stretch on the right runs from a side change (or a start "R") to the
+         * change back (or the finish); "exercises on the right" are the cards dealt with the
+         * dog at the right leg, side changes not counted.
+         */
+        sides: z
+          .object({
+            /**
+             * Most exercises on a stretch: RO1 0 ("wenn der Hund mit der nächsten Übung wieder
+             * in die linke Fußposition wechselt bzw. rechtsgeführt ins Ziel geht"), RO2 1
+             * ("spätestens mit der übernächsten Übung"). Missing: any (RO3).
+             */
+            stretch: z.number().int().nonnegative().optional(),
+            /** Most changes left → right; one fewer after a start "R" (RO1, RO2: 2). */
+            leftToRight: z.number().int().positive().optional(),
+            /** Fewest side changes on a course (RO1, RO2: "Mindestens 1 Seitenwechsel"). */
+            minChanges: z.number().int().positive().optional(),
+            /** Fewest exercises on the right (RO2: 1, RO3: 3). */
+            minRight: z.number().int().positive().optional(),
+            /** Most exercises on the right, as a share of the course (RO3: 1/3). */
+            maxRightShare: z.number().positive().max(1).optional(),
+            /**
+             * One side change only, by the first card from a start "R" or by the last one to
+             * the finish (Senioren: "als 1. oder letztes Schild im Parcours").
+             */
+            ends: z.boolean().optional(),
+          })
+          .strict()
+          .optional(),
+        /**
          * The fields a dealt deck can be laid out on, in metres — the first by default, the
          * others on request (`DealOptions.field`). Classes without any are dealt without a
          * layout.

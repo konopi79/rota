@@ -1,7 +1,7 @@
 import { getClass } from '../registry'
 import type { Card, Field, RoClass } from '../schema'
 import { mulberry32, pick, pickWeighted } from './prng'
-import { CNDC_STEP, normalize, turnsOf } from './geometry'
+import { CNDC_STEP, normalize, turnsOf, withSupplementary } from './geometry'
 import { FieldPlanner, type PlannerState } from './layout'
 import { NationalCourse, type CourseState } from './course'
 import { cardOf, endsStatic, fieldKey, fieldOf, hasEquipment, paceAfter, sideAfter } from './rules'
@@ -185,6 +185,11 @@ function attemptDeal(
   // A national course follows the judges' guidelines: repeats, required exercises,
   // RO-Z's static/dynamic balance, side changes.
   const course = NationalCourse.of(cls, options, inClass, random)
+  // D0 cards that turn the team (D0e, 2027): which one goes with a card decides where the team
+  // goes on, so on a field it is chosen as the card is placed.
+  const turningD0 = cls.course.supplementary.filter(
+    (d) => cardOf(cls, d).geometry?.turn !== undefined,
+  )
   const missing = (points: number | undefined) =>
     points === undefined
       ? 0
@@ -276,7 +281,13 @@ function attemptDeal(
         (FOLLOW_UP_SHARE / (1 - FOLLOW_UP_SHARE)) * (sum((c) => !isFollowUp(c)) / sum(isFollowUp))
       for (const c of eligible) if (isFollowUp(c)) weights.set(c, (weights.get(c) ?? 1) * scale)
     }
-    const draw = (): { card: Card; at?: DeckEntry['at'] } | undefined => {
+    // The D0 cards that may go with a card here; at a CNDC station none that turns the team.
+    const d0sOf = (c: Card, joining: boolean) => {
+      const all = course ? course.supplementaries(c, state.side) : cls.course.supplementary
+      return joining ? all.filter((d) => !turningD0.includes(d)) : all
+    }
+    type Drawn = { card: Card; at?: DeckEntry['at']; supplementary?: string }
+    const draw = (): Drawn | undefined => {
       let pool = eligible
       while (pool.length) {
         const card = weighted
@@ -284,6 +295,18 @@ function attemptDeal(
           : pick(pool, random)
         if (!card) return undefined
         if (!planner) return { card }
+        if (turningD0.length && card.sequencing.requiresSupplementary) {
+          // Each D0 card in random order, until one lets the exercise fit.
+          const choices = [...d0sOf(card, false)]
+          while (choices.length) {
+            const d0 = pick(choices, random)!
+            choices.splice(choices.indexOf(d0), 1)
+            const at = planner.place(withSupplementary(card, cardOf(cls, d0)), state.side)
+            if (at) return { card, at, supplementary: d0 }
+          }
+          pool = pool.filter((c) => c !== card)
+          continue
+        }
         const at = planner.place(card, state.side)
         if (at) return { card, at }
         // No room for this card here; try another one.
@@ -295,11 +318,9 @@ function attemptDeal(
     // or, if none does, a station of its own.
     const grouping = state.grouping
     const station = grouping ? entries.slice(entries.length - grouping.size) : []
-    const drawJoined = (): { card: Card; at?: DeckEntry['at'] } | undefined => {
+    const drawJoined = (): Drawn | undefined => {
       const step = state.prevStatic ? 0 : CNDC_STEP
-      let pool = eligible.filter((c) =>
-        joinable(cls, station, c, course ? course.supplementaries(c) : cls.course.supplementary),
-      )
+      let pool = eligible.filter((c) => joinable(cls, station, c, d0sOf(c, true)))
       while (pool.length && planner) {
         const card = weighted
           ? pickWeighted(pool, (c) => weights.get(c) ?? 1, random)
@@ -330,9 +351,9 @@ function attemptDeal(
     if (!drawn) break
     const { card, at } = drawn
 
-    const supplementary = card.sequencing.requiresSupplementary
-      ? pick(course ? course.supplementaries(card) : cls.course.supplementary, random)
-      : undefined
+    const supplementary =
+      drawn.supplementary ??
+      (card.sequencing.requiresSupplementary ? pick(d0sOf(card, !!joined), random) : undefined)
     entries.push({
       code: card.code,
       supplementary,
