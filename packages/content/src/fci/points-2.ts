@@ -17,6 +17,7 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
       'Psovod provede obrat do té strany, na které se nachází pes, zatímco pes provádí obrat na tu stranu, kde se nachází psovod. Pes obchází psovoda zezadu a vrací se na výchozí stranu u nohy psovoda a společně pokračují v opačném směru. Po 1 - 2 m provede psovod znovu obrat do té strany, na které se nachází pes, zatímco pes znovu provádí obrat na tu stranu, kde se nachází psovod. Pes opět obchází psovoda zezadu, vrací se na výchozí stranu u nohy psovoda a společně pokračují ve stejném (původním) směru, jako před zahájením cviku.',
     ],
     sequencing: {},
+    geometry: { exit: -1.6 },
     image: '201',
     sourcePage: 22,
   },
@@ -32,6 +33,7 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
       'Tým společně provede těsný obrat o 180° doprava a pokračuje opačným směrem. Po 1 -2 m tým společně provede těsný obrat o 180° doleva a pokračuje dál původním směrem jako před zahájením cviku.',
     ],
     sequencing: {},
+    geometry: { exit: -1.6 },
     image: '202',
     sourcePage: 22,
   },
@@ -47,6 +49,7 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
       'Tým společně provede těsný obrat o 180° doleva a pokračuje opačným směrem. Po 1 – 2 m tým společně provede těsný obrat o 180° doprava a pokračuje dál původním směrem jako před zahájením cviku.',
     ],
     sequencing: {},
+    geometry: { exit: -1.6 },
     image: '203',
     sourcePage: 22,
   },
@@ -174,7 +177,7 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
     ],
     sequencing: {},
     // p. 23: "1 krok vpřed ... obrat vpravo v bok o 90° a udělá opět 1 krok vpřed"
-    geometry: { turn: 90, exit: 1 },
+    geometry: { turn: 90, exit: 1.15, exitSide: -1.1 },
     image: '211',
     sourcePage: 23,
   },
@@ -191,7 +194,7 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
     ],
     sequencing: {},
     // p. 23: "1 krok vpřed ... obrat vlevo v bok o 90° a udělá opět 1 krok vpřed"
-    geometry: { turn: -90, exit: 1 },
+    geometry: { turn: -90, exit: 1.05, exitSide: 0.6 },
     image: '212',
     sourcePage: 23,
   },
@@ -208,7 +211,7 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
     ],
     sequencing: {},
     // p. 24: "obrat o 180° doprava a pokračuje vpřed v opačném směru"
-    geometry: { turn: 180 },
+    geometry: { turn: 180, exit: 0.55 },
     image: '213',
     sourcePage: 24,
   },
@@ -225,7 +228,7 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
     ],
     sequencing: {},
     // p. 24: "obrat o 180° doleva a pokračuje vpřed v opačném směru"
-    geometry: { turn: -180 },
+    geometry: { turn: -180, exit: 0.95 },
     image: '214',
     sourcePage: 24,
   },
@@ -242,7 +245,7 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
     ],
     sequencing: {},
     // p. 24: "těsný obrat o 180° doprava"
-    geometry: { turn: 180 },
+    geometry: { turn: 180, exit: 0.5 },
     image: '215',
     sourcePage: 24,
   },
@@ -259,7 +262,7 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
     ],
     sequencing: {},
     // p. 24: "těsný obrat o 180° doleva"
-    geometry: { turn: -180 },
+    geometry: { turn: -180, exit: 0.9 },
     image: '216',
     sourcePage: 24,
   },
@@ -276,7 +279,7 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
     ],
     sequencing: {},
     // p. 24: "obrat vpravo o 90°, udělá 1 krok vpřed"
-    geometry: { turn: 90, exit: 1 },
+    geometry: { turn: 90, exit: 0.65, exitSide: -0.6 },
     image: '217',
     sourcePage: 24,
   },
@@ -293,7 +296,7 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
     ],
     sequencing: {},
     // p. 24: "obrat vlevo o 90°, udělá 1 krok vpřed"
-    geometry: { turn: -90, exit: 1 },
+    geometry: { turn: -90, exit: 1.1, exitSide: 0.6 },
     image: '218',
     sourcePage: 24,
   },
@@ -310,7 +313,7 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
     ],
     sequencing: {},
     // p. 24: 1 + 2 + 3 steps forward.
-    geometry: { exit: 4 },
+    geometry: { exit: 2.55 },
     image: '219',
     sourcePage: 24,
   },
@@ -326,6 +329,7 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
       'Zatímco se tým pohybuje vpřed, pes provede v přímém směru kruhovou otočku ve směru od psovoda.',
     ],
     sequencing: {},
+    geometry: { exit: 4.1 },
     image: '220',
     sourcePage: 25,
   },
@@ -347,13 +351,26 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
     // prvků je 1,5 - 2 m od sebe." — the distractions between the cones, the figure eight
     // leaves past the far cone.
     geometry: {
-      props: [
-        { kind: 'cone', ahead: 2, side: 0 },
-        { kind: 'cone', ahead: 4.75, side: 0 },
-        { kind: 'bowl', ahead: 3.4, side: 0.9 },
-        { kind: 'bowl', ahead: 3.4, side: -0.9 },
+      via: [
+        [2.7, 0.3],
+        [3.9, 2.5],
+        [3.4, 3.3],
+        [2.6, 3.3],
+        [2.0, 2.2],
+        [3.6, -0.5],
+        [2.8, -1.2],
+        [2.3, -0.3],
+        [4.1, 2.5],
       ],
-      exit: 6,
+      props: [
+        { kind: 'cone', ahead: 2.9, side: 2.45 },
+        { kind: 'cone', ahead: 2.9, side: -0.55 },
+        { kind: 'bowl', ahead: 2.15, side: 0.95 },
+        { kind: 'bowl', ahead: 3.65, side: 0.95 },
+      ],
+      card: { ahead: 1, side: 0.95 },
+      exit: 7.2,
+      exitSide: 2.7,
     },
     image: '221',
     sourcePage: 25,
@@ -374,7 +391,11 @@ export const FCI_TWO_POINT_CARDS: Card[] = [
     },
     // §3.5 (p. 12): "karta je umístěna 2 m před překážkou, za kterou je 2 m plocha pro
     // doskok"; "Všechny překážky musí být umístěny na straně vedení psa."
-    geometry: { props: [{ kind: 'jump', ahead: 2, side: 1 }], exit: 4 },
+    geometry: {
+      rightStop: { ahead: 0, side: 0.55 },
+      props: [{ kind: 'jump', ahead: 2.5, side: 1 }],
+      exit: 4.05,
+    },
     image: '222',
     sourcePage: 25,
   },

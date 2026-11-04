@@ -20,7 +20,10 @@ import {
   propPoints,
   shapeOf,
   D0_BESIDE,
+  DOG_BESIDE,
   d0StandOf,
+  LINE_CARD,
+  offset,
   signOf,
   STAND_SPACING,
   standsOf,
@@ -47,6 +50,12 @@ function walksFrom(approach: Approach): WalkOption[] {
   const { min, max } = approach
   const aheads = min === max ? [min] : [min, (min + max) / 2, max]
   return aheads.flatMap((ahead) => approach.shifts.map((across) => ({ ahead, across })))
+}
+
+/** A way ending where `end` is (within a millimetre). */
+const sameEnd = (way: Point[], end: Point) => {
+  const last = way.at(-1)
+  return !!last && distance(last, end) < 1e-3
 }
 
 /** The way passes clear of every one of `others`: `WALK_SPACING`, or `by`. */
@@ -101,7 +110,7 @@ export class FieldPlanner {
   private props: PlacedProp[] = []
   /** Where the team steps back (from the card to `back`): kept clear like equipment. */
   private backs: [Point, Point][] = []
-  /** National courses: the ways walked between the cards, kept clear (`WALK_SPACING`). */
+  /** The ways walked between the cards, kept clear (`WALK_SPACING`; FCI's since R19). */
   private aisles: Point[][] = []
   private previous: Previous | undefined
   /**
@@ -257,6 +266,11 @@ export class FieldPlanner {
     const exit = previousShape?.exit ?? this.start
     const approach = this.approachAfter(previousShape, card)
     const props = [...this.props, ...(previousShape?.props ?? [])]
+    // A recall card instead of the leave card's recall cone: the way on to the cone is not
+    // walked (it stood on it, 4 m on).
+    const coneWalk = recallFollows ? this.coneWalk() : undefined
+    const aisles = this.aisles
+    if (coneWalk) this.aisles = aisles.filter((way) => way !== coneWalk)
 
     const options = walksFrom(approach).flatMap((walk) =>
       turnsOf(card).map((turn) => ({
@@ -278,20 +292,23 @@ export class FieldPlanner {
       // The cheap check first: most places are taken once the field fills up.
       if (!this.free(at, card, this.signs, props)) continue
       const aisle = wayTo(previousShape, exit, at)
-      if (card.ruleset === 'CZ' && !this.aisleClear(aisle)) continue
+      if (!this.aisleClear(aisle)) continue
+      const shape = shapeOf(card, at, side, false)
       // The dog called to it runs its own way there, clear like a way walked.
       const dogWay =
-        card.ruleset === 'CZ' && recallFollows && this.previous && previousShape
-          ? dogWayOf(this.previous.at, previousShape, at)
+        recallFollows && this.previous && previousShape
+          ? dogWayOf(this.previous.at, previousShape, at, shape)
           : undefined
       if (dogWay && !this.aisleClear(dogWay)) continue
-      const shape = shapeOf(card, at, side, false)
       if (!this.fits(card, at, shape, props)) continue
       const room = this.roomAfter(shape, others)
       if (!best || room > best.room) best = { at, shape, room, aisle, dogWay }
       if (room >= ROOM) break
     }
-    if (!best) return undefined
+    if (!best) {
+      this.aisles = aisles
+      return undefined
+    }
     const { at, shape, aisle, dogWay } = best
     this.props = props
     const sign = signOf(card, at)
@@ -311,7 +328,7 @@ export class FieldPlanner {
     }
     if (shape.back) this.backs.push([at, shape.back])
     if (shape.walk) this.aisles.push(shape.walk)
-    if (card.ruleset === 'CZ') this.aisles.push(aisle)
+    this.aisles.push(aisle)
     if (dogWay) this.aisles.push(dogWay)
     this.previous = { card, at, side }
     return at
@@ -396,10 +413,27 @@ export class FieldPlanner {
       options.splice(options.indexOf(option), 1)
       const finish = walkTo(exit, option.ahead, option.across)
       if (!this.free(finish, undefined, this.signs, props)) continue
-      const national = this.previous?.card.ruleset === 'CZ'
-      if (!national || this.aisleClear(wayTo(shape, exit, finish, true))) return finish
+      // (FCI: its card off the ways walked too — the dog went round a spiral past it.)
+      if (this.previous?.card.ruleset === 'FCI' && !this.lineCardClear(finish)) continue
+      if (this.aisleClear(wayTo(shape, exit, finish, true))) return finish
     }
     return undefined
+  }
+
+  /** A start or finish card at its line (`LINE_CARD`, the dog on either side) off the ways walked. */
+  private lineCardClear(at: Pose): boolean {
+    return [LINE_CARD, LINE_CARD + DOG_BESIDE].every((right) => {
+      const card = offset(at, at.heading, 0, right)
+      return this.aisles.every((way) => distanceToWay(card, way) >= STAND_SPACING)
+    })
+  }
+
+  /** The way walked to the last card's recall cone (FCI 319, 408, 409), as laid out. */
+  private coneWalk(): Point[] | undefined {
+    const p = this.previous
+    if (!p?.card.geometry?.recallCone) return undefined
+    const end = shapeOf(p.card, p.at, p.side, false).walk?.at(-1)
+    return end && [...this.aisles].reverse().find((way) => sameEnd(way, end))
   }
 
   private shapeOfPrevious(recallFollows: boolean): Shape | undefined {
@@ -559,7 +593,6 @@ export class FieldPlanner {
     return walks.some(({ ahead, across }) => {
       const next = walkTo(shape.exit, ahead, across)
       if (!this.free(next, undefined, signs, allProps, d0s)) return false
-      if (card.ruleset !== 'CZ') return true
       const way = wayTo(shape, shape.exit, next)
       return (
         clearOf(stations, way) &&

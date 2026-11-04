@@ -65,11 +65,17 @@ export const propSchema = z
     /** Metres ahead of the card, along the direction the team arrives in. */
     ahead: z.number(),
     /**
-     * Metres to the side: positive towards the dog's side, negative away from it. National
-     * cards are drawn for the dog on the left and keep their layout with the dog on the
-     * right (their turns and paths are the card's): positive is always to the left.
+     * Metres to the side, drawn for the dog on the left: positive to the left. With the dog on
+     * the right a card keeps its layout (its turns, cones and bowls are its own), but a jump
+     * stands on the dog's side (`dogSide`).
      */
     side: z.number(),
+    /**
+     * With the dog on the right, mirrored to its side — the default for a jump (§3.5: "Všechny
+     * překážky musí být umístěny na straně vedení psa"); FCI 410's cone the dog is sent to.
+     * (National cards with a jump mirror all their geometry.)
+     */
+    dogSide: z.boolean().optional(),
     /**
      * Nothing else stands within this many metres of it (Směrnice §1.1.2, 3-324: "v okruhu
      * 3 m kolem kuželu"); other equipment keeps the usual distance.
@@ -113,6 +119,12 @@ export const geometrySchema = z
       .array(z.tuple([z.number(), z.number()]))
       .min(1)
       .optional(),
+    /**
+     * FCI: with the dog on the right the team stops this far ahead and to the left of where
+     * the exercise is placed — room for the dog by the card — and the equipment stands from
+     * there, as in the animations (R19).
+     */
+    rightStop: z.object({ ahead: z.number(), side: z.number() }).strict().optional(),
     /** Where the card stands when not where `placement` puts it (beside a line of cones). */
     card: z.object({ ahead: z.number(), side: z.number() }).strict().optional(),
     /**

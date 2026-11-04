@@ -134,17 +134,17 @@ describe('field layout — validator', () => {
   })
 
   test('steps back stay clear of other exercises; the team walks on from the card', () => {
-    // 305 steps 2 m back, to 1 m from where 101 was done.
+    // 306 steps 2.55 m back, to 0.45 m from where 101 was done.
     const errors = validateDeck(
       course(
         [
           ['101', [10, 15]],
-          ['305', [10, 12]],
+          ['306', [10, 12]],
         ],
         [10, 8],
       ),
     )
-    expect(errors).toContain('#2 305: steps back too close to #1 101')
+    expect(errors).toContain('#2 306: steps back too close to #1 101')
     // The finish 4 m past 305 itself, not past where the steps back end.
     expect(errors.filter((e) => e.includes('from the previous exercise'))).toEqual([])
   })
@@ -163,9 +163,9 @@ describe('field layout — validator', () => {
     expect(validateDeck(course([['101', [10, 15]]], [10, 0.2]))).toContain(
       'finish after #1: outside the field',
     )
-    // The spiral's cones run 6 m past the card.
-    const spiral = course([['119', [10, 6]]], [10, 2])
-    expect(validateDeck(spiral)).toContain('#1 119: cone outside the field')
+    // The slalom's cones run 7 m past where it is done.
+    const slalom = course([['121', [10, 6]]], [10, 2])
+    expect(validateDeck(slalom)).toContain('#1 121: cone outside the field')
   })
 
   test('a card may stand over the edge, the course may not (author, 2026-10-22)', () => {
@@ -182,15 +182,15 @@ describe('field layout — validator', () => {
   })
 
   test('recall cone 5 m ahead and the next card 5 m past it; a recall card instead', () => {
-    // 319 with its own recall cone: 5 m to the cone, 5 m on to the next card.
+    // 319 with its own recall cone: 5 m past its card to the cone, 5 m on to the next card.
     expect(
       validateDeck(
         course(
           [
             ['319', [10, 15]],
-            ['101', [10, 5]],
+            ['101', [10, 4.5]],
           ],
-          [10, 2],
+          [10, 1],
         ),
       ),
     ).toEqual([])
@@ -199,7 +199,7 @@ describe('field layout — validator', () => {
         course(
           [
             ['319', [10, 15]],
-            ['101', [10, 7]],
+            ['101', [10, 6.5]],
           ],
           [10, 3],
         ),
@@ -213,7 +213,7 @@ describe('field layout — validator', () => {
       ],
       [10, 8.5, 180],
     )
-    expect(validateDeck(recall)).toContain('finish after #2: -2.5 m from the previous exercise')
+    expect(validateDeck(recall)).toContain('finish after #2: -1.8 m from the previous exercise')
   })
 
   test('at most two jumps on the field', () => {
@@ -487,7 +487,7 @@ describe('card geometry', () => {
     const card = exercises.find((c) => c.code === '306')
     if (!card) throw new Error('306 missing')
     const shape = shapeOf(card, { x: 10, y: 10, heading: 0, turn: 0 }, 'left', false)
-    expect(shape.back).toMatchObject({ x: 10, y: 14 })
+    expect(shape.back).toMatchObject({ x: 10, y: 12.55 })
     expect(shape.exit).toMatchObject({ x: 10, y: 10, heading: 0 })
   })
 
@@ -496,7 +496,7 @@ describe('card geometry', () => {
     if (!leave) throw new Error('408 missing')
     const at = { x: 10, y: 10, heading: 0, turn: 0 }
     expect(shapeOf(leave, at, 'left', false).props).toHaveLength(1)
-    expect(shapeOf(leave, at, 'left', false).exit).toMatchObject({ x: 10, y: 5 })
+    expect(shapeOf(leave, at, 'left', false).exit).toMatchObject({ x: 10, y: 4.5 })
     expect(shapeOf(leave, at, 'left', true).props).toHaveLength(0)
     // The recall cone stands 1 m off the line, away from the dog.
     expect(shapeOf(leave, at, 'left', false).props[0]?.x).toBeCloseTo(11)
