@@ -251,7 +251,8 @@ describe('competition courses (R7)', () => {
   }
 
   test('FCI courses always meet the point mix (≥ 7 four-point, ≥ 5 three-point)', () => {
-    // 400 courses: each one is laid out on the field too (~10 ms).
+    // 400 courses, each one laid out on the field too: ~100 ms a course since the ways walked
+    // are kept clear (R19), so a minute or more on CI.
     for (let seed = 0; seed < 200; seed++) {
       for (const count of [18, 20]) {
         const deck = competition('FCI-ROB', seed, count)
@@ -260,7 +261,7 @@ describe('competition courses (R7)', () => {
         if (errors.length) throw new Error(`seed ${seed}/${count}: ${errors}`)
       }
     }
-  }, 60_000)
+  }, 180_000)
 
   test('FCI courses repeat a card now and then, like judges — never twice in a row', () => {
     let repeats = 0
