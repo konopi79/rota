@@ -531,6 +531,8 @@
       "toFrontAfterRun": "Pes dosáhne úrovně nohy, psovod zastaví a pes si předsedne",
       "faceCone": "Tým zaujme základní pozici ve směru kužele",
       "sendToCone": "Psovod vyšle psa ke kuželu – pes ho oběhne a do 1 m od něj zastaví ve stoje",
+      "sendRoundConeBack": "Psovod vyšle psa oběhnout kužel po směru hodinových ručiček – pes se bez zastavení vrátí a za psovodem zpět k levé noze",
+      "sendRoundConeBackRight": "Psovod vyšle psa oběhnout kužel proti směru hodinových ručiček – pes se bez zastavení vrátí a za psovodem zpět k pravé noze",
       "backOnCourse": "Psovod se otočí zpět do směru parkuru",
       "standAtCone": "Pes stojí u kužele, psovod odchází k další kartě",
       "sendOverJump": "Psovod pošle psa přes překážku a jde těsně vedle ní – pes skočí a vrátí se k noze",

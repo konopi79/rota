@@ -1108,6 +1108,35 @@ const r3302_2027 = (dog: DogLeg): Exercise => {
   }
 }
 
+/**
+ * 2-233 Schicken um die Pylone – zurück in die Fußposition (VDH 2027, S. 53): "Das Team … hält an,
+ * der Hund steht in Fußposition. Der HF schickt den Hund um die Pylone. Der Hund umrundet die
+ * Pylone im Uhrzeigersinn (bei Linksführung) … und kehrt ohne anzuhalten auf direktem Weg zum HF
+ * zurück. Er geht hinter dem HF wieder in die vorherige Fußposition. … begibt sich das Team, ohne
+ * dass der Hund sich vorher setzt, zur nächsten Station." The cone where the plan has it, 2 m on,
+ * straight ahead ("gerade im Laufweg"); the team then on past it, the cone on the handler's side
+ * 1 m off (`geometry.exitSide`).
+ */
+const r2233_2027 = (dog: DogLeg): Exercise => ({
+  code: '2-233',
+  // Back to the handler's right side the dog comes between them and the card: the handler stops
+  // further left in the square ("bis zu 120 cm seitlich links vor dem Schild", §3.6).
+  stopAt: { x: 0.3, z: 0 },
+  cones: [{ x: 0, z: 2 }],
+  steps: [
+    { walk: 3.5, caption: 'approach' },
+    { stop: true, caption: 'stopStand' },
+    { wait: 1, caption: 'standHold' },
+    {
+      sendTo: { x: 0, z: 2 },
+      andBack: true,
+      caption: dog === 'right' ? 'sendRoundConeBackRight' : 'sendRoundConeBack',
+    },
+    // (Past the cone on the left whichever leg the dog is at: the card stands right.)
+    ...roundTheCards([{ walk: 3, caption: 'leave' }], 1),
+  ],
+})
+
 /** 1-116 Steh – 1 Schritt vorwärts – Steh (S. 43): another exercise under 2026's code. */
 const R1_116_2027: Exercise = {
   code: '1-116',
@@ -1184,6 +1213,7 @@ export const higherExercises2027 = (dog: DogLeg): Exercise[] => [
   Z036_2027,
   R1_116_2027,
   R2_234_2027,
+  r2233_2027(dog),
   r3302_2027(dog),
   R3_328_2027,
   dropAndRound2027('3-330', 'sit'),

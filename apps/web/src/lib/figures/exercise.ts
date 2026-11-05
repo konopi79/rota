@@ -23,6 +23,7 @@ import {
   recallToHeel,
   PAST_THE_CARD,
   roundCone,
+  roundConeAndBack,
   runToPlace,
   type Path,
   type PathPoint,
@@ -174,7 +175,14 @@ export type ExerciseStep = {
    * round it (`roundCone`), stops standing within 1 m of it and is left there (`dogStays`).
    * Station frame.
    */
-  | { sendTo: { x: number; z: number } }
+  | {
+      sendTo: { x: number; z: number }
+      /**
+       * Round it and straight back without stopping, behind the handler into heel at the leg it
+       * set off from (2-233, `roundConeAndBack`) — not left by the cone.
+       */
+      andBack?: true
+    }
   /**
    * The dog goes along a path round the standing handler — `split`: the handler holding a long
    * stride meanwhile, each foot this far ahead or behind (FCI 312, the dog between their legs),
@@ -503,6 +511,11 @@ const RECALL_SPEED = 3.2
  */
 const SHORT_RECALL = 1.5
 const RECALL_WALK = 0.7
+/**
+ * Sent round a cone and back into heel (2-233) it trots briskly — a couple of metres out and back,
+ * and at a gallop it swung round behind the handler too fast for its paws.
+ */
+const ROUND_AND_BACK_SPEED = 1.8
 const RECALL_BRAKING = 4
 /** Back beside the dog left, the handler stands this much further from it than at heel, metres. */
 const BESIDE_DOG_ROOM = 0.04
@@ -1823,7 +1836,10 @@ export class ExercisePlayer {
     if (dogSpeed > 0.75) this.dogTrots = true
     else if (dogSpeed < 0.6) this.dogTrots = false
     // …and gallops when it runs in, called (`recall`).
-    if (this.recalling && dogSpeed > GALLOP_FROM) this.dogGallops = true
+    // (Only where it is to run at full speed: sent round a cone and back, 2-233, it trots — a
+    // moment's catching up took it into a gallop it kept, the author: "obíhání cvalem není reálné".)
+    if (this.recalling && this.recallSpeed > GALLOP_FROM && dogSpeed > GALLOP_FROM)
+      this.dogGallops = true
     else if (!this.recalling || dogSpeed < GALLOP_UNTIL) this.dogGallops = false
     // Called from close by, it walks all the way.
     const walksOver = this.recalling && this.recallSpeed === RECALL_WALK
@@ -2077,11 +2093,25 @@ export class ExercisePlayer {
           z: station + current.sendTo.z,
           heading: 0,
         })
-        const path = roundCone(this.dogAt, to)
+        const back = (from: PathPoint) => roundConeAndBack(from, to)
+        const path = current.andBack
+          ? this.flipped
+            ? mirrored(
+                roundConeAndBack(
+                  { x: -this.dogAt.x, z: this.dogAt.z, heading: -this.dogAt.heading },
+                  { x: -to.x, z: to.z },
+                ),
+              )
+            : back(this.dogAt)
+          : roundCone(this.dogAt, to)
         this.dogWay = { path, ends: this.dogPlace }
-        this.sentOff = true
+        this.sentOff = !current.andBack
         this.recalling = true
-        this.recallSpeed = path.length < SHORT_RECALL ? RECALL_WALK : RECALL_SPEED
+        this.recallSpeed = current.andBack
+          ? ROUND_AND_BACK_SPEED
+          : path.length < SHORT_RECALL
+            ? RECALL_WALK
+            : RECALL_SPEED
       } else if (starting && 'recall' in current) {
         // Called, from where it was left: it gets up there first, then runs in.
         const at = inTeam(this.team, this.left!)

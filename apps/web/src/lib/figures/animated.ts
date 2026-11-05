@@ -149,7 +149,7 @@ export const RIGHT_SIDE_CARDS: readonly string[] = ANIMATED_CARDS.filter(
  */
 export const RIGHT_SIDE_NEW_IN_2027: readonly string[] = [
   ...['1-127', '1-128', '1-129', '1-130'],
-  ...['3-302', '3-328', '3-329'],
+  ...['2-233', '3-302', '3-328', '3-329'],
 ]
 
 /** The cards of an animation set played with the dog at the right leg as well. */
@@ -295,20 +295,8 @@ export const ANIMATED_IN_2027: readonly string[] = [
   ...['2-201', '2-202', '2-223', '2-224'],
   // New in 2027, or another exercise under its code.
   ...['1-127', '1-128', '1-129', '1-130'],
-  ...[
-    'Z-033',
-    'Z-034',
-    'Z-035',
-    'Z-036',
-    '1-116',
-    '2-234',
-    '3-302',
-    '3-328',
-    '3-329',
-    '3-330',
-    '3-331',
-    '3-332',
-  ],
+  ...['Z-033', 'Z-034', 'Z-035', 'Z-036', '1-116', '2-233', '2-234'],
+  ...['3-302', '3-328', '3-329', '3-330', '3-331', '3-332'],
 ]
 
 /** What to play for a card: its own animation, or for a D0 card Z-014 ending with it. */

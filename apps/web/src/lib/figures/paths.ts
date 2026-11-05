@@ -478,6 +478,33 @@ export const recallToHeel = (at: PathPoint): Path => {
   )
 }
 
+/**
+ * 2-233 Schicken um die Pylone – zurück in die Fußposition (VDH 2027, S. 53): "Der Hund umrundet
+ * die Pylone im Uhrzeigersinn (bei Linksführung) … und kehrt ohne anzuhalten auf direktem Weg zum
+ * HF zurück. Er geht hinter dem HF wieder in die vorherige Fußposition." From heel at the left
+ * leg (`at`) up the cone's left side, round its far side and down its right one, straight back
+ * to the standing handler's right side and on round behind them into heel — D0a's way round
+ * (`DOG_AROUND_HANDLER`) from there. Built for the left leg; the right one is its mirror image.
+ */
+export const roundConeAndBack = (at: PathPoint, cone: { x: number; z: number }): Path => {
+  const point = (angle: number) => ({
+    x: cone.x + ROUND_CONE * Math.cos(angle),
+    z: cone.z + ROUND_CONE * Math.sin(angle),
+  })
+  // Round from its left side (angle 0) over its far side to its right side (π), heading back.
+  const round = pathFromCurve((t) => point(Math.PI * t))
+  const pastRight = { x: -0.45, z: 0 }
+  return joined(
+    runTo(at, point(0), 0),
+    round,
+    runTo({ ...point(Math.PI), heading: Math.PI }, pastRight, Math.PI),
+    pathFromCurve((u) => {
+      const angle = Math.PI / 2 + u * (Math.PI / 2 + 1.2)
+      return { x: -0.45 * Math.sin(angle), z: 0.6 * Math.cos(angle) }
+    }),
+  )
+}
+
 /** Over a jump: straight at the bar from this far before it, and on straight this far after. */
 const RUN_UP = 1.4
 const RUN_OUT = 1.2
