@@ -51,6 +51,7 @@ export const GUIDE: GuideSection[] = [
     title: 'Čtení nahlas',
     steps: [
       'Zapni „Číst karty nahlas“ v nastavení balíčku, nebo ikonou reproduktoru nahoře v balíčku.',
+      'Čte i při „Projít v animaci“ u tréninkového parkuru: kartu ohlásí, když k ní tým po předchozím cviku vyráží. Zapneš ho tam reproduktorem v dolní liště.',
       'Hlasitost řídí hlasitost médií (hudby a videa), ne vyzvánění.',
       'Android: když čte cizím přízvukem, chybí mu čeština. V Nastavení telefonu najdi „Převod textu na řeč“ (obvykle Systém → Jazyky a zadávání), u modulu Google nainstaluj hlasová data pro češtinu a stáhni je i offline.',
     ],

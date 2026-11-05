@@ -26,3 +26,15 @@ export function speak(text: string) {
 export function stopSpeaking() {
   if (speechSupported()) window.speechSynthesis.cancel()
 }
+
+/**
+ * iOS lets a page speak on its own only after it has spoken from a user gesture. Call this
+ * from the tap that opens something that will speak later by itself (the course walkthrough
+ * reads each card as the team sets off to it): a silent utterance unlocks speech.
+ */
+export function unlockSpeech() {
+  if (!speechSupported()) return
+  const utterance = new SpeechSynthesisUtterance(' ')
+  utterance.volume = 0
+  window.speechSynthesis.speak(utterance)
+}

@@ -13,7 +13,7 @@ describe('guide', () => {
 
   // The guide quotes button and option labels; a renamed label must not leave it stale.
   test('quoted labels match the app', () => {
-    for (const label of [cs.install.button, cs.setup.speak, cs.deck.next]) {
+    for (const label of [cs.install.button, cs.setup.speak, cs.deck.next, cs.walkthrough.button]) {
       expect(text).toContain(`„${label}“`)
     }
   })

@@ -2,7 +2,16 @@
 
 import { getCard, type Card, type Deck, type RoClass } from '@rota/content'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw, X } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  Pause,
+  Play,
+  RotateCcw,
+  Volume2,
+  VolumeX,
+  X,
+} from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -29,10 +38,12 @@ import {
 } from '@/components/figures/exercise-animation'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { announcement, deckScreen, walkthroughAnnouncement } from '@/lib/announce'
 import { animationSetOf, type AnimationSet } from '@/lib/figures/animated'
 import { DOG } from '@/lib/figures/dog'
 import { ExercisePlayer, type Pose } from '@/lib/figures/exercise'
 import { HANDLER } from '@/lib/figures/handler'
+import { speak, speechSupported, stopSpeaking } from '@/lib/speech'
 import { onField } from '@/lib/figures/team'
 import { walkthroughOf, type Station, type Walkthrough } from '@/lib/figures/walkthrough'
 
@@ -301,17 +312,23 @@ function FieldCamera({ walkthrough }: { walkthrough: Walkthrough }) {
  * The course walked through in animation (plan R16) over the whole screen: the field as the
  * plan lays it out, the cards on their stands, the team going from the start to each card,
  * doing its exercise and on to the finish. Behind the team or over the whole field; pause,
- * speed, back and on by a card. The screen stays on.
+ * speed, back and on by a card. The screen stays on. With the voice on (R9), each card is read
+ * as the team sets off to it, once the exercise before is done.
  */
 export function CourseWalkthrough({
   deck,
   cls,
   title,
+  speak: speakInitially,
+  onSpeakChange,
   onClose,
 }: {
   deck: Deck
   cls: RoClass
   title: string
+  /** Read the cards aloud — the course's `hlas`; iOS needs `unlockSpeech` in the opening tap. */
+  speak: boolean
+  onSpeakChange: (speak: boolean) => void
   onClose: () => void
 }) {
   const { t, i18n } = useTranslation()
@@ -323,6 +340,10 @@ export function CourseWalkthrough({
   const [behind, setBehind] = useState(0)
   const [speed, setSpeed] = useState<Speed>('full')
   const [paused, setPaused] = useState(false)
+  const [speaking, setSpeaking] = useState(speakInitially)
+  // The station last read aloud in this run (`finish` at the end), so each is read once.
+  const announced = useRef<number | 'finish' | null>(null)
+  useEffect(() => stopSpeaking, [])
   const [state, setState] = useState<{
     step: number
     caption: string | null
@@ -342,6 +363,7 @@ export function CourseWalkthrough({
   )
   const total = deck.entries.length
   const restart = (index: number) => {
+    announced.current = null
     setFrom(Math.max(0, Math.min(total - 1, index)))
     setRun((r) => r + 1)
     setPaused(false)
@@ -351,6 +373,37 @@ export function CourseWalkthrough({
     let i = (at?.index ?? -1) + 1
     while (i < total && card(deck.entries[i]!.code).sequencing.onlyAfterLeave) i++
     if (i < total) restart(i)
+  }
+  /** What to read at a step of the run: a station's first card as the team sets off, the finish. */
+  const announcementAt = (step: number, finished: boolean, first: boolean) => {
+    if (finished)
+      return { key: 'finish' as const, text: announcement(deckScreen(deck, cls, total + 1), t) }
+    const station = walkthrough.stations.reduce<Station | undefined>(
+      (current, s) => (step >= s.firstStep ? s : current),
+      undefined,
+    )
+    // A card at the station of the one before (CNDC) was read with it.
+    if (!station || station.withPrevious) return undefined
+    return {
+      key: station.index,
+      text: walkthroughAnnouncement(deck, cls, station.index, first, t),
+    }
+  }
+  const announce = (step: number, finished: boolean) => {
+    const first = announced.current === null
+    const next = announcementAt(step, finished, first)
+    if (!next || next.key === announced.current) return
+    announced.current = next.key
+    speak(next.text)
+  }
+  // From the button's tap — iOS speaks from a gesture: the card the team is at, read now.
+  const toggleSpeech = () => {
+    const on = !speaking
+    setSpeaking(on)
+    onSpeakChange(on)
+    announced.current = null
+    if (on) announce(state.step, state.finished)
+    else stopSpeaking()
   }
   const captionKey =
     state.caption &&
@@ -430,9 +483,10 @@ export function CourseWalkthrough({
             walkthrough={walkthrough}
             slowMotion={paused ? 0 : SPEEDS[speed]}
             focusRef={focusRef}
-            onFrame={(step, caption, flipped, finished) =>
+            onFrame={(step, caption, flipped, finished) => {
               setState({ step, caption, flipped, finished })
-            }
+              if (speaking) announce(step, finished)
+            }}
           />
           {view === 'follow' ? (
             <FollowCamera key={behind} focusRef={focusRef} />
@@ -482,6 +536,17 @@ export function CourseWalkthrough({
         <Button variant="outline" size="icon" onClick={next} aria-label={t('walkthrough.next')}>
           <ChevronRight />
         </Button>
+        {speechSupported() && (
+          <Button
+            variant={speaking ? 'secondary' : 'outline'}
+            size="icon"
+            onClick={toggleSpeech}
+            aria-label={t(speaking ? 'deck.speakOff' : 'deck.speakOn')}
+            aria-pressed={speaking}
+          >
+            {speaking ? <Volume2 /> : <VolumeX />}
+          </Button>
+        )}
         <ToggleGroup
           variant="outline"
           value={[speed]}

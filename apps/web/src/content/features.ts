@@ -90,7 +90,7 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
       {
         id: 'voice',
         title: 'Čtení nahlas',
-        desc: 'Aplikace ti řekne číslo a název další karty (i doplňkové) a upozorní na změnu tempa nebo strany – telefon může zůstat v kapse.',
+        desc: 'Aplikace ti řekne číslo a název další karty (i doplňkové) a upozorní na změnu tempa nebo strany – telefon může zůstat v kapse. Čte i v animaci parkuru.',
       },
     ],
   },
@@ -127,6 +127,7 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
           'U FCI i přivolání u kuželu, vyslání ke kuželu a skoky; plánek FCI odpovídá tomu, jak cviky provádí animace.',
           'I se psem vpravo po startu „R“ nebo uprostřed parkuru.',
           'Kamera za týmem (natočíš si ji) nebo nad celou plochou, pauza, rychlost a přeskakování po kartách.',
+          'Se čtením nahlas ohlásí každou kartu, když k ní tým po předchozím cviku vyráží.',
         ],
       },
       {
