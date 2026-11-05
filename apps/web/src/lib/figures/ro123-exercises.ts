@@ -849,57 +849,89 @@ export type DogLeg = 'left' | 'right'
 /**
  * The 90° turn from a stand of 2027: "Der HF setzt mit den Füßen einen 90° Winkel nach
  * rechts/links (aus dem Stand nur eine Fußbewegung, die Füße berühren sich). Der Hund bleibt in
- * Fußposition" (VDH 2027, S. 17); 2026 took Z-030's three steps. One foot set at a right angle
- * to the other — which one, so it stays clear of the dog at heel: turning away from the dog the
- * foot on the turning side, turned on its heel a little ahead; turning towards it the other foot,
- * set across in front of the first one (a T, the author, 2026-11-04), so no toes go into the
- * dog. Right before the toes the other leg's foot swept under it closing up: the T stands half a
- * metre ahead, the second foot closing up a quarter of a metre behind it (tried by the frame
- * tests: nearer, the legs come closer than they may).
- */
+ * Fußposition" (VDH 2027, S. 17); 2026 took Z-030's three steps. The foot on the turning side sets
+ * the right angle: turning away from the dog a little ahead (an L); turning towards it turned in,
+ * its heel against the other foot (a T), out of the dog's way — "T-obrat … dá psovi prostor pro
+ * záď" (the author's note, 2026-11-05; set across in front of the other foot instead, the handler
+ * stood twisted over crossed legs). */
 export const turn90Steps2027 = (sign: 1 | -1, dog: DogLeg): FootTarget[] => {
-  const [inner, outer] = sign === LEFT ? [0, 1] : [1, 0]
-  const towardsDog = (sign === LEFT) === (dog === 'left')
-  return towardsDog
-    ? [{ foot: outer, x: sign * 0.05, z: 0.52, yaw: (sign * Math.PI) / 2 }]
-    : [{ foot: inner, x: sign * 0.12, z: 0.1, yaw: (sign * Math.PI) / 2 }]
+  const inner = sign === LEFT ? 0 : 1
+  const { x, z } = towardsTheDog(sign, dog) ? T_FOOT : L_FOOT
+  return [{ foot: inner, x: sign * x, z, yaw: (sign * Math.PI) / 2 }]
 }
 
 /** …and the other foot closing up beside it, facing the new way (the turns ending in a stop). */
 const closeUp2027 = (sign: 1 | -1, dog: DogLeg): FootTarget[] => {
-  const [inner, outer] = sign === LEFT ? [0, 1] : [1, 0]
-  const towardsDog = (sign === LEFT) === (dog === 'left')
-  return towardsDog
-    ? [{ foot: inner, x: sign * 0.05, z: 0.26, yaw: (sign * Math.PI) / 2 }]
-    : [{ foot: outer, x: sign * 0.12, z: 0.3, yaw: (sign * Math.PI) / 2 }]
+  const turned = turn90Steps2027(sign, dog)[0]!
+  return [{ ...turned, foot: 1 - turned.foot, z: turned.z + FEET_APART }]
 }
 
 const turnName = (sign: 1 | -1) => (sign === RIGHT ? 'Right' : 'Left')
 
+/** How far the step with the other foot goes into the new way, metres (a short, deliberate step). */
+const STEP_ON = 0.18
+/** The feet side by side in the new way this far apart, metres (as standing). */
+const FEET_APART = 0.2
 /**
- * …and a moment for the dog to come round into heel before the team walks on: turned on the spot
- * the dog has the whole arc to go, and the handler's first step would go into it.
+ * Where the foot on the turning side sets the right angle, metres from where it stood: turning
+ * away from the dog a little ahead (an L); turning towards it the foot on the dog's side turned
+ * in, its heel against the other foot (a T — "T-obrat … dá psovi prostor pro záď", the author's
+ * note, 2026-11-05: the body turns over the hips, the feet never cross).
  */
-const dogRound = (sign: 1 | -1): ExerciseStep => ({
-  wait: 0.6,
-  caption: `turn${turnName(sign)}90OneMove`,
-})
+const L_FOOT = { x: 0.12, z: 0.1 }
+const T_FOOT = { x: -0.02, z: 0.04 }
+
+/** Whether the turn goes towards the dog — a T, rather than an L. */
+const towardsTheDog = (sign: 1 | -1, dog: DogLeg) => (sign === LEFT) === (dog === 'left')
 
 /**
- * The turn and the other foot closing up — the team stands in the new way, the body turned the
- * whole 90° (1-105, 2-223; and before walking on, 1-103, 1-119, 2-201: with one foot turned only
- * the body stood half way round and the team walked off at some 60°, the author, 2026-11-04).
+ * …then "mit dem anderen Fuß einen Schritt in die neue Richtung" (VDH 2027, S. 45–46): the other
+ * foot's step, landing ahead of the turned one on its own side of the new way — the step that
+ * takes the body the whole 90° (the author, 2026-11-04: "měli bychom ctít řád" — no closing step
+ * in between).
  */
-const turn90Stop2027 = (sign: 1 | -1, dog: DogLeg): ExerciseStep => ({
-  footwork: [...turn90Steps2027(sign, dog), ...closeUp2027(sign, dog)],
-  caption: `turn${turnName(sign)}90OneMoveClose`,
+const stepOn2027 = (sign: 1 | -1, dog: DogLeg): FootTarget[] => {
+  const turned = turn90Steps2027(sign, dog)[0]!
+  return [
+    { ...turned, foot: 1 - turned.foot, x: turned.x + sign * STEP_ON, z: turned.z + FEET_APART },
+  ]
+}
+
+/** …and the turned foot closing up beside it, the team standing again (2-201, 2-202). */
+const closeAfterStep2027 = (sign: 1 | -1, dog: DogLeg): FootTarget[] => {
+  const turned = turn90Steps2027(sign, dog)[0]!
+  return [{ ...turned, x: turned.x + sign * STEP_ON }]
+}
+
+/**
+ * Steps of a 2027 90° turn, the dog at heel keeping to the handler's foot on its side ("k noze",
+ * `dogByFoot`, the author): going by the half-turned body, it went into the handler.
+ */
+const turnSteps2027 = (feet: FootTarget[], caption: string): ExerciseStep => ({
+  footwork: feet,
+  dogByFoot: true,
+  caption,
 })
 
-/** 1-103 / 1-104 (VDH 2027, S. 39): the stop, the turn, the feet together, on. */
+/** The turn and the step in the new way, the team walking on (1-103, 1-104, 1-119, 1-120). */
+const turn90On2027 = (sign: 1 | -1, dog: DogLeg, then: FootTarget[] = []): ExerciseStep =>
+  turnSteps2027(
+    [...turn90Steps2027(sign, dog), ...stepOn2027(sign, dog), ...then],
+    `turn${turnName(sign)}90OneMove`,
+  )
+
+/** The turn and the other foot closing up — the team stands in the new way (1-105, 2-223). */
+const turn90Stop2027 = (sign: 1 | -1, dog: DogLeg): ExerciseStep =>
+  turnSteps2027(
+    [...turn90Steps2027(sign, dog), ...closeUp2027(sign, dog)],
+    `turn${turnName(sign)}90OneMoveClose`,
+  )
+
+/** 1-103 / 1-104 (VDH 2027, S. 39): the stop, the turn, on. */
 const stopTurnOn2027 = (code: string, sign: 1 | -1, dog: DogLeg): Exercise => ({
   code,
   card: 'ahead',
-  steps: [...stopSit('ahead'), turn90Stop2027(sign, dog), dogRound(sign), leave('ahead')],
+  steps: [...stopSit('ahead'), turn90On2027(sign, dog), leave('ahead')],
 })
 
 /**
@@ -922,20 +954,19 @@ const stopTurnStop2027 = (code: string, sign: 1 | -1, dog: DogLeg): Exercise => 
 const standTurnOn2027 = (code: string, sign: 1 | -1, dog: DogLeg): Exercise => ({
   code,
   card: 'ahead',
-  steps: [...stopStand('ahead'), turn90Stop2027(sign, dog), dogRound(sign), leave('ahead')],
+  steps: [...stopStand('ahead'), turn90On2027(sign, dog), leave('ahead')],
 })
 
 /**
  * 2-201 / 2-202 (S. 46): the turn, "danach macht er mit dem anderen Fuß einen Schritt in die neue
- * Richtung" — the feet together, one step forward, the dog sitting again.
+ * Richtung" — that step, the turned foot closing up, the dog sitting again.
  */
 const stopTurnStepStop2027 = (code: string, sign: 1 | -1, dog: DogLeg): Exercise => ({
   code,
   card: 'ahead',
   steps: [
     ...stopSit('ahead'),
-    turn90Stop2027(sign, dog),
-    ...forward(1, 'oneStep'),
+    turn90On2027(sign, dog, closeAfterStep2027(sign, dog)),
     { dog: 'sit', caption: 'finishSit' },
     { wait: 1, caption: 'basePosition' },
     leave('ahead'),
@@ -964,7 +995,9 @@ const Z036_2027: Exercise = {
   code: 'Z-036',
   steps: R1_116.steps.flatMap((step, i) =>
     i > 0 && 'turn' in step && R1_116.steps[i - 1] && 'turn' in R1_116.steps[i - 1]!
-      ? [{ walk: 0.7, pace: 'slow' as const, caption: 'twoStepsOn' }, step]
+      ? // "oba kroky musí být zřetelné": two whole steps, the feet closing up for the next turn
+        // on the spot (walked, they ran into the turns — the author).
+        [...forward(2, 'twoStepsOn'), step]
       : [step],
   ),
 }
@@ -992,6 +1025,9 @@ const R2_234_2027: Exercise = {
   ],
 }
 
+/** Where the handler gives the signal to 3-330–3-332, from the usual stop (metres). */
+const DROP_SIGNAL_AT = { x: 0, z: -0.2 }
+
 /**
  * 3-330 / 3-331 / 3-332 Sitz / Platz / Steh aus der Bewegung – um den Hund herum (S. 62–63): "Der
  * HF gibt, ohne anzuhalten … dem Hund das Signal … Der Hundeführer geht im Abstand von höchstens
@@ -1000,6 +1036,9 @@ const R2_234_2027: Exercise = {
  */
 const dropAndRound2027 = (code: string, posture: 'stand' | 'down' | 'sit'): Exercise => ({
   code,
+  // The signal in the middle of the exercise space (the author: "může začít dřív"), not where
+  // the handler stops for an exercise at heel, 0.15 m past it.
+  stopAt: DROP_SIGNAL_AT,
   steps: [
     { walk: 3.5, caption: 'approach' },
     {
