@@ -636,6 +636,12 @@ export type Exercise = {
    */
   dogStarts?: 'right'
   /**
+   * A T stance: one foot set across right in front of the other's toes (the 2027 90° turns
+   * towards the dog, the Løype video) — the thighs may touch there, never cross (the author,
+   * 2026-11-05) — in the steps of the turn itself (captioned `…90OneMove…`).
+   */
+  legsTouch?: true
+  /**
    * Where in the exercise space the handler stops, from the usual place (metres, +x to the
    * left, +z towards the card): an exercise that needs room in front stops further back.
    */
