@@ -973,6 +973,58 @@ const stopTurnStepStop2027 = (code: string, sign: 1 | -1, dog: DogLeg): Exercise
   ],
 })
 
+/** 1-127–1-130: the two steps, metres, of an ordinary length (the video). */
+const FIRST_STEP = 0.35
+const SECOND_STEP = 0.35
+
+/**
+ * 1-127 / 1-128 / 1-129 / 1-130 (S. 45): out of the walk — "Der HF setzt im Arbeitsbereich mit
+ * den Füßen einen 90° Winkel nach rechts (nur eine Fußbewegung, die Füße berühren sich). Danach
+ * macht er mit dem anderen Fuß einen Schritt in die neue Richtung, schließt einen weiteren
+ * Schritt an und bleibt stehen. Der Hund … legt sich ins Platz / stellt sich neben den HF, wenn
+ * dieser anhält." No Halt and no "aus dem Stand" (cf. 1-103): the walk's last step lands with
+ * the outer foot, the inner one comes down turned beside it (an L away from the dog, a T towards
+ * it), the other foot steps on, the turned one a step further, and the other closes up.
+ */
+const walkTurnTwoSteps2027 = (code: string, sign: 1 | -1, posture: 'down' | 'stand'): Exercise => {
+  const caption = `turn${turnName(sign)}90TwoSteps`
+  const inner = sign === LEFT ? 0 : 1
+  const other = (1 - inner) as 0 | 1
+  // As the club's video of the new cards shows it (2:44, 2:54): the inner foot comes down beside
+  // the other one, the handler stands a moment, turns on it — on its heel — and walks the two
+  // steps at an ordinary length (the author: "nejdříve dát pravou nohu na místo a pak teprve
+  // zarotovat chodidlem"). The same from either leg (the author: the T towards the dog looked
+  // odd here); towards it the dog makes room by the foot as it turns.
+  const beside: FootTarget = { foot: inner, x: inner ? -0.12 : 0.12, z: -0.08, yaw: 0 }
+  const turned = { ...beside, yaw: (sign * Math.PI) / 2 }
+  const at = (step: number) => turned.x + sign * step
+  return {
+    code,
+    card: 'ahead',
+    steps: [
+      { walk: 3.5, caption: 'approachTurn' },
+      // (A little wider than at heel: turned on it, the thighs come close.)
+      { ...turnSteps2027([beside], caption), fromFoot: other },
+      // (Set from the foot that stays: the heel the other one turns on is where it came down.)
+      {
+        ...turnSteps2027(
+          [
+            turned,
+            { ...turned, foot: other, x: at(FIRST_STEP), z: turned.z + FEET_APART },
+            { ...turned, x: at(FIRST_STEP + SECOND_STEP) },
+            { ...turned, foot: other, x: at(FIRST_STEP + SECOND_STEP), z: turned.z + FEET_APART },
+          ],
+          caption,
+        ),
+        fromFoot: other,
+      },
+      { dog: posture, caption: posture === 'down' ? 'downBeside' : 'standBeside' },
+      { wait: 1, caption: posture === 'down' ? 'downHold' : 'standHold' },
+      leave('ahead'),
+    ],
+  }
+}
+
 /** 2-223 / 2-224 (S. 51): from a stand, the turn and the feet closed, the dog standing. */
 const standTurnStand2027 = (code: string, sign: 1 | -1, dog: DogLeg): Exercise => ({
   code,
@@ -1070,6 +1122,10 @@ export const higherExercises2027 = (dog: DogLeg): Exercise[] => [
   stopTurnStepStop2027('2-202', LEFT, dog),
   standTurnStand2027('2-223', RIGHT, dog),
   standTurnStand2027('2-224', LEFT, dog),
+  walkTurnTwoSteps2027('1-127', RIGHT, 'down'),
+  walkTurnTwoSteps2027('1-128', LEFT, 'down'),
+  walkTurnTwoSteps2027('1-129', RIGHT, 'stand'),
+  walkTurnTwoSteps2027('1-130', LEFT, 'stand'),
   // New in 2027, or another exercise under its code (the same from either leg).
   Z036_2027,
   R1_116_2027,

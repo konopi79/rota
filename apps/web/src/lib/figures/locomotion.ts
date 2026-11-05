@@ -108,6 +108,8 @@ export type FootTarget = { foot: number; x: number; z: number; yaw: number }
 
 /** A step set by hand takes this long in the air, seconds — a deliberate step. */
 const SCRIPTED_STEP = 0.55
+/** A foot turned on its heel by hand turns this fast, radians per second (90° in ~0.4 s). */
+const HEEL_TURN = 4
 
 type Swing = {
   /** A step set by hand lands exactly here. */
@@ -422,12 +424,16 @@ export class BipedStepper {
     const canStep = this.swings.every(
       (swing) => !swing || (running && swing.time >= RUN_PUSH_OFF * swing.duration),
     )
+    // A step set by hand that only turns the foot where it stands: it turns on its heel, down.
+    let pivotOn = -1
     if (script) {
       const f = this.state[script.foot]!
       const there =
         Math.hypot(f.x - script.x, f.z - script.z) < 0.01 &&
         Math.abs(angleTo(f.yaw, script.yaw)) < 0.02
-      if (!this.swings.some(Boolean) && !there && this.down.every((d) => d >= ds)) {
+      const onTheSpot = Math.hypot(f.x - script.x, f.z - script.z) < 0.01
+      if (onTheSpot && !there && !this.swings.some(Boolean)) pivotOn = script.foot
+      else if (!this.swings.some(Boolean) && !there && this.down.every((d) => d >= ds)) {
         this.lastStep = script.foot
         this.swings[script.foot] = {
           fixed: { x: script.x, z: script.z, yaw: script.yaw },
@@ -521,10 +527,15 @@ export class BipedStepper {
         const o = offsets[i]!
         const stance =
           still || lead <= 0 ? 0 : Math.min(1, Math.max(0, (lead - o.along) / (2 * lead)))
+        // Turned on its heel by hand (2027's 1-127 / 1-129: the foot down first, then turned).
+        const turnBy =
+          i === pivotOn && script
+            ? Math.max(-HEEL_TURN * dt, Math.min(HEEL_TURN * dt, angleTo(foot.yaw, script.yaw)))
+            : 0
         return {
           ...foot,
           // Planted, it turns on the spot to stay with the body (not in steps set by hand).
-          yaw: script ? foot.yaw : pivoted(foot, body.heading, gait.pivot),
+          yaw: script ? foot.yaw + turnBy : pivoted(foot, body.heading, gait.pivot),
           lift: 0,
           swing: null,
           stance,

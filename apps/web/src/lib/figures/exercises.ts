@@ -1,4 +1,4 @@
-import { RIGHT_SIDE_CARDS } from './animated'
+import { RIGHT_SIDE_CARDS, rightSideCards } from './animated'
 import type { Exercise } from './exercise'
 import { JUMP_EXERCISES, R3_313_RIGHT } from './jump-exercises'
 import {
@@ -226,7 +226,7 @@ export const RIGHT_EXERCISES_IN_2027: Exercise[] = [
   ...RIGHT_EXERCISES.filter((e) => !OWN_2027.has(e.code)).map(in2027),
   // (The turns' footwork depends on the dog's side: built for the dog at the right leg.)
   ...[...ROZ_EXERCISES_2027, ...higherExercises2027('right')]
-    .filter((e) => RIGHT_SIDE_CARDS.includes(e.code))
+    .filter((e) => rightSideCards('CZ-2027').includes(e.code))
     .map(fromTheRight),
 ].sort((a, b) => cardOrder(a.code).localeCompare(cardOrder(b.code)))
 

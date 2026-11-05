@@ -143,6 +143,20 @@ export const RIGHT_SIDE_CARDS: readonly string[] = ANIMATED_CARDS.filter(
   (code) => code !== '3-324',
 )
 
+/**
+ * Cards new in 2027 played with the dog at the right leg as well: their 90° turns are the
+ * dog's side's own (an L away from it, a T towards it).
+ */
+export const RIGHT_SIDE_NEW_IN_2027: readonly string[] = ['1-127', '1-128', '1-129', '1-130']
+
+/** The cards of an animation set played with the dog at the right leg as well. */
+export const rightSideCards = (set: AnimationSet): readonly string[] =>
+  set === 'FCI'
+    ? FCI_RIGHT_SIDE_CARDS
+    : set === 'CZ-2027'
+      ? [...RIGHT_SIDE_CARDS, ...RIGHT_SIDE_NEW_IN_2027]
+      : RIGHT_SIDE_CARDS
+
 /** The supplementary cards: shown finishing Z-014 Předsednutí, never on their own. */
 const SUPPLEMENTARY = ['D0a', 'D0b', 'D0c', 'D0d']
 export const SUPPLEMENTARY_SHOWN_WITH = 'Z-014'
@@ -277,6 +291,7 @@ export const ANIMATED_IN_2027: readonly string[] = [
   ...['1-103', '1-104', '1-105', '1-106', '1-119', '1-120'],
   ...['2-201', '2-202', '2-223', '2-224'],
   // New in 2027, or another exercise under its code.
+  ...['1-127', '1-128', '1-129', '1-130'],
   ...['Z-033', 'Z-034', 'Z-035', 'Z-036', '1-116', '2-234', '3-330', '3-331', '3-332'],
 ]
 

@@ -547,8 +547,18 @@ const SIDLE_MIN_TIME_WALKING = 0.8
  * How far steps set by hand take the handler aside towards the dog at heel (metres, + left), if
  * that is what they do — a side step towards it (`sidle`) — else 0.
  */
-const sidleWay = (footwork: FootTarget[], place: TeamControls['place']): number => {
-  const last = footwork.at(-1)!
+/** Steps out of the walk that turn the team (2027's 1-127–1-130), not a side step or a stride. */
+const turnsOutOfWalk = ({ footwork, fromFoot }: { footwork: FootTarget[]; fromFoot?: 0 | 1 }) =>
+  fromFoot !== undefined && footwork.some((t) => t.yaw !== 0)
+
+const sidleWay = (
+  step: { footwork: FootTarget[]; fromFoot?: 0 | 1 },
+  place: TeamControls['place'],
+): number => {
+  // Turning out of the walk the steps go on the new way, past the dog's side: not a step over
+  // to it.
+  if (turnsOutOfWalk(step)) return 0
+  const last = step.footwork.at(-1)!
   const way = last.x - (last.foot ? -0.1 : 0.1)
   const heel = place === 'left' ? 1 : place === 'right' ? -1 : 0
   const aside = Math.abs(last.x) > Math.abs(last.z + 0.08)
@@ -1193,6 +1203,8 @@ export class ExercisePlayer {
   /** …the foot it keeps to, where it stood as the steps began. */
   private footDogFrom: Pose | null = null
   private footDogSpeed = 0
+  /** The steps turn a foot on its heel where it stands (1-127): the body turns with the feet. */
+  private footworkHeelTurns = false
   private footDogStart: Pose = { x: 0, z: 0, heading: 0 }
   /** Where the dog's body is in the team's frame, before it lies down over its forelegs. */
   private dogAt: Pose = { x: 0, z: 0, heading: 0 }
@@ -1842,7 +1854,7 @@ export class ExercisePlayer {
       // half a step on while it swings), and the walk then ends as it lands.
       let lastStep = false
       if (next && 'footwork' in next && next.fromFoot !== undefined) {
-        const way = sidleWay(next.footwork, this.dogPlace)
+        const way = sidleWay(next, this.dogPlace)
         if (way) {
           const foot = this.last?.feet.handler[next.fromFoot]
           const lead =
@@ -2211,7 +2223,16 @@ export class ExercisePlayer {
         this.footworkDwell = 0
         // Where the body stands off the point between its feet (they stand a little apart
         // from exactly side by side): kept as it is, so the body never jumps.
-        const over = feet ? bodyOver(feet) : this.team
+        // (Out of the walk, a body ahead of its feet, as standing: the steps stopping, the body
+        // ends over its feet, not half a step on that the feet then have to catch up with.)
+        const standing =
+          from &&
+          turnsOutOfWalk(current) &&
+          ([0, 1].map((foot) => {
+            const at = onField(this.footworkBase, { x: foot ? -0.1 : 0.1, z: -0.08, heading: 0 })
+            return { ...feet![foot]!, x: at.x, z: at.z, yaw: this.footworkBase.heading }
+          }) as typeof feet)
+        const over = standing ? bodyOver(standing) : feet ? bodyOver(feet) : this.team
         this.footRest = feet ? footAhead(feet, this.team) : 0
         const side = this.dogPlace === 'right' ? -1 : 1
         this.footRestOut = feet
@@ -2223,8 +2244,10 @@ export class ExercisePlayer {
         this.frontStart = this.dogAt.z
         const c = Math.cos(over.heading)
         const s = Math.sin(over.heading)
-        const dx = this.team.x - over.x
-        const dz = this.team.z - over.z
+        // (…the body where it stands over them, not where the walk has it now.)
+        const body = standing ? this.footworkBase : this.team
+        const dx = body.x - over.x
+        const dz = body.z - over.z
         this.footworkOffset = {
           x: c * dx - s * dz,
           z: s * dx + c * dz,
@@ -2255,13 +2278,22 @@ export class ExercisePlayer {
           this.footworkFrom.heading + angleTo(this.footworkFrom.heading, this.footworkTo.heading)
         this.footworkTime = 0
         this.footworkSpeed = speed
-        this.footworkDuration = current.footwork.length * STEP_TIME
+        // (A foot only turned on its heel where it stands takes about half a step's time.)
+        const heelTurns = current.footwork.filter((t, k) => {
+          const before = current.footwork.slice(0, k).findLast((b) => b.foot === t.foot)
+          if (before) return Math.hypot(before.x - t.x, before.z - t.z) < 0.01
+          const now = feet?.[t.foot]
+          const at = onField(this.footworkBase, { x: t.x, z: t.z, heading: 0 })
+          return !!now && Math.hypot(now.x - at.x, now.z - at.z) < 0.01
+        }).length
+        this.footworkDuration = (current.footwork.length - heelTurns / 2) * STEP_TIME
+        this.footworkHeelTurns = heelTurns > 0
         this.sidle = null
         // Stepping aside towards the dog at heel, the dog goes over first, smoothly and no
         // faster than its paws carry it sideways, and each foot lifts once there is room for it
         // (it went over in bursts as each foot came, its body waiting for its paws — the
         // author, FCI 302 / 402).
-        const way = sidleWay(current.footwork, this.dogPlace)
+        const way = sidleWay(current, this.dogPlace)
         if (way && feet) {
           const from = onField(this.team, this.dogAt)
           const to = onField(this.footworkTo, PLACES[this.dogPlace])
@@ -2333,7 +2365,21 @@ export class ExercisePlayer {
           over = this.sidleOver = Math.max(this.sidleOver, share)
         }
         const x = from.x + (to.x - from.x) * over
-        this.team = { ...onField(base, { x, z, heading: 0 }), heading: base.heading }
+        // (Turning out of the walk the body turns with its feet: as far as they have, on average —
+        // a foot turned on its heel takes the hips round with it, 1-127.)
+        const turn = this.footworkTo.heading - this.footworkFrom.heading
+        const feetTurned =
+          this.footworkHeelTurns && feet && Math.abs(turn) > 1e-3
+            ? feet.reduce((sum, f) => sum + angleTo(this.footworkFrom.heading, f.yaw), 0) /
+              (2 * turn)
+            : 0
+        const turned = Math.min(1, Math.max(glide, feetTurned))
+        this.team = {
+          ...onField(base, { x, z, heading: 0 }),
+          heading: turnsOutOfWalk(current)
+            ? this.footworkFrom.heading + turn * turned
+            : base.heading,
+        }
       }
       const moved = Math.hypot(this.team.x - this.footworkFrom.x, this.team.z - this.footworkFrom.z)
       // A dog sitting or lying in front gets up once the handler has moved off — not while
@@ -2447,9 +2493,16 @@ export class ExercisePlayer {
             const lastStep =
               current.footwork.at(-1)!.foot === i &&
               this.footworkIndex >= current.footwork.length - 1
-            byFootSettled = lastStep || (parallel && glide >= 1)
+            // (Out of the walk with steps still to go, 1-127–1-130, turned away from it: at heel by
+            // the team as it goes on, not where it will stop — heading there, or beside the foot,
+            // it swung out wide, into the card. Turned towards it, it makes room by the foot.)
+            const goingOn = current.fromFoot !== undefined && current.footwork[0]!.foot !== i
+            byFootSettled = lastStep || goingOn || (parallel && glide >= 1)
             this.footDogAim = byFootSettled
-              ? onField(this.footworkTo, PLACES[this.dogPlace])
+              ? onField(
+                  goingOn ? { ...this.team, heading: this.footworkTo.heading } : this.footworkTo,
+                  PLACES[this.dogPlace],
+                )
               : onField(by, {
                   x: heel.x - restX + Math.sign(heel.x) * FOOT_DOG_OUT,
                   z: heel.z + FOOT_REST_BACK - FOOT_DOG_BACK,
@@ -2560,8 +2613,12 @@ export class ExercisePlayer {
       }
       // On to the next step once this one has landed there and taken the weight.
       const foot = this.last?.feet.handler[target.foot]
+      // (…and turned there: a foot turned on its heel, 1-127 / 1-129, is down all the while.)
       const landed =
-        foot !== undefined && foot.swing === null && Math.hypot(foot.x - at.x, foot.z - at.z) < 0.01
+        foot !== undefined &&
+        foot.swing === null &&
+        Math.hypot(foot.x - at.x, foot.z - at.z) < 0.01 &&
+        Math.abs(angleTo(foot.yaw, at.heading)) < 0.02
       this.footworkDwell = landed ? this.footworkDwell + dt : 0
       if (this.footworkDwell >= FOOTWORK_DWELL) {
         this.footworkIndex++
