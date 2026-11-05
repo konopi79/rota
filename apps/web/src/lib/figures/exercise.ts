@@ -200,6 +200,13 @@ export type ExerciseStep = {
       lean?: number
       /** Meanwhile the dog at heel falls this far behind its place, metres (FCI 312). */
       dogLags?: number
+      /**
+       * Meanwhile the dog at heel keeps to the handler's foot on its side, not to the body — "k noze"
+       * is to the leg (the author, 2026-11-05): it stays while that foot stays and goes over to
+       * where it lands, at its own pace (the 2027 90° turns: one foot turned, the body half way
+       * round, the dog going by the body went into the handler).
+       */
+      dogByFoot?: true
     }
   /**
    * The team walks parts `parts[0]` up to (not including) `parts[1]` of a course round
@@ -460,6 +467,14 @@ const GETS_UP_AFTER = 0.08
 const THIGH_LEAD = 1.3
 /** The fastest a dog in front moves following the handler's feet, m/s. */
 const FRONT_DOG_SPEED = 0.45
+/** A dog keeping to the handler's foot (`dogByFoot`) goes over this fast, m/s and rad/s. */
+const FOOT_DOG_SPEED = 0.5
+const FOOT_DOG_TURN = 1.6
+/** A foot standing at rest is this far behind the middle of the body, metres (its heel). */
+const FOOT_REST_BACK = 0.08
+/** …and, keeping to the foot, this much further out and back than at heel (its head off the thigh). */
+const FOOT_DOG_OUT = 0.2
+const FOOT_DOG_BACK = 0.25
 /** How fast a dog in front follows the handler's feet (each of two easings), 1/s. */
 const FRONT_FOLLOWS = 5
 /** How quickly the dog takes over the pace the slowing team no longer carries it at, 1/s. */
@@ -1162,6 +1177,10 @@ export class ExercisePlayer {
   private sidleLead: { index: number; u: number; last?: boolean } | null = null
   private frontAim = { x: 0, z: 0 }
   private frontDog = { x: 0, z: 0 }
+  /** The dog keeping to the handler's foot (`dogByFoot`): where it is, where it goes, and for which step. */
+  private footDog: Pose = { x: 0, z: 0, heading: 0 }
+  private footDogAim: Pose | null = null
+  private footDogStep = -1
   /** Where the dog's body is in the team's frame, before it lies down over its forelegs. */
   private dogAt: Pose = { x: 0, z: 0, heading: 0 }
   /** How far in front of the handler the dog stood as the steps began, metres. */
@@ -2374,8 +2393,46 @@ export class ExercisePlayer {
           controls.dogSidles = true
         }
       }
+      // Keeping to the foot on its side (`dogByFoot`): its place beside that foot where it stands,
+      // gone to at the dog's own pace.
+      let byFootThere = true
+      if (current.dogByFoot && (this.dogPlace === 'left' || this.dogPlace === 'right')) {
+        const i = this.dogPlace === 'left' ? 0 : 1
+        const foot = this.last?.feet.handler[i]
+        const dog = onField(this.team, this.dogAt)
+        if (this.footDogStep !== this.index) {
+          this.footDogStep = this.index
+          this.footDog = dog
+          this.footDogAim = null
+        }
+        if (foot && foot.swing === null) {
+          const heel = PLACES[this.dogPlace]
+          const restX = i === 0 ? 0.1 : -0.1
+          this.footDogAim = onField(
+            { x: foot.x, z: foot.z, heading: foot.yaw },
+            {
+              x: heel.x - restX + Math.sign(heel.x) * FOOT_DOG_OUT,
+              z: heel.z + FOOT_REST_BACK - FOOT_DOG_BACK,
+              heading: 0,
+            },
+          )
+        }
+        const aim = this.footDogAim ?? dog
+        const d = this.footDog
+        const far = Math.hypot(aim.x - d.x, aim.z - d.z)
+        const go = Math.min(far, FOOT_DOG_SPEED * dt)
+        const turn = angleTo(d.heading, aim.heading)
+        const spin = Math.sign(turn) * Math.min(Math.abs(turn), FOOT_DOG_TURN * dt)
+        this.footDog = {
+          x: d.x + (far > 0 ? ((aim.x - d.x) / far) * go : 0),
+          z: d.z + (far > 0 ? ((aim.z - d.z) / far) * go : 0),
+          heading: d.heading + spin,
+        }
+        controls.dogAt = inTeam(this.team, this.footDog)
+        byFootThere = far < 0.01 && Math.abs(turn) < 0.02
+      }
       // (…and the steps are done once the dog going over with them is there too.)
-      let followed = sidled >= 1
+      let followed = sidled >= 1 && byFootThere
       // Still sitting or getting up, it stays where it is.
       const onLegs = this.posture === 'stand' && (this.last?.feet.dogOnLegs ?? true)
       if (this.dogPlace === 'front' && feet && !onLegs) {
