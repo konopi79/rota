@@ -13,7 +13,7 @@ export {
   type RulesetId,
 } from './schema'
 export { CZ_CARDS, CZ_CLASSES } from './cz'
-export { CZ_2027_CARDS, CZ_2027_CLASSES } from './cz-2027'
+export { CZ_2027_CARDS, CZ_2027_CLASSES, CZ_2027_REVISED } from './cz-2027'
 export { FCI_CARDS, FCI_CLASSES } from './fci'
 export { CLASSES, classesOf, getCard, getClass, RULESET_CARDS } from './registry'
 export {

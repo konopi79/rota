@@ -1,6 +1,6 @@
 import type { Card, RoClass } from '../schema'
 import { cardOf, endsStatic } from './rules'
-import { planSideChanges } from './side-plan'
+import { planSideChanges, planSides } from './side-plan'
 import type { DealOptions, Side } from './types'
 
 /** What the course has dealt so far, to go back to (`save` / `restore`). */
@@ -44,8 +44,11 @@ export class NationalCourse {
     inClass: Set<string>,
     random: () => number,
   ): NationalCourse | undefined {
-    const { repeats, required, staticShare, rightHand } = cls.course
-    if (!options.competition || !(repeats || required || staticShare || rightHand)) return
+    const { repeats, required, staticShare, rightHand, sides } = cls.course
+    if (!options.competition || !(repeats || required || staticShare || rightHand || sides)) {
+      return
+    }
+
     return new NationalCourse(cls, options, inClass, random)
   }
 
@@ -56,8 +59,11 @@ export class NationalCourse {
     random: () => number,
   ) {
     const { count, startSide } = options
-    const { rightHand, staticShare, required = [] } = cls.course
-    this.sideChanges = rightHand && planSideChanges(rightHand, count, startSide, random)
+    const { rightHand, sides, staticShare, required = [] } = cls.course
+    // The guidelines' stretches (2026) or the regulation's own (2027, `course.sides`).
+    this.sideChanges = rightHand
+      ? planSideChanges(rightHand, count, startSide, random)
+      : sides && planSides(sides, count, startSide, random)
     const tolerance = staticShare?.tolerance ?? count
     this.maxStatic = Math.ceil(count / 2) + tolerance
     this.maxDynamic = count - (Math.floor(count / 2) - tolerance)
@@ -78,15 +84,27 @@ export class NationalCourse {
       .sort((a, b) => a.codes.size - b.codes.size)
   }
 
-  /** How many more times a card may appear (cards not listed: once). */
+  /**
+   * How many more times a card may appear: as `course.repeats` lists it, the others once
+   * (Směrnice 2025) — or every card `course.maxRepeats` times (2027: "Každá karta smí být
+   * použita max 2x", the club's slides), D0 cards included.
+   */
   left(code: string): number {
-    return (this.cls.course.repeats?.[code] ?? 1) - (this.counts.get(code) ?? 0)
+    const { repeats, maxRepeats } = this.cls.course
+    return (repeats?.[code] ?? maxRepeats ?? 1) - (this.counts.get(code) ?? 0)
   }
 
-  /** The D0 cards that may go with `card`: not used up, keeping RO-Z's balance. */
-  supplementaries(card: Card): string[] {
+  /**
+   * The D0 cards that may go with `card`: not used up, keeping RO-Z's balance — and where the
+   * class rules the sides, with the dog on the right only those that leave it there (D0e,
+   * 2027): D0a–d bring it to the left leg, a change no stretch on the right allows.
+   */
+  supplementaries(card: Card, side: Side = 'left'): string[] {
     return this.cls.course.supplementary.filter(
-      (d) => this.left(d) > 0 && this.balanced(endsStatic(this.cls, card, d)),
+      (d) =>
+        this.left(d) > 0 &&
+        this.balanced(endsStatic(this.cls, card, d)) &&
+        (side === 'left' || !this.sideChanges || !cardOf(this.cls, d).sequencing.endSide),
     )
   }
 
@@ -95,7 +113,7 @@ export class NationalCourse {
     const seq = card.sequencing
     if (this.left(card.code) <= 0) return false
     if (seq.requiresSupplementary) {
-      if (this.supplementaries(card).length === 0) return false
+      if (this.supplementaries(card, side).length === 0) return false
     } else if (!this.balanced(endsStatic(this.cls, card))) {
       return false
     }
@@ -107,9 +125,9 @@ export class NationalCourse {
     if (!!seq.sideChange !== this.sideChanges.has(at)) return false
     // A leave card's follow-up is no side change, so none right before a planned one.
     if (seq.nextOneOf && this.sideChanges.has(at + 1)) return false
-    // On the right, a D0 card would bring the dog back to the left — not a change the
-    // guidelines allow; nor may a leave card start there (its follow-up stays right).
-    if (side === 'right' && !seq.sideChange) return !seq.requiresSupplementary && !seq.nextOneOf
+    // On the right a D0 card must leave the dog there (`supplementaries`); nor may a leave
+    // card start there (its follow-up stays right).
+    if (side === 'right' && !seq.sideChange) return !seq.nextOneOf
     return true
   }
 

@@ -24,7 +24,7 @@ import {
   type CatalogueFilters,
 } from '@/lib/catalogue'
 import { cardHref, classSlug } from '@/lib/classes'
-import { animationFor, animationSetOf } from '@/lib/figures/animated'
+import { animationOfCard } from '@/lib/figures/animated'
 
 /** The catalogue with the filters of its URL; needs a Suspense boundary (static export). */
 export function CatalogueFromUrl({ classId }: { classId: ClassId }) {
@@ -151,7 +151,7 @@ export function Catalogue({
                 <p className="text-sm leading-tight">
                   <span className="font-semibold">{card.code}</span> {card.name}
                 </p>
-                {animationFor(card.code, animationSetOf(card.ruleset)) && (
+                {animationOfCard(card) && (
                   <Badge variant="secondary" className="gap-1">
                     <Play className="size-3 fill-current" />
                     {t('catalogue.animation')}

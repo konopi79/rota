@@ -25,6 +25,7 @@ import {
   WALK_SPACING,
   walkOf,
   wayTo,
+  withSupplementary,
   type Shape,
 } from './geometry'
 import {
@@ -36,6 +37,7 @@ import {
   type CndcReason,
 } from './cndc'
 import { endsStatic, fieldOf, followUpsOf, hasEquipment, paceAfter, sideAfter } from './rules'
+import { sidesBroken, type SidesBroken } from './side-plan'
 import type { Deck, DeckEntry, Layout, Pace, Point, Pose, Round, Side } from './types'
 
 /** What can be wrong at one card of a deck. */
@@ -93,6 +95,13 @@ export type CourseIssue =
   | { rule: 'cndc-stations'; count: number; max: number; level: CndcLevel }
   /** The side changes do not form one of the class's patterns. */
   | { rule: 'right-pattern' }
+  /**
+   * 2027 (`course.sides`): the side changes break the regulation's rule — a stretch longer than
+   * `limit` exercises, more than `limit` changes to the right, fewer than `limit` changes or
+   * exercises on the right, more than `limit` on the right, the change not by the first / last
+   * card (Senioren), or a change straight back to the right.
+   */
+  | { rule: 'sides'; broken: SidesBroken; limit?: number }
 
 export type DeckIssue = CardIssue | CourseIssue
 
@@ -288,7 +297,8 @@ function deckIssues(cls: RoClass, deck: Deck): DeckIssue[] {
     pace = paceAfter(card, pace, static_)
     const sideNext = sideAfter(cls, card, side, entry.supplementary)
     if (sideNext !== side) sideChanges.push(index)
-    if (options.competition && cls.course.rightHand && sideNext !== side && !seq.sideChange) {
+    const sideRule = cls.course.rightHand ?? cls.course.sides
+    if (options.competition && sideRule && sideNext !== side && !seq.sideChange) {
       add({ rule: 'supplementary-changes-side' })
     }
     side = sideNext
@@ -311,6 +321,7 @@ function deckIssues(cls: RoClass, deck: Deck): DeckIssue[] {
     }
     issues.push(
       ...rightHandIssues(cls, options.startSide, sideChanges, entries),
+      ...sidesIssues(cls, options.startSide, sideChanges, entries.length),
       ...nationalCourseIssues(cls, entries),
     )
   }
@@ -334,6 +345,8 @@ function describeIssue(cls: RoClass, issue: DeckIssue): string {
       return `${issue.count} CNDC, at most ${issue.max}`
     case 'right-pattern':
       return `side changes do not follow the ${cls.id} pattern`
+    case 'sides':
+      return `side changes break the ${cls.id} rule: ${issue.broken}${issue.limit === undefined ? '' : ` (${issue.limit})`}`
     case 'too-often':
       return `${issue.card}: ${issue.count} times, at most ${issue.limit}`
     case 'right-to-finish-early':
@@ -503,6 +516,32 @@ function rightHandIssues(
   return issues
 }
 
+/**
+ * National courses under the 2027 regulation: the stretches on the right `course.sides` allows
+ * (VDH §5.2–5.5), read off the dealt sequence.
+ */
+function sidesIssues(
+  cls: RoClass,
+  startSide: Side,
+  sideChanges: number[],
+  count: number,
+): DeckIssue[] {
+  const rule = cls.course.sides
+  if (!rule) return []
+  const limits: Partial<Record<SidesBroken, number>> = {
+    stretch: rule.stretch,
+    'left-to-right': rule.leftToRight && rule.leftToRight - (startSide === 'right' ? 1 : 0),
+    'min-changes': rule.minChanges,
+    'min-right': rule.minRight,
+    'max-right': rule.maxRightShare && Math.floor(count * rule.maxRightShare),
+  }
+  return sidesBroken(rule, sideChanges, count, startSide).map((broken) => ({
+    rule: 'sides',
+    broken,
+    ...(limits[broken] !== undefined && { limit: limits[broken] }),
+  }))
+}
+
 /** Rounding slack for distances (m) and angles (°). */
 const EPS = 0.01
 
@@ -553,7 +592,13 @@ function validateRound(
   ].some(({ d, heading }) => Math.abs(d) < EPS && Math.abs(angleDiff(heading, start.heading)) < EPS)
   if (!inside(start) || !onEdge) errors.push(`#${first + 1}: start not on the edge facing in`)
 
-  const cards = entries.map((e) => getCard(cls.ruleset, e.code) as Card)
+  // Each card as laid out, with the turn of a D0 card that turns the team (D0e, 2027).
+  const cards = entries.map((e) =>
+    withSupplementary(
+      getCard(cls.ruleset, e.code) as Card,
+      e.supplementary ? getCard(cls.ruleset, e.supplementary) : undefined,
+    ),
+  )
   // Each exercise with its equipment; a leave card has no recall cone when a recall card
   // follows on the same field.
   const shapes: (Shape | undefined)[] = entries.map(
