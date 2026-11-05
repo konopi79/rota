@@ -316,10 +316,8 @@ describe.each(PLAYED)('%s: feet', (_, exercise) => {
       for (const l of left)
         for (const r of right) {
           const apart = segmentsApart(l.ends[0]!, l.ends[1]!, r.ends[0]!, r.ends[1]!)
-          // Boxes drawn round segments: a little leeway for their corners — more in a T, where
-          // the thighs may touch (`legsTouch`, the 2027 turns towards the dog).
-          const t = exercise.legsTouch && /90OneMove/.test(frame.caption ?? '')
-          if (apart < (l.width + r.width) / 2 - (t ? 0.06 : 0.02))
+          // Boxes drawn round segments: a little leeway for their corners.
+          if (apart < (l.width + r.width) / 2 - 0.02)
             throw new Error(`legs ${(apart * 100).toFixed(1)} cm apart (${frame.caption})`)
         }
     }

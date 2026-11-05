@@ -468,13 +468,22 @@ const THIGH_LEAD = 1.3
 /** The fastest a dog in front moves following the handler's feet, m/s. */
 const FRONT_DOG_SPEED = 0.45
 /** A dog keeping to the handler's foot (`dogByFoot`) goes over this fast, m/s and rad/s. */
-const FOOT_DOG_SPEED = 0.5
-const FOOT_DOG_TURN = 1.6
+const FOOT_DOG_SPEED = 0.8
+/** …picking up and losing that speed at this rate, m/s²: set off at once its paws fall behind. */
+const FOOT_DOG_ACCELERATION = 2.5
+/** …and trots while it is further than this from where it is going, metres. */
+const FOOT_DOG_TROTS = 0.02
+/** …its place ahead of its body by at most this, metres, else going on at this speed, m/s. */
+const FOOT_DOG_LEAD = 0.04
+const FOOT_DOG_LEAD_SPEED = 0.3
+/** Walking on, the team waits for it only till it is this near its place, metres. */
+const FOOT_DOG_WALK_ON = 0.2
+const FOOT_DOG_TURN = 1.2
 /** A foot standing at rest is this far behind the middle of the body, metres (its heel). */
 const FOOT_REST_BACK = 0.08
 /** …and, keeping to the foot, this much further out and back than at heel (its head off the thigh). */
 const FOOT_DOG_OUT = 0.2
-const FOOT_DOG_BACK = 0.25
+const FOOT_DOG_BACK = 0.05
 /** How fast a dog in front follows the handler's feet (each of two easings), 1/s. */
 const FRONT_FOLLOWS = 5
 /** How quickly the dog takes over the pace the slowing team no longer carries it at, 1/s. */
@@ -635,12 +644,6 @@ export type Exercise = {
    * handler's turns stay as the card says, unless they go by the dog's side (`bySide`).
    */
   dogStarts?: 'right'
-  /**
-   * A T stance: one foot set across right in front of the other's toes (the 2027 90° turns
-   * towards the dog, the Løype video) — the thighs may touch there, never cross (the author,
-   * 2026-11-05) — in the steps of the turn itself (captioned `…90OneMove…`).
-   */
-  legsTouch?: true
   /**
    * Where in the exercise space the handler stops, from the usual place (metres, +x to the
    * left, +z towards the card): an exercise that needs room in front stops further back.
@@ -1187,6 +1190,10 @@ export class ExercisePlayer {
   private footDog: Pose = { x: 0, z: 0, heading: 0 }
   private footDogAim: Pose | null = null
   private footDogStep = -1
+  /** …the foot it keeps to, where it stood as the steps began. */
+  private footDogFrom: Pose | null = null
+  private footDogSpeed = 0
+  private footDogStart: Pose = { x: 0, z: 0, heading: 0 }
   /** Where the dog's body is in the team's frame, before it lies down over its forelegs. */
   private dogAt: Pose = { x: 0, z: 0, heading: 0 }
   /** How far in front of the handler the dog stood as the steps began, metres. */
@@ -2399,46 +2406,122 @@ export class ExercisePlayer {
           controls.dogSidles = true
         }
       }
-      // Keeping to the foot on its side (`dogByFoot`): its place beside that foot where it stands,
-      // gone to at the dog's own pace.
+      // Keeping to the foot on its side (`dogByFoot`): where it stood by that foot as the steps
+      // began, it keeps — sitting still while that foot stays, whatever the other one does (the
+      // author: "u pravého vedení je to pravá noha, kterou má následovat") — and when it moves,
+      // goes over to beside where it lands (a little further out and back there, its head off the
+      // handler's thigh), at its own pace.
       let byFootThere = true
+      let byFootNear = true
+      let byFootSettled = true
       if (current.dogByFoot && (this.dogPlace === 'left' || this.dogPlace === 'right')) {
         const i = this.dogPlace === 'left' ? 0 : 1
         const foot = this.last?.feet.handler[i]
         const dog = onField(this.team, this.dogAt)
+        const footPose = foot && { x: foot.x, z: foot.z, heading: foot.yaw }
         if (this.footDogStep !== this.index) {
           this.footDogStep = this.index
           this.footDog = dog
+          this.footDogStart = dog
           this.footDogAim = null
+          this.footDogFrom = foot && foot.swing === null ? footPose! : null
+          this.footDogSpeed = 0
         }
-        if (foot && foot.swing === null) {
-          const heel = PLACES[this.dogPlace]
-          const restX = i === 0 ? 0.1 : -0.1
-          this.footDogAim = onField(
-            { x: foot.x, z: foot.z, heading: foot.yaw },
-            {
-              x: heel.x - restX + Math.sign(heel.x) * FOOT_DOG_OUT,
-              z: heel.z + FOOT_REST_BACK - FOOT_DOG_BACK,
-              heading: 0,
-            },
-          )
+        const from = this.footDogFrom
+        // Beside that foot wherever it is — stepping, along with it as it goes.
+        const by = footPose
+        if (by && from) {
+          const moved =
+            Math.hypot(by.x - from.x, by.z - from.z) > 0.01 ||
+            Math.abs(angleTo(from.heading, by.heading)) > 0.02
+          if (moved) {
+            const heel = PLACES[this.dogPlace]
+            const restX = i === 0 ? 0.1 : -0.1
+            // Further out and back while the handler turns; the turn done — the feet side by side
+            // and the body over them — at heel as ever, before it sits there.
+            const other = this.last?.feet.handler[1 - i]
+            const parallel = !!other && Math.abs(angleTo(other.yaw, by.heading)) < 0.1
+            // (…exactly where heel is by the body the steps end with, so it does not move again.)
+            // Its foot's step the last of them, it goes straight to that place — not over to beside
+            // the foot first and on again from there (the author, 2-224 with the dog on the right).
+            const lastStep =
+              current.footwork.at(-1)!.foot === i &&
+              this.footworkIndex >= current.footwork.length - 1
+            byFootSettled = lastStep || (parallel && glide >= 1)
+            this.footDogAim = byFootSettled
+              ? onField(this.footworkTo, PLACES[this.dogPlace])
+              : onField(by, {
+                  x: heel.x - restX + Math.sign(heel.x) * FOOT_DOG_OUT,
+                  z: heel.z + FOOT_REST_BACK - FOOT_DOG_BACK,
+                  heading: 0,
+                })
+          }
         }
-        const aim = this.footDogAim ?? dog
+        // (Till its foot moves it stays where it is, not turning with the handler's body — only
+        // giving way as much as the body comes over the turned foot.)
+        const waits = {
+          ...this.footDogStart,
+          x: this.footDogStart.x + this.team.x - this.footworkFrom.x,
+          z: this.footDogStart.z + this.team.z - this.footworkFrom.z,
+        }
+        const aim = this.footDogAim ?? (from ? waits : dog)
         const d = this.footDog
         const far = Math.hypot(aim.x - d.x, aim.z - d.z)
-        const go = Math.min(far, FOOT_DOG_SPEED * dt)
+        this.footDogSpeed = Math.min(
+          FOOT_DOG_SPEED,
+          this.footDogSpeed + FOOT_DOG_ACCELERATION * dt,
+          Math.sqrt(2 * FOOT_DOG_ACCELERATION * far),
+        )
+        // (…no further ahead of its body than its legs keep up with: waiting for a paw, it would
+        // otherwise dash after the place it is to be at, and stop again.)
+        const ahead = Math.hypot(this.footDog.x - dog.x, this.footDog.z - dog.z)
+        if (ahead > FOOT_DOG_LEAD)
+          this.footDogSpeed = Math.min(this.footDogSpeed, FOOT_DOG_LEAD_SPEED)
+        const go = Math.min(far, this.footDogSpeed * dt)
         const turn = angleTo(d.heading, aim.heading)
-        const spin = Math.sign(turn) * Math.min(Math.abs(turn), FOOT_DOG_TURN * dt)
+        // It turns as it goes, coming round the way it goes as it gets there — its head lagging the
+        // way it came would swing into the handler's hip.
+        const spin =
+          Math.sign(turn) *
+          Math.min(
+            Math.abs(turn),
+            Math.max(far > 0 ? (Math.abs(turn) * go) / far : 0, FOOT_DOG_TURN * dt),
+          )
+        // Round the handler, not across: in an arc about the body, its distance from it changing
+        // evenly (straight over, turning away from it, it went close behind the handler and its
+        // head into a hip).
+        const c = this.team
+        const r0 = Math.hypot(d.x - c.x, d.z - c.z)
+        const r1 = Math.hypot(aim.x - c.x, aim.z - c.z)
+        const a0 = Math.atan2(d.x - c.x, d.z - c.z)
+        const sweep = angleTo(a0, Math.atan2(aim.x - c.x, aim.z - c.z))
+        const way = Math.hypot(r1 - r0, ((r0 + r1) / 2) * sweep)
+        const k = way > 0 ? Math.min(1, go / way) : 1
+        const r = r0 + (r1 - r0) * k
+        const a = a0 + sweep * k
         this.footDog = {
-          x: d.x + (far > 0 ? ((aim.x - d.x) / far) * go : 0),
-          z: d.z + (far > 0 ? ((aim.z - d.z) / far) * go : 0),
+          x: far > 0 ? c.x + r * Math.sin(a) : d.x,
+          z: far > 0 ? c.z + r * Math.cos(a) : d.z,
           heading: d.heading + spin,
         }
         controls.dogAt = inTeam(this.team, this.footDog)
-        byFootThere = far < 0.01 && Math.abs(turn) < 0.02
+        // Going over a good way, it trots: walking, one paw at a time, its legs could not carry it
+        // round as quick and its body kept waiting for them (the author: "pes se cuká", 2-224).
+        if (this.posture === 'stand' && far > FOOT_DOG_TROTS) controls.dog = 'trot'
+        // (…its body, which waits for its paws, there too — not only where it is heading.)
+        const body = this.last?.dog
+        const lags = body ? Math.hypot(body.x - controls.dogAt.x, body.z - controls.dogAt.z) : 0
+        byFootThere = far < 0.01 && Math.abs(turn) < 0.02 && lags < 0.01
+        if (!this.footDogFrom) byFootSettled = true
+        byFootNear = far < FOOT_DOG_WALK_ON
       }
       // (…and the steps are done once the dog going over with them is there too.)
-      let followed = sidled >= 1 && byFootThere
+      // (Walking on from the steps — a dynamic exercise — the team waits only till it is nearly
+      // there: it comes into heel on the way, the author, 2026-11-05: "u dynamického cviku tam
+      // stojí".)
+      // Stopping after the steps, they are done only once it is at heel by the body, so it does not
+      // slide over sitting down there (the author, 1-106, 2-202).
+      let followed = sidled >= 1 && ((byFootThere && byFootSettled) || (walksOn && byFootNear))
       // Still sitting or getting up, it stays where it is.
       const onLegs = this.posture === 'stand' && (this.last?.feet.dogOnLegs ?? true)
       if (this.dogPlace === 'front' && feet && !onLegs) {
