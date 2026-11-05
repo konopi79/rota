@@ -1,6 +1,6 @@
 'use client'
 
-import { CZ_CARDS, FCI_CARDS } from '@rota/content'
+import { CZ_2027_CARDS, CZ_CARDS, FCI_CARDS } from '@rota/content'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
 import { SRGBColorSpace, TextureLoader, TOUCH, type Group } from 'three'
@@ -24,8 +24,8 @@ import {
   stationOf,
   type Exercise,
 } from '@/lib/figures/exercise'
-import { FCI_RIGHT_SIDE_CARDS } from '@/lib/figures/animated'
-import { EXERCISES, RIGHT_EXERCISES, RIGHT_SIDE_CARDS } from '@/lib/figures/exercises'
+import { FCI_RIGHT_SIDE_CARDS, type AnimationSet } from '@/lib/figures/animated'
+import { EXERCISES, exercisesOf, RIGHT_SIDE_CARDS } from '@/lib/figures/exercises'
 import { FCI_EXERCISES, FCI_RIGHT_EXERCISES } from '@/lib/figures/fci-exercises'
 import { CONE } from '@/lib/figures/fci-leave-exercises'
 import { HANDLER } from '@/lib/figures/handler'
@@ -70,13 +70,13 @@ export function CardStand({
   code: string
   x: number
   z: number
-  ruleset?: 'CZ' | 'FCI'
+  ruleset?: AnimationSet
 }) {
   // An FCI card nearer its real size (`cardFootprint`), its stand as much smaller.
   const scale = ruleset === 'FCI' ? 0.72 : 1
   const texture = useMemo(() => {
     const map = new TextureLoader().load(
-      `/cards/${ruleset.toLowerCase()}/${code.toLowerCase()}.webp`,
+      `/cards/${ruleset === 'FCI' ? 'fci' : 'cz'}/${code.toLowerCase()}.webp`,
     )
     map.colorSpace = SRGBColorSpace
     return map
@@ -418,8 +418,10 @@ export function CameraRig({ view, focusRef }: { view: CameraView; focusRef: RefO
   return null
 }
 
-const cardName = (code: string, ruleset: 'CZ' | 'FCI' = rulesetOf(code)) =>
-  (ruleset === 'FCI' ? FCI_CARDS : CZ_CARDS).find((c) => c.code === code)?.name ?? ''
+const cardName = (code: string, ruleset: AnimationSet = rulesetOf(code)) =>
+  (ruleset === 'FCI' ? FCI_CARDS : ruleset === 'CZ-2027' ? CZ_2027_CARDS : CZ_CARDS).find(
+    (c) => c.code === code,
+  )?.name ?? ''
 
 /**
  * One card's animation: the scene, its caption, and the controls — the dog's side and the
@@ -436,8 +438,8 @@ export function AnimationPlayer({
   inline = false,
 }: {
   code: string
-  /** FCI's card `code` (plan R19), or a national one. */
-  ruleset?: 'CZ' | 'FCI'
+  /** FCI's card `code` (plan R19), or a national one (of 2026 or 2027). */
+  ruleset?: AnimationSet
   initialVariant?: string
   keyboard?: boolean
   inline?: boolean
@@ -463,9 +465,7 @@ export function AnimationPlayer({
       ? side === 'right'
         ? FCI_RIGHT_EXERCISES
         : FCI_EXERCISES
-      : side === 'right'
-        ? RIGHT_EXERCISES
-        : EXERCISES
+      : exercisesOf(ruleset, side === 'right')
   ).filter((e) => e.code === code)
   const exercise = variants.find((e) => variantOf(e) === variant) ?? variants[0]!
   const variantGroup = isLeavePair(variants[0]!)

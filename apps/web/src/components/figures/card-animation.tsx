@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { animationFor, SUPPLEMENTARY_SHOWN_WITH } from '@/lib/figures/animated'
+import { animationFor, SUPPLEMENTARY_SHOWN_WITH, type AnimationSet } from '@/lib/figures/animated'
 
 // WebGL needs a browser, and three.js loads only once someone asks for the animation.
 const AnimationPlayer = dynamic(
@@ -25,7 +25,7 @@ function Placeholder({ children }: { children?: React.ReactNode }) {
  * "Jak cvik vypadá" in a card detail: the card's exercise animation (plan R12), started on
  * a tap — until then nothing heavy loads. Cards without an animation show nothing.
  */
-export function CardAnimation({ code, ruleset }: { code: string; ruleset: 'CZ' | 'FCI' }) {
+export function CardAnimation({ code, ruleset }: { code: string; ruleset: AnimationSet }) {
   const { t } = useTranslation()
   const [playing, setPlaying] = useState(false)
   const animation = animationFor(code, ruleset)

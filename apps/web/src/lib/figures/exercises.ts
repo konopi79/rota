@@ -8,9 +8,16 @@ import {
   pair,
   stayTurnStepRecall,
 } from './leave-exercises'
-import { HIGHER_EXERCISES, LEFT, RIGHT, turnAboutChange } from './ro123-exercises'
+import {
+  HIGHER_EXERCISES,
+  higherExercises2027,
+  LEFT,
+  RIGHT,
+  turnAboutChange,
+} from './ro123-exercises'
 import {
   ROZ_EXERCISES,
+  ROZ_EXERCISES_2027,
   circleSpiralExercise,
   eightExercise,
   slalomExercise,
@@ -99,7 +106,10 @@ const STEP_LATER = new Set(['Z-018', 'Z-026', '1-123', '3-327'])
 export const fromTheRight = (e: Exercise): Exercise => {
   const own = OWN_WAY[e.code] ?? e
   const card = own.cardAt ? null : (own.card ?? 'side')
-  const goesRound = own.steps.some((step) => 'around' in step || 'roundLeftDog' in step)
+  // (Back to a dog left in front, D0e, is no way round a dog at heel.)
+  const goesRound = own.steps.some(
+    (step) => 'around' in step || ('roundLeftDog' in step && !step.beside),
+  )
   const room =
     card === 'side' ? (goesRound ? ROOM_TO_GO_ROUND : ROOM_BY_THE_CARD) : card && ROOM_AHEAD
   const more = MORE_ROOM[e.code] ?? { x: 0, z: 0 }
@@ -137,3 +147,95 @@ export const RIGHT_EXERCISES: Exercise[] = EXERCISES.filter((e) =>
 
 /** The leave cards' and the follow-ups' parts with the dog on the right (a course walked through). */
 export const RIGHT_PARTS: Exercise[] = [...LEAVE_PARTS, ...FOLLOW_UP_PARTS].map(fromTheRight)
+
+// ——— 2027 (plan R22b) ———
+
+/** The exercises the 2027 regulation does differently, in card order. */
+export const EXERCISES_2027: Exercise[] = [
+  ...ROZ_EXERCISES_2027,
+  ...higherExercises2027('left'),
+].sort((a, b) => cardOrder(a.code).localeCompare(cardOrder(b.code)))
+const OWN_2027 = new Set(EXERCISES_2027.map((e) => e.code))
+
+/**
+ * Captions that state a 2026 rule, and what 2027 says instead: 180° "auf einem DIN A 4 Blatt"
+ * (VDH 2027, S. 17), not "max. 4 kroky nohou".
+ */
+const CAPTIONS_2027: Record<string, string> = {
+  turnRight180OnSpot: 'turnRight180OnA4',
+  turnLeft180OnSpot: 'turnLeft180OnA4',
+}
+
+const in2027 = (e: Exercise): Exercise => ({
+  ...e,
+  steps: e.steps.map((step) =>
+    CAPTIONS_2027[step.caption] ? { ...step, caption: CAPTIONS_2027[step.caption]! } : step,
+  ),
+  ...(e.parts && { parts: e.parts.map((p) => ({ ...p, exercise: in2027(p.exercise) })) }),
+})
+
+/**
+ * D0e "Zurück zum Hund" (VDH 2027, S. 29): "Nach Vollendung der Frontposition signalisiert der HF
+ * dem Hund zu bleiben. Der HF begibt sich neben seinen Hund auf die ursprüngliche Fußseite …
+ * Kein Seitenwechsel … Das Team nimmt die Grundstellung ein und bewegt sich anschließend in die
+ * neue Richtung" — each exercise into the front as with D0a, its finish replaced: the dog left
+ * there, the handler round it behind it and up beside it, on the other way (`roundLeftDog.beside`).
+ */
+const withD0e = (e: Exercise): Exercise | null => {
+  const finish = e.steps.findLastIndex(
+    (step) => 'dogPath' in step && (step.dogPath === 'aroundHandler' || step.dogPath === 'toHeel'),
+  )
+  // (3-323's dog comes into the front on the run, too near the handler's way round it: not yet.)
+  if (finish < 0 || e.parts || e.code === '3-323') return null
+  return {
+    ...e,
+    supplementary: 'D0e',
+    steps: [
+      ...e.steps.slice(0, finish),
+      // "Das Team nimmt die Grundstellung ein": a dog lying or standing in front sits up first.
+      { dog: 'sit', caption: 'frontSit' },
+      { dogStays: true, caption: 'frontHold' },
+      {
+        roundLeftDog: true,
+        beside: 'left',
+        way: e.card === 'ahead' ? 'front' : 'behind',
+        caption: 'backToDogFront',
+      },
+      { walk: 3, caption: 'leaveTurn' },
+    ],
+  }
+}
+
+/**
+ * The exercises into the front with D0e (2027), from the left leg — not played yet (R22b): from
+ * right in front of the dog the way round it still goes too near its head or loops, so they are
+ * left out of `EXERCISES_IN_2027` until it is worked out (`D0E_ANIMATED` empty).
+ */
+export const D0E_EXERCISES: Exercise[] = EXERCISES.filter((e) => e.supplementary === 'D0a')
+  .map(withD0e)
+  .filter((e): e is Exercise => e !== null)
+
+/** Every exercise of the 2027 regulation: its own, and the 2026 ones it does the same way. */
+export const EXERCISES_IN_2027: Exercise[] = [
+  ...EXERCISES.filter((e) => !OWN_2027.has(e.code)).map(in2027),
+  ...EXERCISES_2027,
+].sort((a, b) => cardOrder(a.code).localeCompare(cardOrder(b.code)))
+
+/** …with the dog starting at the right leg. */
+export const RIGHT_EXERCISES_IN_2027: Exercise[] = [
+  ...RIGHT_EXERCISES.filter((e) => !OWN_2027.has(e.code)).map(in2027),
+  // (The turns' footwork depends on the dog's side: built for the dog at the right leg.)
+  ...[...ROZ_EXERCISES_2027, ...higherExercises2027('right')]
+    .filter((e) => RIGHT_SIDE_CARDS.includes(e.code))
+    .map(fromTheRight),
+].sort((a, b) => cardOrder(a.code).localeCompare(cardOrder(b.code)))
+
+/** The exercises of an animation set, with the dog at the left leg or the right one. */
+export const exercisesOf = (set: 'CZ' | 'CZ-2027', right: boolean): Exercise[] =>
+  set === 'CZ-2027'
+    ? right
+      ? RIGHT_EXERCISES_IN_2027
+      : EXERCISES_IN_2027
+    : right
+      ? RIGHT_EXERCISES
+      : EXERCISES

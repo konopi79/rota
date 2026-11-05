@@ -840,3 +840,202 @@ export const HIGHER_EXERCISES: Exercise[] = [
   R3_326,
   R3_327,
 ]
+
+// ——— 2027 (VDH Regelwerk 2027, plan R22b) ———
+
+/** Which leg the dog is at, for the 2027 turns' footwork. */
+export type DogLeg = 'left' | 'right'
+
+/**
+ * The 90° turn from a stand of 2027: "Der HF setzt mit den Füßen einen 90° Winkel nach
+ * rechts/links (aus dem Stand nur eine Fußbewegung, die Füße berühren sich). Der Hund bleibt in
+ * Fußposition" (VDH 2027, S. 17); 2026 took Z-030's three steps. One foot set at a right angle
+ * to the other — which one, so it stays clear of the dog at heel: turning away from the dog the
+ * foot on the turning side, turned on its heel a little ahead; turning towards it the other foot,
+ * set across in front of the first one (a T, the author, 2026-11-04), so no toes go into the
+ * dog. Right before the toes the other leg's foot swept under it closing up: the T stands half a
+ * metre ahead, the second foot closing up a quarter of a metre behind it (tried by the frame
+ * tests: nearer, the legs come closer than they may).
+ */
+export const turn90Steps2027 = (sign: 1 | -1, dog: DogLeg): FootTarget[] => {
+  const [inner, outer] = sign === LEFT ? [0, 1] : [1, 0]
+  const towardsDog = (sign === LEFT) === (dog === 'left')
+  return towardsDog
+    ? [{ foot: outer, x: sign * 0.05, z: 0.52, yaw: (sign * Math.PI) / 2 }]
+    : [{ foot: inner, x: sign * 0.12, z: 0.1, yaw: (sign * Math.PI) / 2 }]
+}
+
+/** …and the other foot closing up beside it, facing the new way (the turns ending in a stop). */
+const closeUp2027 = (sign: 1 | -1, dog: DogLeg): FootTarget[] => {
+  const [inner, outer] = sign === LEFT ? [0, 1] : [1, 0]
+  const towardsDog = (sign === LEFT) === (dog === 'left')
+  return towardsDog
+    ? [{ foot: inner, x: sign * 0.05, z: 0.26, yaw: (sign * Math.PI) / 2 }]
+    : [{ foot: outer, x: sign * 0.12, z: 0.3, yaw: (sign * Math.PI) / 2 }]
+}
+
+const turnName = (sign: 1 | -1) => (sign === RIGHT ? 'Right' : 'Left')
+
+/**
+ * …and a moment for the dog to come round into heel before the team walks on: turned on the spot
+ * the dog has the whole arc to go, and the handler's first step would go into it.
+ */
+const dogRound = (sign: 1 | -1): ExerciseStep => ({
+  wait: 0.6,
+  caption: `turn${turnName(sign)}90OneMove`,
+})
+
+/**
+ * The turn and the other foot closing up — the team stands in the new way, the body turned the
+ * whole 90° (1-105, 2-223; and before walking on, 1-103, 1-119, 2-201: with one foot turned only
+ * the body stood half way round and the team walked off at some 60°, the author, 2026-11-04).
+ */
+const turn90Stop2027 = (sign: 1 | -1, dog: DogLeg): ExerciseStep => ({
+  footwork: [...turn90Steps2027(sign, dog), ...closeUp2027(sign, dog)],
+  caption: `turn${turnName(sign)}90OneMoveClose`,
+})
+
+/** 1-103 / 1-104 (VDH 2027, S. 39): the stop, the turn, the feet together, on. */
+const stopTurnOn2027 = (code: string, sign: 1 | -1, dog: DogLeg): Exercise => ({
+  code,
+  card: 'ahead',
+  steps: [...stopSit('ahead'), turn90Stop2027(sign, dog), dogRound(sign), leave('ahead')],
+})
+
+/**
+ * 1-105 / 1-106 (S. 40): "Die erste Schrittbewegung setzt den 90° Winkel, die zweite schließt
+ * die Füße" — the turn, the other foot closing up, the dog sitting again.
+ */
+const stopTurnStop2027 = (code: string, sign: 1 | -1, dog: DogLeg): Exercise => ({
+  code,
+  card: 'ahead',
+  steps: [
+    ...stopSit('ahead'),
+    turn90Stop2027(sign, dog),
+    { dog: 'sit', caption: 'finishSit' },
+    { wait: 1, caption: 'basePosition' },
+    leave('ahead'),
+  ],
+})
+
+/** 1-119 / 1-120 (S. 42): from a stand, the turn, on. */
+const standTurnOn2027 = (code: string, sign: 1 | -1, dog: DogLeg): Exercise => ({
+  code,
+  card: 'ahead',
+  steps: [...stopStand('ahead'), turn90Stop2027(sign, dog), dogRound(sign), leave('ahead')],
+})
+
+/**
+ * 2-201 / 2-202 (S. 46): the turn, "danach macht er mit dem anderen Fuß einen Schritt in die neue
+ * Richtung" — the feet together, one step forward, the dog sitting again.
+ */
+const stopTurnStepStop2027 = (code: string, sign: 1 | -1, dog: DogLeg): Exercise => ({
+  code,
+  card: 'ahead',
+  steps: [
+    ...stopSit('ahead'),
+    turn90Stop2027(sign, dog),
+    ...forward(1, 'oneStep'),
+    { dog: 'sit', caption: 'finishSit' },
+    { wait: 1, caption: 'basePosition' },
+    leave('ahead'),
+  ],
+})
+
+/** 2-223 / 2-224 (S. 51): from a stand, the turn and the feet closed, the dog standing. */
+const standTurnStand2027 = (code: string, sign: 1 | -1, dog: DogLeg): Exercise => ({
+  code,
+  card: 'ahead',
+  steps: [
+    ...stopStand('ahead'),
+    turn90Stop2027(sign, dog),
+    { wait: 1, caption: 'standHold' },
+    leave('ahead'),
+  ],
+})
+
+/**
+ * Z-036 Doppelkehrt (VDH 2027, S. 38): 2026's 1-116, now a Beginner card — "Wenn der Hund die
+ * Fußposition wieder erreicht hat, zeigt das Team 2 Schritte Fußarbeit und führt die
+ * Kehrtwendungsübung erneut aus".
+ */
+const Z036_2027: Exercise = {
+  ...R1_116,
+  code: 'Z-036',
+  steps: R1_116.steps.flatMap((step, i) =>
+    i > 0 && 'turn' in step && R1_116.steps[i - 1] && 'turn' in R1_116.steps[i - 1]!
+      ? [{ walk: 0.7, pace: 'slow' as const, caption: 'twoStepsOn' }, step]
+      : [step],
+  ),
+}
+
+/** 1-116 Steh – 1 Schritt vorwärts – Steh (S. 43): another exercise under 2026's code. */
+const R1_116_2027: Exercise = {
+  code: '1-116',
+  steps: [
+    ...stopStand(),
+    ...forward(1, 'oneStepStand'),
+    { wait: 1, caption: 'standHold' },
+    leave(),
+  ],
+}
+
+/** 2-234 In Bewegung – Schritt zur Seite – links (S. 54): 1-102 to the left, past the card on the right. */
+const R2_234_2027: Exercise = {
+  code: '2-234',
+  card: 'ahead',
+  stopAt: stopForSideStep(LEFT),
+  steps: [
+    { walk: 3.5, caption: 'approachTurn' },
+    { footwork: stepAside(LEFT), fromFoot: 1, caption: 'sideStepWalkingLeft' },
+    { walk: 3, pace: 'normal', caption: 'passCardRight' },
+  ],
+}
+
+/**
+ * 3-330 / 3-331 / 3-332 Sitz / Platz / Steh aus der Bewegung – um den Hund herum (S. 62–63): "Der
+ * HF gibt, ohne anzuhalten … dem Hund das Signal … Der Hundeführer geht im Abstand von höchstens
+ * 50 cm um den Hund herum, zurück in die Fußposition und bleibt stehen" — FCI's 419 / 318 / 317
+ * (`dropsDog`, `roundLeftDog`), with the national card.
+ */
+const dropAndRound2027 = (code: string, posture: 'stand' | 'down' | 'sit'): Exercise => ({
+  code,
+  steps: [
+    { walk: 3.5, caption: 'approach' },
+    {
+      walk: 0.2,
+      dropsDog: posture,
+      caption: posture === 'sit' ? 'dropSit' : posture === 'down' ? 'dropDown' : 'dropStand',
+    },
+    { roundLeftDog: true, caption: 'roundDogFront' },
+    {
+      wait: 0.6,
+      caption: posture === 'sit' ? 'basePosition' : posture === 'down' ? 'downHold' : 'standHold',
+    },
+    leave(),
+  ],
+})
+
+/**
+ * RO1–RO3 exercises the 2027 regulation does differently, in card order — with the footwork
+ * for the dog at the left leg, or (`'right'`, then played from the right) at the right one.
+ */
+export const higherExercises2027 = (dog: DogLeg): Exercise[] => [
+  stopTurnOn2027('1-103', RIGHT, dog),
+  stopTurnOn2027('1-104', LEFT, dog),
+  stopTurnStop2027('1-105', RIGHT, dog),
+  stopTurnStop2027('1-106', LEFT, dog),
+  standTurnOn2027('1-119', RIGHT, dog),
+  standTurnOn2027('1-120', LEFT, dog),
+  stopTurnStepStop2027('2-201', RIGHT, dog),
+  stopTurnStepStop2027('2-202', LEFT, dog),
+  standTurnStand2027('2-223', RIGHT, dog),
+  standTurnStand2027('2-224', LEFT, dog),
+  // New in 2027, or another exercise under its code (the same from either leg).
+  Z036_2027,
+  R1_116_2027,
+  R2_234_2027,
+  dropAndRound2027('3-330', 'sit'),
+  dropAndRound2027('3-331', 'down'),
+  dropAndRound2027('3-332', 'stand'),
+]

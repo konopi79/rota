@@ -4,6 +4,8 @@ import { getCard, type Card } from '@rota/content'
 
 import {
   ANIMATED_CARDS,
+  ANIMATED_IN_2027,
+  D0E_ANIMATED,
   FCI_ANIMATED_CARDS,
   FCI_RIGHT_SIDE_CARDS,
   animationFor,
@@ -28,7 +30,13 @@ import { HANDLER, HANDLER_STAND } from '../figures/handler'
 import { BAR_HEIGHT, JUMP_WIDTH } from '../figures/leap'
 import { apply } from '../figures/math'
 import { jointFrames, jointNames, lowestPoint, type Joint, type Pose } from '../figures/rig'
-import { EXERCISES, RIGHT_EXERCISES } from '../figures/exercises'
+import {
+  EXERCISES,
+  EXERCISES_2027,
+  EXERCISES_IN_2027,
+  RIGHT_EXERCISES,
+  RIGHT_EXERCISES_IN_2027,
+} from '../figures/exercises'
 import { FCI_EXERCISES, FCI_RIGHT_EXERCISES } from '../figures/fci-exercises'
 import { PAIRS_SHOWN } from '../figures/leave-exercises'
 import {
@@ -57,6 +65,11 @@ const PLAYED = [
   ...RIGHT_EXERCISES.map((e) => [`${e.code} (pes vpravo)`, e] as const),
   ...FCI_EXERCISES.map((e) => [`FCI ${e.code}`, e] as const),
   ...FCI_RIGHT_EXERCISES.map((e) => [`FCI ${e.code} (pes vpravo)`, e] as const),
+  // The exercises 2027 does differently (R22b), from each leg.
+  ...EXERCISES_2027.map((e) => [`${e.code} (2027)`, e] as const),
+  ...RIGHT_EXERCISES_IN_2027.filter((e) => ANIMATED_IN_2027.includes(e.code)).map(
+    (e) => [`${e.code} (2027, pes vpravo)`, e] as const,
+  ),
 ]
 
 /** The figure with only the named limbs: no other boxes, the joints they hang from kept. */
@@ -535,7 +548,8 @@ describe('every exercise', () => {
   test.each(PLAYED)('%s plays to the end', (_, exercise) => {
     const frames = playAll(exercise)
     expect(frames.at(-1)!.finished).toBe(true)
-    expect(frames.length / 60).toBeLessThan(40)
+    // (1-108 with D0e, 2027: its three steps back and the way round the dog — 42 s.)
+    expect(frames.length / 60).toBeLessThan(45)
   })
 
   // FCI asks less (§4.3): "alespoň v jednom okamžiku musí část týmu nacházet v prostoru".
@@ -890,6 +904,12 @@ describe('animations in the card details', () => {
     expect([...FCI_RIGHT_SIDE_CARDS].sort()).toEqual(
       [...new Set(FCI_RIGHT_EXERCISES.map((e) => e.code))].sort(),
     )
+    expect([...ANIMATED_IN_2027].sort()).toEqual(
+      [...new Set(EXERCISES_2027.map((e) => e.code))].sort(),
+    )
+    // (D0e not played yet: none listed, and none in the 2027 set.)
+    expect(D0E_ANIMATED).toEqual([])
+    expect(EXERCISES_IN_2027.some((e) => e.supplementary === 'D0e')).toBe(false)
   })
 
   // §3.5 "Všechny cviky (kromě 417 a 418) lze provádět se psem na levé nebo pravé straně": each

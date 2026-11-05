@@ -145,9 +145,24 @@ export type ExerciseStep = {
    * it and up to the handler's place at heel — stopping there, the dog still in its position
    * until the team walks on.
    */
-  | { roundLeftDog: true; pace?: HandlerPace }
-  /** (Worked out from `backToDog`.) The handler beside the dog again: it is at heel. */
-  | { dogJoins: true }
+  | {
+      roundLeftDog: true
+      pace?: HandlerPace
+      /**
+       * The dog left in front (D0e "Zurück zum Hund", 2027: "Der HF begibt sich neben seinen Hund
+       * auf die ursprüngliche Fußseite … Er kann dazu vor oder hinter dem Hund entlang gehen"):
+       * round it, behind it, up to this leg of it — the one of the script, the other one played
+       * from the right — the team then facing the way the dog faces.
+       */
+      beside?: 'left' | 'right'
+      /**
+       * …going round behind it, or (its card straight ahead of the team, where behind the dog
+       * the card stands) only to its side and turned about there, in front of it.
+       */
+      way?: 'behind' | 'front'
+    }
+  /** (Worked out from `backToDog`.) The handler beside the dog again: it is at heel (`place`). */
+  | { dogJoins: true; place?: TeamControls['place'] }
   /**
    * From here on the script is one written for the dog at this leg (`dogStarts`), its ways round
    * the handler mirrored for `right` — what a way to a place says with `flipped`, for a card
@@ -522,6 +537,20 @@ const sidleWay = (footwork: FootTarget[], place: TeamControls['place']): number 
  */
 const ROUND_DOG = { ahead: 0.95, beside: 0.7, behind: 1.2, walkIn: 0.5 }
 /**
+ * Back to a dog left in front (D0e), in its frame, metres: where the handler first steps aside to
+ * (off its head, still in front), how far out beside it they go down its side, from how far ahead to
+ * how far behind its middle, and where they turn up behind it.
+ */
+const D0E_ROUND = {
+  aside: 0.5,
+  front: 0.8,
+  out: 0.8,
+  start: 0.1,
+  along: 0.5,
+  turn: 0.6,
+  behind: 1.0,
+}
+/**
  * A jump the dog is sent over stands at most this far to the side of the team's way, metres
  * (3-313: 2.4 m) — another card's, 3 m off, the dog went over instead.
  */
@@ -582,7 +611,7 @@ export type Exercise = {
    */
   card?: 'side' | 'ahead'
   /** The supplementary card that ends the exercise (D0a–d), shown next to the main card. */
-  supplementary?: 'D0a' | 'D0b' | 'D0c' | 'D0d'
+  supplementary?: 'D0a' | 'D0b' | 'D0c' | 'D0d' | 'D0e'
   /** The pace the team comes in, from the card before (Z-017 after slow or fast). */
   fromPace?: 'slow' | 'fast'
   /**
@@ -1097,6 +1126,8 @@ export class ExercisePlayer {
   private dogTrots = false
   private dogGallops = false
   /** Steps set by hand: where the handler stood as they began, which is next, how long down. */
+  /** The script began with the dog at the right leg (`dogStarts`). */
+  private startedRight = false
   private footworkBase: Pose = { x: 0, z: 0, heading: 0 }
   private footworkIndex = 0
   private footworkDwell = 0
@@ -1306,6 +1337,7 @@ export class ExercisePlayer {
     this.stands =
       exercise.stands ?? standsOf(exercise).map((s) => ({ x: s.x, z: station + s.z, heading: 0 }))
     this.flipped = exercise.dogStarts === 'right'
+    this.startedRight = this.flipped
     this.dogPlace = this.flipped ? 'right' : 'left'
     this.animator = new TeamAnimator(this.dogPlace)
   }
@@ -1643,29 +1675,61 @@ export class ExercisePlayer {
     const dog = d
       ? forward(d.from, d.went + (d.speed * d.speed) / (2 * DROP_BRAKING))
       : { ...this.left!, heading: this.leftWay }
-    const heel = PLACES[this.dogPlace]
+    // (Left in front, D0e: at the leg the script says, mirrored from the right.)
+    const place = step.beside
+      ? this.startedRight
+        ? otherSide(step.beside)
+        : step.beside
+      : this.dogPlace
+    const heel = PLACES[place]
     // The dog's side (+1 left of the handler): the way round mirrored for the right.
     const side = Math.sign(heel.x) || 1
     const base = { x: -heel.x - side * BESIDE_DOG_ROOM, z: -heel.z }
     const last = ROUND_DOG.walkIn
     // In the dog's frame (+x its left, +z ahead): ahead of it, beside it, behind it, in line.
-    const round = [
-      { x: 0, z: ROUND_DOG.ahead, heading: (side * Math.PI) / 2 },
-      { x: side * ROUND_DOG.beside, z: 0, heading: Math.PI },
-      { x: 0, z: -ROUND_DOG.behind, heading: (-side * Math.PI) / 2 },
-      { x: base.x, z: base.z - last, heading: 0 },
-    ].map((p) => inTeam(this.team, onField(dog, p)))
+    // Left in front (D0e), the handler is ahead of it already: down the side it comes to and
+    // round behind it, up to it — the other side of it the card stands (it turned to its handler).
+    const round = (
+      step.beside && step.way === 'front'
+        ? [
+            // Aside, off the dog's head, and up beside it (turned about there, below).
+            { x: -side * D0E_ROUND.aside, z: D0E_ROUND.front, heading: (-side * Math.PI) / 2 },
+            { x: base.x, z: base.z + last, heading: Math.PI },
+          ]
+        : step.beside
+          ? [
+              // First aside, off the dog's head, then down its side.
+              { x: -side * D0E_ROUND.aside, z: D0E_ROUND.front, heading: (-side * Math.PI) / 2 },
+              { x: -side * D0E_ROUND.out, z: D0E_ROUND.start, heading: Math.PI },
+              { x: -side * D0E_ROUND.out, z: -D0E_ROUND.along, heading: Math.PI },
+              { x: -side * D0E_ROUND.turn, z: -D0E_ROUND.behind, heading: (side * Math.PI) / 2 },
+              { x: base.x, z: base.z - last, heading: 0 },
+            ]
+          : [
+              { x: 0, z: ROUND_DOG.ahead, heading: (side * Math.PI) / 2 },
+              { x: side * ROUND_DOG.beside, z: 0, heading: Math.PI },
+              { x: 0, z: -ROUND_DOG.behind, heading: (-side * Math.PI) / 2 },
+              { x: base.x, z: base.z - last, heading: 0 },
+            ]
+    ).map((p) => inTeam(this.team, onField(dog, p)))
     const { caption, pace } = step
-    this.origins.splice(this.index, 1, ...Array(5).fill(this.origins[this.index]))
-    this.steps.splice(
-      this.index,
-      1,
+    const expanded: ExerciseStep[] = [
       { course: towards(...round), parts: [0, round.length], caption, ...(pace && { pace }) },
       { walk: last, caption, ...(pace && { pace }) },
       { stop: true, caption: 'backAtDog' },
+      // (In front of it, D0e: the handler faced the dog's way back — turned about, away from it.)
+      ...(step.beside && step.way === 'front'
+        ? [{ turn: 180, radius: 0, bySide: true, caption: 'turnBesideDog' } as const]
+        : []),
       { wait: 0.8, caption: 'backAtDog' },
-      { dogJoins: true, caption: 'backAtDog' },
+      { dogJoins: true, caption: 'backAtDog', ...(step.beside && { place }) },
+    ]
+    this.origins.splice(
+      this.index,
+      1,
+      ...Array<number>(expanded.length).fill(this.origins[this.index]!),
     )
+    this.steps.splice(this.index, 1, ...expanded)
   }
 
   step(dt: number): ExerciseFrame {
@@ -1939,6 +2003,7 @@ export class ExercisePlayer {
       done = this.stepTime >= STAY_TIME
     } else if (current && 'dogJoins' in current) {
       this.joining = true
+      if (current.place) this.dogPlace = current.place
       done = true
     } else if (current && 'dogSide' in current) {
       this.flipped = current.dogSide === 'right'
