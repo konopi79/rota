@@ -1054,6 +1054,60 @@ const Z036_2027: Exercise = {
   ),
 }
 
+/**
+ * 3-328 Kehrtwendung voneinander weg (VDH 2027, S. 62): "HF und Hund drehen sich vor dem Schild
+ * gleichzeitig jeweils um 180° voneinander weg und gehen in die entgegengesetzte Richtung
+ * weiter. Der Hund wechselt dabei die Fußposition." FCI's 405 with the national card — 2-232
+ * the other way round: the handler turns away from the dog on the spot, the dog round its
+ * middle away from the handler, moving a little out, and ends at the other leg.
+ */
+const R3_328_2027: Exercise = {
+  code: '3-328',
+  card: 'ahead',
+  steps: [
+    { walk: 3.5, caption: 'approachTurn' },
+    {
+      turn: 180,
+      radius: 0,
+      dogTurns: { way: LEFT, pivot: { x: 0, z: 0 }, out: 0.15 },
+      bySide: true,
+      caption: 'turnAwayFromEachOther',
+    },
+    leaveRight('ahead'),
+  ],
+}
+
+/**
+ * 3-302 Sprung über 2 Hürden – HF dicht nebenher (VDH 2027, S. 55): "Der HF schickt den Hund über
+ * die erste Hürde … während er selbst an der Hürde vorbeigeht. Hat der Hund die Hürde
+ * überwunden, … schickt ihn direkt über die zweite Hürde und geht selbst an dieser vorbei." 2-217
+ * over two jumps in a line, as FCI 320 — where the plan has them (`geometry.props`): 3 m and 7.5 m
+ * on, 1 m to the dog's side ("mind. 2 m vor der ersten Hürde", "vier bis fünf Meter voneinander").
+ */
+const r3302_2027 = (dog: DogLeg): Exercise => {
+  // With the dog on the right the card stands on its side: sent at once, it ran through it — the
+  // handler sends it past the card ("Ústní a/nebo posunkový povel k překonání první překážky může
+  // psovod dát i za místem pro provedení cviku"), as 3-313 from the right.
+  const after = dog === 'right' ? 1 : 0
+  return {
+    code: '3-302',
+    jumps: [
+      { x: 1, z: 3 },
+      { x: 1, z: 7.5 },
+    ],
+    steps: [
+      { walk: 3.5, caption: 'approach' },
+      {
+        walk: 9,
+        dogJumps: 11.5 - after,
+        ...(after > 0 && { jumpsAfter: after }),
+        caption: 'sendOverTwoJumps',
+      },
+      { walk: 3, caption: 'heelAfterJump' },
+    ],
+  }
+}
+
 /** 1-116 Steh – 1 Schritt vorwärts – Steh (S. 43): another exercise under 2026's code. */
 const R1_116_2027: Exercise = {
   code: '1-116',
@@ -1130,6 +1184,8 @@ export const higherExercises2027 = (dog: DogLeg): Exercise[] => [
   Z036_2027,
   R1_116_2027,
   R2_234_2027,
+  r3302_2027(dog),
+  R3_328_2027,
   dropAndRound2027('3-330', 'sit'),
   dropAndRound2027('3-331', 'down'),
   dropAndRound2027('3-332', 'stand'),

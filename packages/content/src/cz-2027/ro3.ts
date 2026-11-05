@@ -43,10 +43,13 @@ export const RO3_2027: ClassContent2027 = {
       ],
       sequencing: {
         // VDH 2027, S. 55: "In Kombination mit den Schilder 214 Z a-e, 319 Z a-e, 215 und 216."
-        // (2026: 3-302 instead of 2-214.) The geometry stays: "mind. 3m entfernt und ca. 1,80 m …
-        // seitlich verschoben".
+        // (2026: 3-302 instead of 2-214.)
         nextOneOf: ['2-214', '3-319', '2-215', '2-216'],
       },
+      // "mind. 3m entfernt und ca. 1,80 m … nach rechts oder links seitlich verschoben": away from
+      // the card's side, as the club's video of the new cards shows it both ways round (3-329,
+      // 5:53; the author) — the card stands right of the team, so to the left.
+      geometry: { followUp: { ahead: 4, sides: [1.8] } },
     },
     '3-307': {
       description: [
@@ -274,8 +277,8 @@ export const RO3_2027: ClassContent2027 = {
         nextOneOf: ['2-214', '3-319', '2-215', '2-216'],
       },
       // As 3-301: "Die Schilder stehen mind. 3m entfernt und ca. 1,80 m vom Ende seitlich des
-      // Arbeitsbereiches nach rechts oder links seitlich verschoben".
-      geometry: { followUp: { ahead: 4, sides: [1.8, -1.8] } },
+      // Arbeitsbereiches nach rechts oder links seitlich verschoben" — away from the card's side.
+      geometry: { followUp: { ahead: 4, sides: [1.8] } },
       image: '3-329',
       sourcePage: 62,
     },

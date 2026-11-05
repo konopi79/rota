@@ -1,5 +1,7 @@
+import { getCard } from '@rota/content'
+
 import { RIGHT_SIDE_CARDS, rightSideCards } from './animated'
-import type { Exercise } from './exercise'
+import type { Exercise, ExerciseStep } from './exercise'
 import { JUMP_EXERCISES, R3_313_RIGHT } from './jump-exercises'
 import {
   FOLLOW_UP_PARTS,
@@ -158,6 +160,88 @@ export const EXERCISES_2027: Exercise[] = [
 const OWN_2027 = new Set(EXERCISES_2027.map((e) => e.code))
 
 /**
+ * Follow-ups 2027 plays under another code: 2026's 3-302 (into the front, called from aside) is
+ * 2-214 now — 3-302 is two jumps in 2027, and 3-301 / 3-314 / 3-324 are followed by 2-214 (VDH
+ * 2027, S. 55–60).
+ */
+const FOLLOW_UP_IN_2027: Record<string, string> = { '3-302': '2-214' }
+
+/**
+ * A 2026 leave pair as 2027 has it: its follow-up renamed (`FOLLOW_UP_IN_2027`), or none where the
+ * 2027 leave card no longer allows it.
+ */
+const pairIn2027 = (e: Exercise): Exercise[] => {
+  const [leave, follow] = e.parts ?? []
+  if (!leave || !follow) return [e]
+  const renamed = FOLLOW_UP_IN_2027[follow.exercise.code]
+  const allowed = getCard('CZ-2027', leave.exercise.code)?.sequencing.nextOneOf
+  if (allowed && !allowed.includes(renamed ?? follow.exercise.code)) return []
+  if (!renamed) return [e]
+  const parts = [leave, { ...follow, exercise: { ...follow.exercise, code: renamed } }]
+  return [
+    e.code === follow.exercise.code
+      ? { ...e, code: renamed, parts }
+      : { ...e, pairedWith: renamed, parts },
+  ]
+}
+
+/**
+ * 3-301 in 2027: "Das Übungsschild kann sich beliebig links oder rechts am Laufweg des HF befinden
+ * … ca. 1,80 m … nach rechts oder links seitlich verschoben" (S. 55) — and the handler goes off at
+ * a slant away from the card's side, the club's video of the new cards shows it both ways round
+ * (3-329, 5:53; the author). The national card stands right of the team, so to the left, whichever
+ * leg the dog is at (2026's went right, away from a dog at the left leg).
+ */
+const awayFromTheCard = (e: Exercise): Exercise => {
+  const [leave, follow] = e.parts ?? []
+  if (leave?.exercise.code !== '3-301' || !follow?.aside || follow.aside > 0) return e
+  const aside = -follow.aside
+  return {
+    ...e,
+    parts: [leave, { ...follow, aside }],
+    steps: e.steps.map((step) =>
+      'walkTo' in step && step.slant ? { ...step, walkTo: { ...step.walkTo, x: aside } } : step,
+    ),
+  }
+}
+
+/** 3-329 Halt – Bleib im Stand – im Winkel weggehen (S. 62): 3-301 with the dog left standing. */
+const LEFT_STANDING: ExerciseStep[] = [
+  { walk: 3.5, caption: 'approach' },
+  { stop: true, caption: 'stopStand' },
+  { wait: 1, caption: 'standHold' },
+  { dogStays: true, caption: 'stayStand' },
+]
+const standingFor3301 = (e: Exercise): Exercise[] => {
+  const leave = e.parts?.[0]?.exercise
+  if (leave?.code !== '3-301') return []
+  const after = (steps: ExerciseStep[]) => steps.slice(steps.findIndex((s) => 'dogStays' in s) + 1)
+  const standing = { ...leave, code: '3-329', steps: [...LEFT_STANDING, ...after(leave.steps)] }
+  return [
+    {
+      ...e,
+      ...(e.code === '3-301' ? { code: '3-329' } : { pairedWith: '3-329' }),
+      parts: [{ ...e.parts![0]!, exercise: standing }, ...e.parts!.slice(1)],
+      steps: [...LEFT_STANDING, ...after(e.steps)],
+    },
+  ]
+}
+
+/** The 2026 exercises as 2027 plays them (the leave pairs), with 3-329 made from 3-301's. */
+const from2026 = (list: Exercise[]): Exercise[] => {
+  const pairs = list.flatMap(pairIn2027).map(awayFromTheCard)
+  return [...pairs, ...pairs.flatMap(standingFor3301)]
+}
+
+/** What 2027 plays differently from 2026 with a 2026 animation adapted, for the frame tests. */
+export const ADAPTED_IN_2027 = (right: boolean): Exercise[] =>
+  from2026(right ? RIGHT_EXERCISES : EXERCISES)
+    .filter(
+      (e) => e.parts?.[0]?.exercise.code === '3-301' || e.parts?.[0]?.exercise.code === '3-329',
+    )
+    .map(in2027)
+
+/**
  * Captions that state a 2026 rule, and what 2027 says instead: 180° "auf einem DIN A 4 Blatt"
  * (VDH 2027, S. 17), not "max. 4 kroky nohou".
  */
@@ -217,13 +301,17 @@ export const D0E_EXERCISES: Exercise[] = EXERCISES.filter((e) => e.supplementary
 
 /** Every exercise of the 2027 regulation: its own, and the 2026 ones it does the same way. */
 export const EXERCISES_IN_2027: Exercise[] = [
-  ...EXERCISES.filter((e) => !OWN_2027.has(e.code)).map(in2027),
+  ...from2026(EXERCISES)
+    .filter((e) => !OWN_2027.has(e.code))
+    .map(in2027),
   ...EXERCISES_2027,
 ].sort((a, b) => cardOrder(a.code).localeCompare(cardOrder(b.code)))
 
 /** …with the dog starting at the right leg. */
 export const RIGHT_EXERCISES_IN_2027: Exercise[] = [
-  ...RIGHT_EXERCISES.filter((e) => !OWN_2027.has(e.code)).map(in2027),
+  ...from2026(RIGHT_EXERCISES)
+    .filter((e) => !OWN_2027.has(e.code))
+    .map(in2027),
   // (The turns' footwork depends on the dog's side: built for the dog at the right leg.)
   ...[...ROZ_EXERCISES_2027, ...higherExercises2027('right')]
     .filter((e) => rightSideCards('CZ-2027').includes(e.code))
