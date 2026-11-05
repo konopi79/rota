@@ -521,7 +521,7 @@ unseen and often-missed cards come more often, mastered ones less. A short summa
 
 **R9 — Voice.** With "Číst nahlas" on (setup option, remembered, and a toggle on the
 deck screen), each new card's Czech name is spoken with the Web Speech API
-(`speechSynthesis`, a `cs-CZ` voice when available): "Karta 3. Obrat vpravo za chůze.",
+(`speechSynthesis`, a `cs-CZ` voice when available): "Karta 3, Obrat vpravo za chůze." (a comma, not a full stop, after the number: "Karta 2." was read as an ordinal of the wrong gender, "karta druhý" — a handler, 2026-11-05),
 with its D0 card, the pace and a side change announced when they change. The phone can
 stay in the pocket for the name; the card is there when needed. The announcement text is
 a pure, tested function; speaking only happens on a user's tap/swipe (iOS requires a
@@ -621,6 +621,8 @@ gesture for audio).
 - [x] Announcement text (card, D0, pace, side change) as a pure function; tests (`lib/announce.ts`)
 - [x] Speech on the deck screen: setup option (remembered) + toggle in the deck header, `cs-CZ` voice (`lib/speech.ts`; `hlas=1` in the URL)
 - [x] Tried on an iPhone (home-screen app, speech included) by the author, 2026-09-27
+- [x] In the course walkthrough too (a handler's feedback, 2026-11-05): each station read as the team sets off to it — once the exercise before is done, so it never talks over it (the author: "Další karta 3, …", the first "Start. Karta 1, …"), a CNDC station whole, "Cíl. Hotovo." on arrival; a speaker toggle in the bottom bar, on with the course's `hlas`, kept in the URL (`walkthroughAnnouncement`, `deckScreen` shared with the deck). The walkthrough speaks without a tap, which iOS allows only after a page has spoken from one: the "Projít v animaci" tap speaks a silent utterance (`unlockSpeech`)
+- [ ] Walkthrough voice tried on an iPhone (Safari and the home-screen app)
 
 ### R10 — FCI field layout
 

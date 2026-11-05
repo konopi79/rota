@@ -1,8 +1,15 @@
 import { describe, expect, test } from 'bun:test'
-import { getCard, type Card, type DeckEntry } from '@rota/content'
+import {
+  customDeck,
+  getCard,
+  getClass,
+  type Card,
+  type DeckEntry,
+  type RoClass,
+} from '@rota/content'
 
 import i18n from '../../i18n'
-import { announcement } from '../announce'
+import { announcement, deckScreen, walkthroughAnnouncement } from '../announce'
 
 const t = i18n.t.bind(i18n) as (key: string, values?: Record<string, string | number>) => string
 const card = (code: string) => getCard('CZ', code) as Card
@@ -35,7 +42,7 @@ describe('announcement', () => {
         },
         t,
       ),
-    ).toBe('Karta 3. Předsednutí. S doplňkovou kartou: Přiřazení okolo - vpřed.')
+    ).toBe('Karta 3, Předsednutí. S doplňkovou kartou: Přiřazení okolo - vpřed.')
   })
 
   test('the cards done at the same station after it (CNDC)', () => {
@@ -51,7 +58,7 @@ describe('announcement', () => {
         t,
       ),
     ).toBe(
-      'Karta 4. Stop – změna za psovodem – stop. Na stejném stanovišti karta 5. Stop – lehni – vstaň.',
+      'Karta 4, Stop – změna za psovodem – stop. Na stejném stanovišti karta 5, Stop – lehni – vstaň.',
     )
   })
 
@@ -68,7 +75,7 @@ describe('announcement', () => {
         t,
       ),
     ).toBe(
-      'Karta 17. Výměna při obratu o 180° vlevo. Na stejném stanovišti po kroku vpřed karta 18. Stop – obrat vpravo o 90° – vpřed.',
+      'Karta 17, Výměna při obratu o 180° vlevo. Na stejném stanovišti po kroku vpřed karta 18, Stop – obrat vpravo o 90° – vpřed.',
     )
   })
 
@@ -85,7 +92,7 @@ describe('announcement', () => {
         },
         t,
       ),
-    ).toBe('Karta 2. Obrat vpravo za chůze. Pomalé tempo.')
+    ).toBe('Karta 2, Obrat vpravo za chůze. Pomalé tempo.')
     expect(
       announcement(
         {
@@ -97,7 +104,7 @@ describe('announcement', () => {
         },
         t,
       ),
-    ).toBe('Karta 3. Obrat vlevo za chůze.')
+    ).toBe('Karta 3, Obrat vlevo za chůze.')
     expect(
       announcement(
         {
@@ -109,6 +116,40 @@ describe('announcement', () => {
         },
         t,
       ),
-    ).toBe('Karta 5. Obrat vpravo za chůze. Pes vpravo.')
+    ).toBe('Karta 5, Obrat vpravo za chůze. Pes vpravo.')
+  })
+})
+
+describe('deckScreen and walkthroughAnnouncement', () => {
+  const cls = getClass('RO1') as RoClass
+  // 1-124 + 1-105 at one station (CNDC), then Z-014 with D0a.
+  const deck = customDeck('RO1', 'right', [
+    { code: 'Z-006' },
+    { code: '1-124' },
+    { code: '1-105', withPrevious: true },
+    { code: 'Z-014', supplementary: 'D0a' },
+  ])
+
+  test('screens of a deck: start, cards with their station, finish', () => {
+    expect(deckScreen(deck, cls, 0)).toEqual({ kind: 'start', startSide: 'right' })
+    const station = deckScreen(deck, cls, 2)
+    expect(station.kind === 'card' && station.following?.map((f) => f.number)).toEqual([3])
+    expect(deckScreen(deck, cls, 5)).toEqual({ kind: 'finish', side: 'left' })
+  })
+
+  test('the first card of a run from the start, then "další karta"', () => {
+    expect(walkthroughAnnouncement(deck, cls, 0, true, t)).toBe(
+      `Start na pravou ruku. Karta 1, ${card('Z-006').name}.`,
+    )
+    expect(walkthroughAnnouncement(deck, cls, 3, false, t)).toBe(
+      `Další karta 4, ${card('Z-014').name}. S doplňkovou kartou: ${card('D0a').name}.`,
+    )
+  })
+
+  test('a run from another card starts with that card; a station is read whole', () => {
+    expect(walkthroughAnnouncement(deck, cls, 1, true, t)).toMatch(
+      new RegExp(`^Karta 2, .*Na stejném stanovišti .*karta 3, `),
+    )
+    expect(walkthroughAnnouncement(deck, cls, 1, false, t)).toMatch(/^Další karta 2, /)
   })
 })

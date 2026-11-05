@@ -394,10 +394,11 @@
     "next": "Další karta"
   },
   "speech": {
-    "card": "Karta {{number}}. {{name}}.",
+    "card": "Karta {{number}}, {{name}}.",
+    "nextCard": "Další karta {{number}}, {{name}}.",
     "supplementary": "S doplňkovou kartou: {{name}}.",
-    "sameStation": "Na stejném stanovišti karta {{number}}. {{name}}.",
-    "sameStationStep": "Na stejném stanovišti po kroku vpřed karta {{number}}. {{name}}.",
+    "sameStation": "Na stejném stanovišti karta {{number}}, {{name}}.",
+    "sameStationStep": "Na stejném stanovišti po kroku vpřed karta {{number}}, {{name}}.",
     "pace": {
       "slow": "Pomalé tempo.",
       "fast": "Rychlé tempo.",

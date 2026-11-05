@@ -45,6 +45,7 @@ import { canWalkThrough } from '@/lib/figures/animated'
 import { cn } from '@/lib/utils'
 import { countedMessages, issueMessage } from '@/lib/course-issues'
 import { shareLink } from '@/lib/share'
+import { unlockSpeech } from '@/lib/speech'
 import { decodeDeckParams, deckOf, encodeDeckParams, type DeckParams } from '@/lib/deck-url'
 
 // WebGL needs a browser, and three.js loads only once someone asks for the walkthrough.
@@ -174,7 +175,14 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
           {t('course.walk')}
         </Button>
         {canWalkThrough(deck) && (
-          <Button variant="outline" onClick={() => setWalking(true)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              // The walkthrough reads the cards by itself later; iOS allows it after this tap.
+              if (params.speak) unlockSpeech()
+              setWalking(true)
+            }}
+          >
             <PersonStanding />
             {t('walkthrough.button')}
           </Button>
@@ -204,6 +212,10 @@ function Course({ params, cls }: { params: DeckParams; cls: RoClass }) {
           deck={deck}
           cls={cls}
           title={t('walkthrough.title', { cls: t(`classes.${cls.id}`) })}
+          speak={params.speak ?? false}
+          onSpeakChange={(speak) =>
+            window.history.replaceState(null, '', `?${encodeDeckParams({ ...params, speak })}`)
+          }
           onClose={() => setWalking(false)}
         />
       )}

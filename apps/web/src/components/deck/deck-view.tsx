@@ -35,7 +35,7 @@ import { SubParts } from '@/components/sub-parts'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { classSlug, customCourseHref } from '@/lib/classes'
-import { announcement, type Screen } from '@/lib/announce'
+import { announcement, deckScreen } from '@/lib/announce'
 import { decodeDeckParams, deckOf, encodeDeckParams, type DeckParams } from '@/lib/deck-url'
 import { speak, speechSupported, stopSpeaking } from '@/lib/speech'
 
@@ -91,32 +91,7 @@ function Deck({ params, cls }: { params: DeckParams; cls: RoClass }) {
   const roundStarts = rounds.length > 1 && round > 0 && rounds[round]?.first === position - 1
 
   /** What is read aloud for a screen of this deck (R9). */
-  const screenAt = useCallback(
-    (pos: number): Screen => {
-      if (pos === 0) return { kind: 'start', startSide: params.options.startSide }
-      const at = deck.entries[pos - 1]
-      if (!at) return { kind: 'finish', side: finishSide(deck) }
-      const card = getCard(cls.ruleset, at.code) as Card
-      const supplementary = at.supplementary ? getCard(cls.ruleset, at.supplementary) : undefined
-      const [, to] = stationAt(pos) ?? [pos - 1, pos - 1]
-      const following = deck.entries.slice(pos, to + 1).map((e, i) => ({
-        number: pos + 1 + i,
-        card: getCard(cls.ruleset, e.code) as Card,
-        ...(e.supplementary && { supplementary: getCard(cls.ruleset, e.supplementary) }),
-        ...(stepForwardAfter(cls, deck.entries[pos - 1 + i] as DeckEntry) && { stepFirst: true }),
-      }))
-      return {
-        kind: 'card',
-        number: pos,
-        entry: at,
-        card,
-        supplementary,
-        previous: deck.entries[pos - 2],
-        ...(following.length && { following }),
-      }
-    },
-    [deck, cls, params.options.startSide, stationAt],
-  )
+  const screenAt = useCallback((pos: number) => deckScreen(deck, cls, pos), [deck, cls])
 
   // Position changes replace the URL instead of pushing: the back button should leave the
   // deck, not step through every card of it.
