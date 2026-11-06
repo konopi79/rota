@@ -2353,7 +2353,11 @@ export class ExercisePlayer {
         this.footworkOffset = {
           x: c * dx - s * dz,
           z: s * dx + c * dz,
-          heading: angleTo(over.heading, this.team.heading),
+          // (Not the way a foot still turning points: out of a turn on the spot into steps, Z-036,
+          // the team came out of them turned 13° on.)
+          heading: feet?.some((f) => f.swing !== null)
+            ? 0
+            : angleTo(over.heading, this.team.heading),
         }
       }
       // The body moves from where it stood to where the feet will have taken it, setting off
