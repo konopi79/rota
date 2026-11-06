@@ -301,7 +301,10 @@ function attemptDeal(
           while (choices.length) {
             const d0 = pick(choices, random)!
             choices.splice(choices.indexOf(d0), 1)
-            const at = planner.place(withSupplementary(card, cardOf(cls, d0)), state.side)
+            const at = planner.place(
+              withSupplementary(card, cardOf(cls, d0), state.side),
+              state.side,
+            )
             if (at) return { card, at, supplementary: d0 }
           }
           pool = pool.filter((c) => c !== card)

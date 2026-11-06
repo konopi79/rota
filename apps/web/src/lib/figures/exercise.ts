@@ -2683,13 +2683,15 @@ export class ExercisePlayer {
       let followed = sidled >= 1 && ((byFootThere && byFootSettled) || (walksOn && byFootNear))
       // Still sitting or getting up, it stays where it is.
       const onLegs = this.posture === 'stand' && (this.last?.feet.dogOnLegs ?? true)
-      if (this.dogPlace === 'front' && feet && !onLegs) {
+      // (A dog left in front, D0e, stays where it was left: the handler steps on without it.)
+      const inFront = this.dogPlace === 'front' && !this.left
+      if (inFront && feet && !onLegs) {
         controls.dogAt = inTeam(this.team, {
           ...this.frontDog,
           heading: this.team.heading + Math.PI,
         })
         followed = false
-      } else if (this.dogPlace === 'front' && feet) {
+      } else if (inFront && feet) {
         // It never backs away: it stays where it is until the handler has moved off, then
         // follows.
         const place = PLACES[this.dogPlace]

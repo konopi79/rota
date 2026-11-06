@@ -88,7 +88,9 @@ export const RO_Z_2027: ClassContent2027 = {
       // die neue Richtung." The dog sits in front facing the handler, the handler joins it
       // facing the same way — so the team goes on the other way, back the way it came. Which
       // side of the way in it walks back on (the dog's original heel side) is not encoded yet.
-      geometry: { turn: 180 },
+      // Read off its animation: the handler steps aside off the dog's head and on beside it, and
+      // turns about there — 0.44 m on and 0.45 m to the dog's side of where they stood.
+      geometry: { turn: 180, exit: 0.44, exitSide: 0.45 },
       image: 'd0e',
       sourcePage: 29,
     },

@@ -3,7 +3,13 @@ import { describe, expect, test } from 'bun:test'
 import { geometry as layout, getCard, type Card } from '@rota/content'
 
 import { ExercisePlayer, type Exercise } from '../figures/exercise'
-import { EXERCISES, EXERCISES_2027, RIGHT_EXERCISES } from '../figures/exercises'
+import {
+  D0E_EXERCISES,
+  D0E_RIGHT_EXERCISES,
+  EXERCISES,
+  EXERCISES_2027,
+  RIGHT_EXERCISES,
+} from '../figures/exercises'
 import { FCI_EXERCISES, FCI_RIGHT_EXERCISES } from '../figures/fci-exercises'
 import { CONE } from '../figures/fci-leave-exercises'
 
@@ -164,6 +170,30 @@ describe('2027 course plan geometry matches the animations (R22b)', () => {
       const own =
         e.cardAt && g.card && Math.hypot(g.card.ahead - e.cardAt.z, g.card.side - e.cardAt.x)
       expect([e.code, !!g.card, (own ?? 0) < 0.1]).toEqual([e.code, !!e.cardAt, true])
+    }
+  }, 120_000)
+
+  test('with D0e, the card and its D0 card together, from either leg', () => {
+    const d0e = getCard('CZ-2027', 'D0e') as Card
+    for (const [list, side] of [
+      [D0E_EXERCISES, 'left'],
+      [D0E_RIGHT_EXERCISES, 'right'],
+    ] as const) {
+      for (const e of list) {
+        const g = layout.withSupplementary(getCard('CZ-2027', e.code) as Card, d0e, side).geometry!
+        const { left, ahead, turn } = measure(e)
+        expect([e.code, side, mod360(turn)]).toEqual([
+          e.code,
+          side,
+          mod360(layout.turnsOf({ geometry: g } as Card)[0]!),
+        ])
+        expect([e.code, side, Math.abs(ahead - (g.exit ?? 0)) < 0.3]).toEqual([e.code, side, true])
+        expect([e.code, side, Math.abs(left - (g.exitSide ?? 0)) < 0.3]).toEqual([
+          e.code,
+          side,
+          true,
+        ])
+      }
     }
   }, 120_000)
 

@@ -597,6 +597,7 @@ function validateRound(
     withSupplementary(
       getCard(cls.ruleset, e.code) as Card,
       e.supplementary ? getCard(cls.ruleset, e.supplementary) : undefined,
+      e.side,
     ),
   )
   // Each exercise with its equipment; a leave card has no recall cone when a recall card

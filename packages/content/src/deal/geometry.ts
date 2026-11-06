@@ -338,17 +338,40 @@ export function afterDynamicStation(approach: Approach): Approach {
  * goes on "in die neue Richtung"), its turns with the D0 card's added and no steps back left to
  * walk past the card (the handler walks up to the dog first).
  */
-export function withSupplementary(card: Card, supplementary: Card | undefined): Card {
-  const extra = supplementary?.geometry?.turn
+export function withSupplementary(
+  card: Card,
+  supplementary: Card | undefined,
+  side: Side = 'left',
+): Card {
+  const d0 = supplementary?.geometry
+  const extra = d0?.turn
   if (extra === undefined) return card
   const by = Array.isArray(extra) ? extra[0]! : extra
   const turns = turnsOf(card).map((t) => t + by)
-  const { exit, ...geometry } = card.geometry ?? {}
+  const { exit, exitSide, ...geometry } = card.geometry ?? {}
+  // A D0 card that walks the handler on (D0e: beside the dog left in front, on its side — the
+  // dog's leg mirrored from the right): from where they stand with the dog in front (`front`).
+  const walks = d0?.exit !== undefined || d0?.exitSide !== undefined
+  if (!walks) {
+    return {
+      ...card,
+      geometry: {
+        ...geometry,
+        ...(exitSide !== undefined && { exitSide }),
+        ...(exit !== undefined && exit > 0 && { exit }),
+        turn: turns.length === 1 ? turns[0]! : turns,
+      },
+    }
+  }
+  const from = card.geometry?.front ?? { ahead: exit ?? 0, side: exitSide ?? 0 }
+  const ahead = from.ahead + (d0.exit ?? 0)
+  const aside = from.side + (side === 'right' ? -1 : 1) * (d0.exitSide ?? 0)
   return {
     ...card,
     geometry: {
       ...geometry,
-      ...(exit !== undefined && exit > 0 && { exit }),
+      ...(ahead !== 0 && { exit: ahead }),
+      ...(aside !== 0 && { exitSide: aside }),
       turn: turns.length === 1 ? turns[0]! : turns,
     },
   }
