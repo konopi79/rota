@@ -46,9 +46,9 @@ function ClassButton({ id }: { id: ClassId }) {
 }
 
 /**
- * The classes first — training matters more than installing (the author, 2026-11-06): FCI-ROB on
- * top, unchanged by the national switch, then the national regulation and its classes; the
- * install hint below them.
+ * The classes first — training matters more than installing (the author, 2026-11-06): the national
+ * regulation and its classes (most visits), then FCI-ROB under a heading of its own, so it does
+ * not look changed by the national switch; the install hint below them.
  */
 export default function HomePage() {
   const { t } = useTranslation()
@@ -70,12 +70,7 @@ export default function HomePage() {
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">{t('home.chooseClass')}</h2>
-        <div className="grid gap-2">
-          {internationalClassIds().map((id) => (
-            <ClassButton key={id} id={id} />
-          ))}
-        </div>
-        <div className="space-y-2 pt-3">
+        <div className="space-y-2">
           <p className="text-muted-foreground text-sm">{t('home.regulation')}</p>
           <ToggleGroup
             variant="outline"
@@ -95,6 +90,14 @@ export default function HomePage() {
           {nationalClassIds(regulation).map((id) => (
             <ClassButton key={id} id={id} />
           ))}
+        </div>
+        <div className="space-y-2 pt-3">
+          <p className="text-muted-foreground text-sm">{t('home.international')}</p>
+          <div className="grid gap-2">
+            {internationalClassIds().map((id) => (
+              <ClassButton key={id} id={id} />
+            ))}
+          </div>
         </div>
       </section>
 
