@@ -61,9 +61,25 @@ export default function HomePage() {
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 px-6 py-12">
-      <header className="space-y-1">
-        <h1 className="text-4xl font-bold tracking-tight">{t('app.name')}</h1>
-        <p className="text-muted-foreground">{t('app.tagline')}</p>
+      {/* One line instead of the name over the tagline (the author, 2026-11-06): the tagline with
+          its initials stressed spells the name. */}
+      <header>
+        <h1
+          aria-label={`${t('app.name')} – ${t('app.tagline')}`}
+          className="text-muted-foreground text-[min(1.25rem,5.8vw)] font-medium tracking-tight sm:text-2xl"
+        >
+          {t('app.tagline')
+            .split(' ')
+            .map((word, i) => (
+              <span key={i} aria-hidden>
+                {i > 0 && ' '}
+                <span className="text-foreground text-[1.4em] leading-none font-extrabold">
+                  {word[0]}
+                </span>
+                {word.slice(1)}
+              </span>
+            ))}
+        </h1>
       </header>
 
       <MovedHint />
