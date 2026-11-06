@@ -24,8 +24,8 @@ import {
   stationOf,
   type Exercise,
 } from '@/lib/figures/exercise'
-import { FCI_RIGHT_SIDE_CARDS, type AnimationSet } from '@/lib/figures/animated'
-import { EXERCISES, exercisesOf, RIGHT_SIDE_CARDS } from '@/lib/figures/exercises'
+import { rightSideCards, type AnimationSet } from '@/lib/figures/animated'
+import { EXERCISES, exercisesOf } from '@/lib/figures/exercises'
 import { FCI_EXERCISES, FCI_RIGHT_EXERCISES } from '@/lib/figures/fci-exercises'
 import { CONE } from '@/lib/figures/fci-leave-exercises'
 import { HANDLER } from '@/lib/figures/handler'
@@ -458,7 +458,7 @@ export function AnimationPlayer({
   // The dog on the right: after a start "R" (every RO-Z card) or a change of side (R15); every
   // FCI card but 417 and 418, done from one leg only.
   const fci = ruleset === 'FCI'
-  const bothSides = (fci ? FCI_RIGHT_SIDE_CARDS : RIGHT_SIDE_CARDS).includes(code)
+  const bothSides = rightSideCards(ruleset).includes(code)
   const side = bothSides ? dogSide : 'left'
   const variants = (
     fci

@@ -1,5 +1,5 @@
 import type { Exercise, ExerciseStep } from './exercise'
-import { swerve } from './courses'
+import { roundTwoCones, swerve } from './courses'
 import type { FootTarget } from './locomotion'
 import {
   eightExercise,
@@ -973,6 +973,58 @@ const stopTurnStepStop2027 = (code: string, sign: 1 | -1, dog: DogLeg): Exercise
   ],
 })
 
+/** 1-127–1-130: the two steps, metres, of an ordinary length (the video). */
+const FIRST_STEP = 0.35
+const SECOND_STEP = 0.35
+
+/**
+ * 1-127 / 1-128 / 1-129 / 1-130 (S. 45): out of the walk — "Der HF setzt im Arbeitsbereich mit
+ * den Füßen einen 90° Winkel nach rechts (nur eine Fußbewegung, die Füße berühren sich). Danach
+ * macht er mit dem anderen Fuß einen Schritt in die neue Richtung, schließt einen weiteren
+ * Schritt an und bleibt stehen. Der Hund … legt sich ins Platz / stellt sich neben den HF, wenn
+ * dieser anhält." No Halt and no "aus dem Stand" (cf. 1-103): the walk's last step lands with
+ * the outer foot, the inner one comes down turned beside it (an L away from the dog, a T towards
+ * it), the other foot steps on, the turned one a step further, and the other closes up.
+ */
+const walkTurnTwoSteps2027 = (code: string, sign: 1 | -1, posture: 'down' | 'stand'): Exercise => {
+  const caption = `turn${turnName(sign)}90TwoSteps`
+  const inner = sign === LEFT ? 0 : 1
+  const other = (1 - inner) as 0 | 1
+  // As the club's video of the new cards shows it (2:44, 2:54): the inner foot comes down beside
+  // the other one, the handler stands a moment, turns on it — on its heel — and walks the two
+  // steps at an ordinary length (the author: "nejdříve dát pravou nohu na místo a pak teprve
+  // zarotovat chodidlem"). The same from either leg (the author: the T towards the dog looked
+  // odd here); towards it the dog makes room by the foot as it turns.
+  const beside: FootTarget = { foot: inner, x: inner ? -0.12 : 0.12, z: -0.08, yaw: 0 }
+  const turned = { ...beside, yaw: (sign * Math.PI) / 2 }
+  const at = (step: number) => turned.x + sign * step
+  return {
+    code,
+    card: 'ahead',
+    steps: [
+      { walk: 3.5, caption: 'approachTurn' },
+      // (A little wider than at heel: turned on it, the thighs come close.)
+      { ...turnSteps2027([beside], caption), fromFoot: other },
+      // (Set from the foot that stays: the heel the other one turns on is where it came down.)
+      {
+        ...turnSteps2027(
+          [
+            turned,
+            { ...turned, foot: other, x: at(FIRST_STEP), z: turned.z + FEET_APART },
+            { ...turned, x: at(FIRST_STEP + SECOND_STEP) },
+            { ...turned, foot: other, x: at(FIRST_STEP + SECOND_STEP), z: turned.z + FEET_APART },
+          ],
+          caption,
+        ),
+        fromFoot: other,
+      },
+      { dog: posture, caption: posture === 'down' ? 'downBeside' : 'standBeside' },
+      { wait: 1, caption: posture === 'down' ? 'downHold' : 'standHold' },
+      leave('ahead'),
+    ],
+  }
+}
+
 /** 2-223 / 2-224 (S. 51): from a stand, the turn and the feet closed, the dog standing. */
 const standTurnStand2027 = (code: string, sign: 1 | -1, dog: DogLeg): Exercise => ({
   code,
@@ -1001,6 +1053,198 @@ const Z036_2027: Exercise = {
       : [step],
   ),
 }
+
+/**
+ * 3-328 Kehrtwendung voneinander weg (VDH 2027, S. 62): "HF und Hund drehen sich vor dem Schild
+ * gleichzeitig jeweils um 180° voneinander weg und gehen in die entgegengesetzte Richtung
+ * weiter. Der Hund wechselt dabei die Fußposition." FCI's 405 with the national card — 2-232
+ * the other way round: the handler turns away from the dog on the spot, the dog round its
+ * middle away from the handler, moving a little out, and ends at the other leg.
+ */
+const R3_328_2027: Exercise = {
+  code: '3-328',
+  card: 'ahead',
+  steps: [
+    { walk: 3.5, caption: 'approachTurn' },
+    {
+      turn: 180,
+      radius: 0,
+      dogTurns: { way: LEFT, pivot: { x: 0, z: 0 }, out: 0.15 },
+      bySide: true,
+      caption: 'turnAwayFromEachOther',
+    },
+    leaveRight('ahead'),
+  ],
+}
+
+/**
+ * 3-302 Sprung über 2 Hürden – HF dicht nebenher (VDH 2027, S. 55): "Der HF schickt den Hund über
+ * die erste Hürde … während er selbst an der Hürde vorbeigeht. Hat der Hund die Hürde
+ * überwunden, … schickt ihn direkt über die zweite Hürde und geht selbst an dieser vorbei." 2-217
+ * over two jumps in a line, as FCI 320 — where the plan has them (`geometry.props`): 3 m and 7.5 m
+ * on, 1 m to the dog's side ("mind. 2 m vor der ersten Hürde", "vier bis fünf Meter voneinander").
+ */
+const r3302_2027 = (dog: DogLeg): Exercise => {
+  // With the dog on the right the card stands on its side: sent at once, it ran through it — the
+  // handler sends it past the card ("Ústní a/nebo posunkový povel k překonání první překážky může
+  // psovod dát i za místem pro provedení cviku"), as 3-313 from the right.
+  const after = dog === 'right' ? 1 : 0
+  return {
+    code: '3-302',
+    jumps: [
+      { x: 1, z: 3 },
+      { x: 1, z: 7.5 },
+    ],
+    steps: [
+      { walk: 3.5, caption: 'approach' },
+      {
+        walk: 9,
+        dogJumps: 11.5 - after,
+        ...(after > 0 && { jumpsAfter: after }),
+        caption: 'sendOverTwoJumps',
+      },
+      { walk: 3, caption: 'heelAfterJump' },
+    ],
+  }
+}
+
+/**
+ * 2-230 / 2-231 Halt – 1 Schritt – 90° Drehung rechts / links – 1 Schritt – Halt (VDH 2027, S. 53):
+ * "Der Hund bleibt sitzen, während der Hundeführer einen Schritt vorwärts geht, stehen bleibt und
+ * einen 90°- Winkel nach rechts macht, wieder einen Schritt in die neue Richtung geht und wieder
+ * stehen bleibt. Danach wird der Hund gerufen … (kein Wechsel der Fußseite). Der Schritt … kann
+ * entweder direkt gemacht werden oder der Hundeführer kann sich auf der Stelle drehen und dann
+ * den Schritt machen." New in 2027: the step forward first. The turn as 1-127's: on the heel of
+ * the foot on the turning side, then the step with the other foot, the turned one closing up.
+ */
+const STEP_TOWARDS_THE_DOG = 0.5
+const stayStepTurnStepRecall2027 = (code: string, sign: 1 | -1, dog: DogLeg): Exercise => {
+  const inner = sign === LEFT ? 0 : 1
+  const other = (1 - inner) as 0 | 1
+  const turned: FootTarget = {
+    foot: inner,
+    x: inner ? -0.1 : 0.1,
+    z: -0.08,
+    yaw: (sign * Math.PI) / 2,
+  }
+  // Turning towards the dog, a longer step: called round into heel on the spot, its head swung
+  // into the handler's hip.
+  const step = towardsTheDog(sign, dog) ? STEP_TOWARDS_THE_DOG : FIRST_STEP
+  const at = (d: number) => turned.x + sign * d
+  return {
+    code,
+    card: 'ahead',
+    steps: [
+      ...stopSit('ahead'),
+      { dogStays: true, caption: 'staySit' },
+      { footwork: stepsForward(1), caption: 'oneStepAlone' },
+      {
+        footwork: [
+          turned,
+          { ...turned, foot: other, x: at(step), z: turned.z + FEET_APART },
+          { ...turned, x: at(step) },
+        ],
+        // (Set from the foot that stays: the heel the other one turns on is where it stands.)
+        fromFoot: other,
+        caption: sign === RIGHT ? 'turnRight90StepAlone' : 'turnLeft90StepAlone',
+      },
+      { recall: 'heel', caption: 'recallBase' },
+      { dog: 'sit', caption: 'finishSit' },
+      { wait: 1, caption: 'basePosition' },
+      { walk: 3, caption: 'leaveTurn' },
+    ],
+  }
+}
+
+/**
+ * 1-126 Um die Pylone – Seitenwechsel hinten (VDH 2027, S. 45): "Beim zweiten Kreuzen der
+ * Mittellinie beginnt der Hund aus der Bewegung heraus einen Seitenwechsel hinter dem HF" — the
+ * course round the two cones (`roundTwoCones`), the dog going behind the handler to their right
+ * on the way back through the gap. The card just before the first cone, on its line.
+ */
+const r1126_2027 = (dog: DogLeg): Exercise => {
+  const right = dog === 'right'
+  const course = roundTwoCones(right)
+  const c1 = course.cones[0]!
+  const gapZ = course.path.at(course.starts[4]!).z
+  // The dog's own way from the second crossing: on the left it eases off between the cones, lets
+  // the handler go on round the bend and comes on a tighter line from the far cone towards the
+  // near one, up into the right leg — not out round them, nor past their left side (the author:
+  // "pes by se mohl … přibrzdit a vykružovat … těsnější linii"); on the right, the handler
+  // turning down towards it, it all but stops in the gap ("zastavit (nebo téměř zastavit)") till
+  // they have turned down ahead of it, then trots across behind them into the left leg, outside
+  // the bend.
+  const via = right
+    ? [
+        { x: c1.x - 0.3, z: gapZ - 0.42, heading: -Math.PI / 2 },
+        { x: c1.x - 0.9, z: gapZ - 0.8, heading: -2.4 },
+        { x: c1.x - 1.4, z: c1.z - 0.4, heading: Math.PI },
+      ]
+    : [
+        { x: -0.9, z: 2.37, heading: -Math.PI / 2 },
+        { x: -1.2, z: 1.95, heading: -2.6 },
+        { x: -1.27, z: 1.4, heading: Math.PI },
+      ]
+  return {
+    code: '1-126',
+    cones: course.cones,
+    cardAt: { x: c1.x, z: 0.5 },
+    steps: [
+      { walk: 2.5, caption: 'approachCones' },
+      { course, parts: [0, 3], caption: 'twoConesIn' },
+      { course, parts: [3, 4], caption: right ? 'twoConesRoundOutside' : 'twoConesRound' },
+      {
+        course,
+        parts: [4, 6],
+        dogRuns: {
+          via,
+          ends: right ? 'left' : 'right',
+          most: right ? 0.25 : 0.6,
+          ...(right && { slowFor: 0.6 }),
+        },
+        caption: 'twoConesChange',
+      },
+      // Past the cone the handler slows till the dog is at its new leg, then on at the pace
+      // (as FCI 417 / 418).
+      {
+        walk: 10,
+        pace: 'slow',
+        untilDogJoins: true,
+        caption: right ? 'leaveConesLeftLeg' : 'leaveRightCones',
+      },
+      { walk: 2, pace: 'normal', caption: right ? 'leaveConesLeftLeg' : 'leaveRightCones' },
+    ],
+  }
+}
+
+/**
+ * 2-233 Schicken um die Pylone – zurück in die Fußposition (VDH 2027, S. 53): "Das Team … hält an,
+ * der Hund steht in Fußposition. Der HF schickt den Hund um die Pylone. Der Hund umrundet die
+ * Pylone im Uhrzeigersinn (bei Linksführung) … und kehrt ohne anzuhalten auf direktem Weg zum HF
+ * zurück. Er geht hinter dem HF wieder in die vorherige Fußposition. … begibt sich das Team, ohne
+ * dass der Hund sich vorher setzt, zur nächsten Station." The cone where the plan has it, 2 m on,
+ * straight ahead ("gerade im Laufweg"); the team then on past it, the cone on the handler's side
+ * 1 m off (`geometry.exitSide`).
+ */
+const r2233_2027 = (dog: DogLeg): Exercise => ({
+  code: '2-233',
+  // Back to the handler's right side the dog comes between them and the card: the handler stops
+  // further left in the square ("bis zu 120 cm seitlich links vor dem Schild", §3.6).
+  stopAt: { x: 0.3, z: 0 },
+  cones: [{ x: 0, z: 2 }],
+  steps: [
+    { walk: 3.5, caption: 'approach' },
+    { stop: true, caption: 'stopStand' },
+    { wait: 1, caption: 'standHold' },
+    {
+      sendTo: { x: 0, z: 2 },
+      andBack: true,
+      caption: dog === 'right' ? 'sendRoundConeBackRight' : 'sendRoundConeBack',
+    },
+    // (Past the cone on the left whichever leg the dog is at: the card stands right.)
+    ...roundTheCards([{ walk: 3, caption: 'leave' }], 1),
+  ],
+})
 
 /** 1-116 Steh – 1 Schritt vorwärts – Steh (S. 43): another exercise under 2026's code. */
 const R1_116_2027: Exercise = {
@@ -1070,10 +1314,20 @@ export const higherExercises2027 = (dog: DogLeg): Exercise[] => [
   stopTurnStepStop2027('2-202', LEFT, dog),
   standTurnStand2027('2-223', RIGHT, dog),
   standTurnStand2027('2-224', LEFT, dog),
+  walkTurnTwoSteps2027('1-127', RIGHT, 'down'),
+  walkTurnTwoSteps2027('1-128', LEFT, 'down'),
+  walkTurnTwoSteps2027('1-129', RIGHT, 'stand'),
+  walkTurnTwoSteps2027('1-130', LEFT, 'stand'),
   // New in 2027, or another exercise under its code (the same from either leg).
   Z036_2027,
   R1_116_2027,
   R2_234_2027,
+  stayStepTurnStepRecall2027('2-230', RIGHT, dog),
+  stayStepTurnStepRecall2027('2-231', LEFT, dog),
+  r1126_2027(dog),
+  r2233_2027(dog),
+  r3302_2027(dog),
+  R3_328_2027,
   dropAndRound2027('3-330', 'sit'),
   dropAndRound2027('3-331', 'down'),
   dropAndRound2027('3-332', 'stand'),

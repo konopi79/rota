@@ -188,28 +188,29 @@ export const RO1_2027: ClassContent2027 = {
         // S. 45: "Zwei Pylonen werden in einem Abstand von 1,50 m in Laufrichtung aufgestellt."
         equipment: ['cones'],
       },
-      // By hand from the card's diagram (VDH Schilder, 1-126) and the conventions of Z-018 /
-      // Z-026 (dog outside: 0.65 m from a cone) and Z-027 (dog inside: 0.95 m). In left of
-      // the first cone ("links vom Schild an der ersten Pylone vorbei"), right through the gap,
-      // anticlockwise round the second cone — a left turn, the dog inside — back through the
-      // gap (the second crossing, where the dog changes sides behind), and out the way it came
-      // on the far side of the cones ("links von der ersten Pylone heraus", seen walking back),
-      // the dog now on the right between the handler and the first cone. Net: turned about to
-      // the left. The card stands just before the first cone ("an der ersten Pylone"), on the
-      // line of the cones like Z-018's.
+      // Read off its animation (`roundTwoCones`), after the card's diagram (VDH Schilder, 1-126):
+      // in left of the first cone, right through the gap — on the circle round the second cone,
+      // 1.05 m from it, so 0.45 m from the first (the dog clear of the second) — anticlockwise
+      // round the second cone (a left turn, the dog inside), right through the gap again (the
+      // second crossing, where the dog starts to change sides behind) and at once down round the
+      // first cone in a 0.75 m bend ("kolem prvního kuželu", 1.05 m off it), the dog coming up
+      // on the right between the handler and it. Net: turned
+      // about to the left. The card just before the first cone ("an der ersten Pylone"), on the
+      // cones' line like Z-018's.
       geometry: {
         via: [
-          [1.5, 0],
-          [2.25, -0.65],
-          [3.0, -1.6],
-          [3.95, -0.65],
-          [3.0, 0.3],
-          [2.25, -0.65],
-          [1.5, -1.6],
+          [1.95, -0.65],
+          [3.0, -1.7],
+          [4.05, -0.65],
+          [3.0, 0.4],
+          [1.95, -0.65],
+          [1.95, -0.95],
+          [1.2, -1.7],
+          [0.5, -1.7],
         ],
         turn: -180,
         exit: 0.5,
-        exitSide: -1.6,
+        exitSide: -1.7,
         card: { ahead: 0.5, side: -0.65 },
         props: [
           { kind: 'cone', ahead: 1.5, side: -0.65 },
