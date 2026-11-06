@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { getClass, type RoClass } from '@rota/content'
 
-import { listedClassIds } from '../classes'
+import { internationalClassIds, nationalClassIds } from '../classes'
 import {
   adoptCustomCourse,
   defaultRegulation,
@@ -176,15 +176,15 @@ describe('national regulation (plan R23)', () => {
     expect(loadRegulation()).toBe('CZ')
   })
 
-  test("the home page lists the chosen regulation's classes and FCI-ROB", () => {
-    expect(listedClassIds('CZ')).toEqual(['RO-Z', 'RO1', 'RO2', 'RO3', 'RO-V', 'FCI-ROB'])
-    expect(listedClassIds('CZ-2027')).toEqual([
+  test('the home page lists FCI-ROB and the national classes of the chosen regulation', () => {
+    expect(internationalClassIds()).toEqual(['FCI-ROB'])
+    expect(nationalClassIds('CZ')).toEqual(['RO-Z', 'RO1', 'RO2', 'RO3', 'RO-V'])
+    expect(nationalClassIds('CZ-2027')).toEqual([
       'RO-Z-2027',
       'RO1-2027',
       'RO2-2027',
       'RO3-2027',
       'RO-V-2027',
-      'FCI-ROB',
     ])
   })
 })

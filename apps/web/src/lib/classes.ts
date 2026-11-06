@@ -14,12 +14,16 @@ export const customCourseHref = (id: ClassId) => `/trida/${classSlug(id)}/vlastn
 /** Card detail URL: `/karta/cz/z-001`, `/karta/fci/101` — the image stem is the slug. */
 export const cardHref = (card: Card) => `/karta/${RULESETS[card.ruleset].slug}/${card.image}`
 
-/**
- * The classes offered on the home page: the national ones of the chosen regulation (plan R23)
- * and FCI-ROB. The other regulation's classes stay reachable by address.
- */
-export const listedClassIds = (regulation: NationalRegulation): ClassId[] =>
+/** FCI-ROB: on the home page whatever the national regulation (plan R23). */
+export const internationalClassIds = (): ClassId[] =>
   CLASS_IDS.filter((id) => {
     const ruleset = getClass(id)?.ruleset
-    return !ruleset || !isNational(ruleset) || ruleset === regulation
+    return ruleset !== undefined && !isNational(ruleset)
   })
+
+/**
+ * The national classes offered on the home page: those of the chosen regulation (plan R23). The
+ * other regulation's classes stay reachable by address.
+ */
+export const nationalClassIds = (regulation: NationalRegulation): ClassId[] =>
+  CLASS_IDS.filter((id) => getClass(id)?.ruleset === regulation)
