@@ -1,4 +1,6 @@
-import { CLASS_IDS, getClass, RULESETS, type Card, type ClassId } from '@rota/content'
+import { CLASS_IDS, getClass, isNational, RULESETS, type Card, type ClassId } from '@rota/content'
+
+import type { NationalRegulation } from './storage'
 
 /** URL slug of a class: `RO-Z` → `ro-z`, `FCI-ROB` → `fci-rob`. */
 export const classSlug = (id: ClassId) => id.toLowerCase()
@@ -12,8 +14,16 @@ export const customCourseHref = (id: ClassId) => `/trida/${classSlug(id)}/vlastn
 /** Card detail URL: `/karta/cz/z-001`, `/karta/fci/101` — the image stem is the slug. */
 export const cardHref = (card: Card) => `/karta/${RULESETS[card.ruleset].slug}/${card.image}`
 
+/** FCI-ROB: on the home page whatever the national regulation (plan R23). */
+export const internationalClassIds = (): ClassId[] =>
+  CLASS_IDS.filter((id) => {
+    const ruleset = getClass(id)?.ruleset
+    return ruleset !== undefined && !isNational(ruleset)
+  })
+
 /**
- * The classes offered on the home page: not yet those of the 2027 regulation, which is
- * prepared hidden until its switch (plan R21, R23) — reachable by address only.
+ * The national classes offered on the home page: those of the chosen regulation (plan R23). The
+ * other regulation's classes stay reachable by address.
  */
-export const LISTED_CLASS_IDS = CLASS_IDS.filter((id) => getClass(id)?.ruleset !== 'CZ-2027')
+export const nationalClassIds = (regulation: NationalRegulation): ClassId[] =>
+  CLASS_IDS.filter((id) => getClass(id)?.ruleset === regulation)

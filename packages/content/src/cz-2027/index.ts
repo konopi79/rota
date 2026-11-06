@@ -25,8 +25,8 @@ const WRITTEN = new Map(CONTENT.flatMap((c) => c.cards).map((card) => [card.code
 
 /**
  * The 2027 card of a 2026 one: rewritten whole where the code means another exercise now,
- * otherwise the 2026 card with what 2027 changes on it — its image the 2026 one (`imageSet`)
- * until the 2027 images (R23). No sub-parts: "Zrušeny hlavní a vedlejší části cviků" (the
+ * otherwise the 2026 card with what 2027 changes on it — its image the 2026 one (`imageSet`;
+ * the author kept them, R23). No sub-parts: "Zrušeny hlavní a vedlejší části cviků" (the
  * club's slides; VDH 2027 has none). No last-card rule: VDH 2027 has none (Senioren §5.5).
  */
 function in2027(card: Card): Card {

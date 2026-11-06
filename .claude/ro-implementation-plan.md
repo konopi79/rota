@@ -46,7 +46,7 @@ committed** — ~120 MB of PDFs; the Drive folder stays the source of truth).
 | R20 | Card details offline from one page                             | ✅ 2026-11-04 |
 | R21 | Regulations as data (edition, card identity, languages)        | ✅ 2026-11-04 |
 | R22 | Regulation 2027 (shared by CZ and VDH)                         | ⏳            |
-| R23 | National 2026 / 2027 switch                                    | ⏳            |
+| R23 | National 2026 / 2027 switch                                    | ✅ 2026-11-06 |
 | R24 | German UI                                                      | ⏳ VDH        |
 | R25 | VDH content (+ FCI in German)                                  | ⏳ VDH        |
 | R26 | Offline packs per regulation                                   | ⏳ if needed  |
@@ -812,9 +812,9 @@ R22b — animations:
 
 ### R23 — National 2026 / 2027 switch
 
-- [ ] Regulation choice in the setup (remembered); 2027 marked "připravovaný, podle německého řádu"; 2026 the default until April 2027
-- [ ] Card images of new and changed cards: VDH stand-ins (only with VDH's consent) or text-only cards until the Czech set
-- [ ] Feature item, guide, About page
+- [x] Regulation choice (2026-11-06): on the home page above the classes, "Národní zkušební řád: 2026 / 2027 – připravovaný" (a choice of its own rather than in each class's setup — the classes are the regulation's), the national classes of the chosen one listed with FCI-ROB, the other's reachable by address; remembered (`regulation` in local storage), until chosen 2026 before 1 April 2027 and 2027 from then on (`defaultRegulation`); with 2027 a note that it follows VDH 2027 and the texts and new cards are ours till the Czech text
+- [x] Card images of the new cards and of 1-116 / 3-302 (2026-11-06): ROTA's own cards, not VDH's (no consent yet) nor text only (the author: "dát jen textový popis nemá žádnou hodnotu") — "něco mezi FCI a národním řádem": a navy arrow outlined in teal for the team's way, the dog's own way dashed, the steps numbered on the arrow, the position a teal badge with the word filling it (no dog drawn, no footprints — the author), a rounded coral STOP instead of the octagon, cones and jumps seen from above; the name below, the code top right, a note at the foot that it is our take until the official Czech cards or VDH's consent (also on `/o-aplikaci`). Drawn in code (`scripts/cards/rota/`, `bun run cards:draw`), 19 cards, 0.8 MB. The 80 changed cards keep their 2026 image (the author). Each card we draw links to its original VDH card, the PDF opened at its page (`cz-2027/vdh-cards.ts`; linked, not shipped)
+- [x] Feature item `regulation-2027`, the guide's class step, the About page's sources (2026-11-06)
 
 ### R24 — German UI
 

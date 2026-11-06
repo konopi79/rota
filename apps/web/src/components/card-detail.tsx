@@ -1,6 +1,6 @@
 'use client'
 
-import { RULESETS, type Card } from '@rota/content'
+import { RULESETS, VDH_CARD_PAGES, vdhCardUrl, type Card } from '@rota/content'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -25,6 +25,7 @@ export function CardDetail({ card }: { card: Card }) {
   const notes = sequencingNotes(card)
   const equipment = card.sequencing.equipment ?? []
   const classes = classesWith(card)
+  const original = card.ruleset === 'CZ-2027' ? vdhCardUrl(card.code) : undefined
 
   // Reached from a class catalogue (or a shared link): go back where the user came from.
   // Back goes through popstate, which a stale page turns into a reload (`lib/stale-page`).
@@ -45,6 +46,21 @@ export function CardDetail({ card }: { card: Card }) {
         priority
         className="h-auto w-full rounded-md border"
       />
+      {/* A card drawn by ROTA (plan R23): the official German one, linked. The page is in the text
+          too: the PDF does not open at `#page` even in desktop Chrome (the author). */}
+      {original && (
+        <p className="text-muted-foreground -mt-3 text-sm">
+          {t('card.ownCard')}{' '}
+          <a
+            href={original}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-4"
+          >
+            {t('card.vdhOriginal', { page: VDH_CARD_PAGES[card.code] })}
+          </a>
+        </p>
+      )}
 
       <header className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">

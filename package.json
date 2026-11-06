@@ -13,7 +13,8 @@
     "test": "bun test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "cards:extract": "bun run scripts/cards/extract.ts"
+    "cards:extract": "bun run scripts/cards/extract.ts",
+    "cards:draw": "bun run scripts/cards/rota/generate.ts"
   },
   "devDependencies": {
     "@evilmartians/lefthook": "^2.1.10",

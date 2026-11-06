@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'bun:test'
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 
 import { CZ_CARDS } from '../cz'
 import { CZ_2027_CARDS, CZ_2027_CLASSES, CZ_2027_REVISED } from '../cz-2027'
@@ -7,7 +9,8 @@ import { withSupplementary } from '../deal/geometry'
 import { planSides, sidesBroken } from '../deal/side-plan'
 import { mulberry32 } from '../deal/prng'
 import { classesOf, getCard } from '../registry'
-import { isNational } from '../rulesets'
+import { isNational, RULESETS } from '../rulesets'
+import { VDH_CARD_PAGES } from '../cz-2027/vdh-cards'
 import { cardSchema, roClassSchema, type RoClass } from '../schema'
 
 const card = (code: string) => getCard('CZ-2027', code)!
@@ -82,6 +85,20 @@ describe('CZ-2027 content', () => {
     // Unchanged cards keep their 2026 image; new ones have their own (R23).
     expect(card('Z-001').imageSet).toBe('CZ')
     expect(card('Z-033').imageSet).toBeUndefined()
+  })
+
+  test('every card ROTA draws itself links to its original VDH card, and only those', () => {
+    const drawn = CZ_2027_CARDS.filter((c) => !c.imageSet).map((c) => c.code)
+    expect(Object.keys(VDH_CARD_PAGES).sort()).toEqual([...drawn].sort())
+  })
+
+  test('every card has its images: the 2026 one, or our own (scripts/cards/rota)', () => {
+    const cards = join(import.meta.dir, '../../../../apps/web/public/cards')
+    for (const c of CZ_2027_CARDS) {
+      const dir = join(cards, RULESETS[c.imageSet ?? c.ruleset].slug)
+      expect([c.code, existsSync(join(dir, `${c.image}.webp`))]).toEqual([c.code, true])
+      expect([c.code, existsSync(join(dir, 'thumb', `${c.image}.webp`))]).toEqual([c.code, true])
+    }
   })
 
   test('the revised cards: new, rewritten or changed — and only those', () => {
