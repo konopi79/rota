@@ -813,7 +813,7 @@ R22b — animations:
 ### R23 — National 2026 / 2027 switch
 
 - [ ] Regulation choice in the setup (remembered); 2027 marked "připravovaný, podle německého řádu"; 2026 the default until April 2027
-- [ ] Card images of new and changed cards: VDH stand-ins (only with VDH's consent) or text-only cards until the Czech set
+- [x] Card images of the new cards and of 1-116 / 3-302 (2026-11-06): ROTA's own cards, not VDH's (no consent yet) nor text only (the author: "dát jen textový popis nemá žádnou hodnotu") — "něco mezi FCI a národním řádem": a navy arrow outlined in teal for the team's way, the dog's own way dashed, the steps numbered on the arrow, the position a teal badge with the word filling it (no dog drawn, no footprints — the author), a rounded coral STOP instead of the octagon, cones and jumps seen from above; the name below, the code top right, a note at the foot that it is our take until the official Czech cards or VDH's consent (also on `/o-aplikaci`). Drawn in code (`scripts/cards/rota/`, `bun run cards:draw`), 19 cards, 0.8 MB. The 80 changed cards keep their 2026 image (the author)
 - [ ] Feature item, guide, About page
 
 ### R24 — German UI
