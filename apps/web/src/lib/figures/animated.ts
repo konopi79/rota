@@ -279,11 +279,13 @@ export const animationSetOf = (ruleset: RulesetId): AnimationSet =>
   ruleset === 'CZ-2027' ? 'CZ-2027' : isNational(ruleset) ? 'CZ' : 'FCI'
 
 /**
- * The cards played with D0e (2027) in animation — none yet (`D0E_EXERCISES` is not played: the
- * way round the dog in front still goes too near its head); then those into the front whose
- * finish is their own, not the recall cards of a leave pair, nor 3-323.
+ * The cards played with D0e (2027) in animation, from either leg (`D0E_EXERCISES`; a test keeps
+ * the two in step): those into the front whose finish is their own — not the recall cards of a
+ * leave pair, nor 3-323.
  */
-export const D0E_ANIMATED: readonly string[] = []
+export const D0E_ANIMATED: readonly string[] = [
+  ...['Z-014', 'Z-025', 'Z-032', '1-108', '1-114', '1-115', '2-221', '2-222'],
+]
 
 /**
  * The cards the 2027 regulation does differently that have their 2027 animation

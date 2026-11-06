@@ -490,7 +490,7 @@ export const RO2_CARDS: Card[] = [
       // p. 46: "K tomuto cviku je třeba přidat doplňkovou kartu D0a–d."
       requiresSupplementary: true,
     },
-    geometry: { exit: -2.55 },
+    geometry: { exit: -2.55, front: { ahead: -2.63, side: 0.15 } },
     image: '2-221',
     sourcePage: 46,
   },
@@ -516,7 +516,7 @@ export const RO2_CARDS: Card[] = [
       requiresSupplementary: true,
     },
     // Off round its cards, a little to the left.
-    geometry: { exit: 1.2, exitSide: 0.65 },
+    geometry: { exit: 1.2, exitSide: 0.65, front: { ahead: -0.36, side: 0.4 } },
     image: '2-222',
     sourcePage: 46,
   },

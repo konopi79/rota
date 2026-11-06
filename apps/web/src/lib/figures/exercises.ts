@@ -2,6 +2,7 @@ import { getCard } from '@rota/content'
 
 import { RIGHT_SIDE_CARDS, rightSideCards } from './animated'
 import type { Exercise, ExerciseStep } from './exercise'
+import type { FootTarget } from './locomotion'
 import { JUMP_EXERCISES, R3_313_RIGHT } from './jump-exercises'
 import {
   FOLLOW_UP_PARTS,
@@ -294,38 +295,70 @@ const in2027 = (e: Exercise): Exercise => ({
  * neue Richtung" — each exercise into the front as with D0a, its finish replaced: the dog left
  * there, the handler round it behind it and up beside it, on the other way (`roundLeftDog.beside`).
  */
-const withD0e = (e: Exercise): Exercise | null => {
+/**
+ * D0e "Zurück zum Hund" (VDH 2027, S. 29): "Nach Vollendung der Frontposition signalisiert der HF
+ * dem Hund zu bleiben. Der HF begibt sich neben seinen Hund auf die ursprüngliche Fußseite … Er
+ * kann dazu vor oder hinter dem Hund entlang gehen. Das Team nimmt die Grundstellung ein und
+ * bewegt sich anschließend in die neue Richtung." As the club's video of the new cards shows it
+ * (variant A, 1:55): the dog left sitting in front, the handler steps aside off its head, on
+ * beside it and turns about there — the dog at the leg it set off from, the team the other way.
+ * Its steps from where the handler stands, the dog sitting right before them, for the left leg: a
+ * step aside first (stepping on at a slant, a hip went into the dog's head), then on beside it.
+ */
+const D0E_STEPS: FootTarget[] = [
+  { foot: 0, x: 0.45, z: -0.08, yaw: 0 },
+  { foot: 1, x: 0.25, z: -0.08, yaw: 0 },
+  { foot: 0, x: 0.55, z: 0.36, yaw: 0 },
+  { foot: 1, x: 0.35, z: 0.36, yaw: 0 },
+]
+/** …the same from the right leg: the other way round. */
+const D0E_STEPS_RIGHT: FootTarget[] = D0E_STEPS.map((t) => ({
+  ...t,
+  foot: (1 - t.foot) as 0 | 1,
+  x: -t.x,
+}))
+
+/** After turning about beside the dog, the handler's feet close up for this long, seconds. */
+const D0E_SETTLE = 0.9
+
+const withD0e = (e: Exercise, right = false): Exercise | null => {
   const finish = e.steps.findLastIndex(
     (step) => 'dogPath' in step && (step.dogPath === 'aroundHandler' || step.dogPath === 'toHeel'),
   )
-  // (3-323's dog comes into the front on the run, too near the handler's way round it: not yet.)
+  // (3-323's dog comes into the front on the run: not with D0e yet.)
   if (finish < 0 || e.parts || e.code === '3-323') return null
   return {
     ...e,
     supplementary: 'D0e',
     steps: [
       ...e.steps.slice(0, finish),
-      // "Das Team nimmt die Grundstellung ein": a dog lying or standing in front sits up first.
-      { dog: 'sit', caption: 'frontSit' },
+      // "Nach Vollendung der Frontposition signalisiert der HF dem Hund zu bleiben": in the
+      // position it is in front — sitting, standing or lying (Vorsitz, Vorsteh, Vorplatz).
       { dogStays: true, caption: 'frontHold' },
-      {
-        roundLeftDog: true,
-        beside: 'left',
-        way: e.card === 'ahead' ? 'front' : 'behind',
-        caption: 'backToDogFront',
-      },
+      { footwork: right ? D0E_STEPS_RIGHT : D0E_STEPS, caption: 'backToDogFront' },
+      // Turned about beside it, away from it — the dog at the leg it set off from.
+      { turn: right ? -180 : 180, radius: 0, caption: 'turnBesideDog' },
+      { dogJoins: true, place: right ? 'right' : 'left', caption: 'backAtDog' },
+      // (The handler's feet done first — turned about, they still close up — then the dog: it sat
+      // while the handler was still stepping, the author.)
+      { wait: D0E_SETTLE, caption: 'backAtDog' },
+      // "Das Team nimmt die Grundstellung ein": the dog sits up beside the handler ("Der Hund
+      // setzt sich gerade … an die Seite des HF", Grundstellung, S. 16) — lying in front, only now.
+      { dog: 'sit', caption: 'finishSit' },
+      { wait: 0.6, caption: 'basePosition' },
       { walk: 3, caption: 'leaveTurn' },
     ],
   }
 }
 
-/**
- * The exercises into the front with D0e (2027), from the left leg — not played yet (R22b): from
- * right in front of the dog the way round it still goes too near its head or loops, so they are
- * left out of `EXERCISES_IN_2027` until it is worked out (`D0E_ANIMATED` empty).
- */
+/** The exercises into the front with D0e (2027), from the left leg and from the right one. */
 export const D0E_EXERCISES: Exercise[] = EXERCISES.filter((e) => e.supplementary === 'D0a')
-  .map(withD0e)
+  .map((e) => withD0e(e))
+  .filter((e): e is Exercise => e !== null)
+export const D0E_RIGHT_EXERCISES: Exercise[] = RIGHT_EXERCISES.filter(
+  (e) => e.supplementary === 'D0a',
+)
+  .map((e) => withD0e(e, true))
   .filter((e): e is Exercise => e !== null)
 
 /** Every exercise of the 2027 regulation: its own, and the 2026 ones it does the same way. */
@@ -334,6 +367,7 @@ export const EXERCISES_IN_2027: Exercise[] = [
     .filter((e) => !OWN_2027.has(e.code))
     .map(in2027),
   ...EXERCISES_2027,
+  ...D0E_EXERCISES.map(in2027),
 ].sort((a, b) => cardOrder(a.code).localeCompare(cardOrder(b.code)))
 
 /** …with the dog starting at the right leg. */
@@ -345,6 +379,7 @@ export const RIGHT_EXERCISES_IN_2027: Exercise[] = [
   ...[...ROZ_EXERCISES_2027, ...higherExercises2027('right')]
     .filter((e) => rightSideCards('CZ-2027').includes(e.code))
     .map(builtFromTheRight),
+  ...D0E_RIGHT_EXERCISES.map(in2027),
 ].sort((a, b) => cardOrder(a.code).localeCompare(cardOrder(b.code)))
 
 /** The exercises of an animation set, with the dog at the left leg or the right one. */

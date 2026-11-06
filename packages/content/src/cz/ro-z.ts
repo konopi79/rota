@@ -247,6 +247,8 @@ export const RO_Z_CARDS: Card[] = [
       // p. 23: "K tomuto cviku je třeba přidat doplňkovou kartu D0a–d."
       requiresSupplementary: true,
     },
+    // (With D0e, 2027: where the handler stands with the dog in front, read off the animation.)
+    geometry: { front: { ahead: -0.33, side: 0.15 } },
     image: 'z-014',
     sourcePage: 23,
   },
@@ -593,7 +595,7 @@ export const RO_Z_CARDS: Card[] = [
       // p. 27: "K tomuto cviku je třeba přidat doplňkovou kartu D0a–d."
       requiresSupplementary: true,
     },
-    geometry: { exit: -0.5 },
+    geometry: { exit: -0.5, front: { ahead: -0.6, side: 0.15 } },
     image: 'z-025',
     sourcePage: 27,
   },
@@ -792,7 +794,7 @@ export const RO_Z_CARDS: Card[] = [
       // p. 29: "K tomuto cviku je třeba přidat doplňkovou kartu D0a–d."
       requiresSupplementary: true,
     },
-    geometry: { exit: -0.5 },
+    geometry: { exit: -0.5, front: { ahead: -0.6, side: 0.15 } },
     image: 'z-032',
     sourcePage: 29,
   },

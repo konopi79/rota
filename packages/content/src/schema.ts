@@ -117,6 +117,13 @@ export const geometrySchema = z
      */
     exitSide: z.number().optional(),
     /**
+     * A card into the front: where the handler stands with the dog in front, before the finish —
+     * metres ahead and to the side (signed like `Prop.side`), read off the animation. A D0 card
+     * that walks the handler on from there (D0e, 2027) starts from it, not from `exit`, which is
+     * where the finish of D0a–d leaves.
+     */
+    front: z.object({ ahead: z.number(), side: z.number() }).optional(),
+    /**
      * Where the team's way inside the exercise goes, between where it starts and where it
      * leaves: [ahead, side] points in order, side signed like `Prop.side` — round cones and
      * bowls, so the course plan keeps the whole way clear (read off the animation).

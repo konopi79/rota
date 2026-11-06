@@ -71,7 +71,7 @@ export function FieldPlan({
       r.first + i + 1 < end && !!next && !!card(next.code).sequencing.onlyAfterLeave
     const supplementary = entry.supplementary ? card(entry.supplementary) : undefined
     // (With a D0 card that turns the team — D0e, 2027 — the exercise as laid out.)
-    const c = withSupplementary(card(entry.code), supplementary)
+    const c = withSupplementary(card(entry.code), supplementary, entry.side)
     const shape = shapeOf(c, at, entry.side, recallFollows)
     return [{ index: r.first + i, card: c, supplementary, at, shape, joined: !!entry.withPrevious }]
   })

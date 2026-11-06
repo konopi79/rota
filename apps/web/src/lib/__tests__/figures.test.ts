@@ -33,6 +33,8 @@ import { jointFrames, jointNames, lowestPoint, type Joint, type Pose } from '../
 import {
   EXERCISES,
   ADAPTED_IN_2027,
+  D0E_EXERCISES,
+  D0E_RIGHT_EXERCISES,
   EXERCISES_2027,
   EXERCISES_IN_2027,
   RIGHT_EXERCISES,
@@ -71,6 +73,9 @@ const PLAYED = [
   ...RIGHT_EXERCISES_IN_2027.filter((e) => ANIMATED_IN_2027.includes(e.code)).map(
     (e) => [`${e.code} (2027, pes vpravo)`, e] as const,
   ),
+  // …and with D0e (2027), from each leg.
+  ...D0E_EXERCISES.map((e) => [`${e.code}+D0e (2027)`, e] as const),
+  ...D0E_RIGHT_EXERCISES.map((e) => [`${e.code}+D0e (2027, pes vpravo)`, e] as const),
   // …and those it plays with a 2026 animation adapted (3-301 / 3-329's pairs).
   ...ADAPTED_IN_2027(false).map((e) => [`${e.code}+${e.pairedWith} (2027)`, e] as const),
   ...ADAPTED_IN_2027(true).map((e) => [`${e.code}+${e.pairedWith} (2027, pes vpravo)`, e] as const),
@@ -912,9 +917,11 @@ describe('animations in the card details', () => {
     expect([...ANIMATED_IN_2027].sort()).toEqual(
       [...new Set([...EXERCISES_2027.map((e) => e.code), '3-329'])].sort(),
     )
-    // (D0e not played yet: none listed, and none in the 2027 set.)
-    expect(D0E_ANIMATED).toEqual([])
-    expect(EXERCISES_IN_2027.some((e) => e.supplementary === 'D0e')).toBe(false)
+    // D0e (2027): the cards played with it, from either leg.
+    expect([...D0E_ANIMATED].sort()).toEqual([...new Set(D0E_EXERCISES.map((e) => e.code))].sort())
+    expect([...D0E_ANIMATED].sort()).toEqual(
+      [...new Set(D0E_RIGHT_EXERCISES.map((e) => e.code))].sort(),
+    )
   })
 
   // §3.5 "Všechny cviky (kromě 417 a 418) lze provádět se psem na levé nebo pravé straně": each

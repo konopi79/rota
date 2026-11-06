@@ -170,7 +170,7 @@ export const RO1_CARDS: Card[] = [
       // p. 32: "K tomuto cviku je třeba přidat doplňkovou kartu D0a–d."
       requiresSupplementary: true,
     },
-    geometry: { exit: -2.55 },
+    geometry: { exit: -2.55, front: { ahead: -2.63, side: 0.15 } },
     image: '1-108',
     sourcePage: 32,
   },
@@ -316,7 +316,7 @@ export const RO1_CARDS: Card[] = [
       requiresSupplementary: true,
     },
     // Off round its D0 card: the card is passed on the right (§5.3.1), the D0 card beside it.
-    geometry: { exit: 1.2, exitSide: -1.45 },
+    geometry: { exit: 1.2, exitSide: -1.45, front: { ahead: -0.35, side: -0.85 } },
     image: '1-114',
     sourcePage: 34,
   },
@@ -340,7 +340,7 @@ export const RO1_CARDS: Card[] = [
       // p. 35: "K tomuto cviku je třeba přidat doplňkovou kartu D0a–d."
       requiresSupplementary: true,
     },
-    geometry: { exitSide: 0.55 },
+    geometry: { exitSide: 0.55, front: { ahead: -0.35, side: 0.54 } },
     image: '1-115',
     sourcePage: 35,
   },
