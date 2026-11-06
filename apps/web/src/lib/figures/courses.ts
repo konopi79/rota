@@ -199,6 +199,51 @@ export const towards = (...through: Heading[]): Course => {
   return course(pieces, [])
 }
 
+/**
+ * 1-126 Um die Pylone – Seitenwechsel hinten (VDH 2027, S. 45): "Zwei Pylonen werden in einem
+ * Abstand von 1,50 m in Laufrichtung aufgestellt" — the card's diagram: past the first cone on the
+ * team's right, right through the gap, round the second cone anticlockwise (a left turn, the dog
+ * inside) and right through the gap again — both times across its middle, square to the cones'
+ * line (at a slant the dog on the second cone's side came over it) — then on, and down past the
+ * first cone, now on the team's right. Built for the dog at the left leg. Parts: 0 on, 1–2 into the gap, 3 round the second cone, 4–5 on through the
+ * gap, 6 the bend down, 7 past the first cone.
+ */
+const STRAIGHT_BY_THE_LOOP = 0.3
+const WIDER_LOOP = 0.1
+export const roundTwoCones = (): Course => {
+  // The card just before the first cone, as the plan has it ("Karta je umístěna u prvního
+  // kuželu"): the cones 1.5 m and 3 m on, the card 1 m before the first.
+  const cone = { x: -0.65, z: 1.5 }
+  const [c1, c2] = [cone, { x: cone.x, z: cone.z + CONE_GAP }]
+  // Through the gap on the circle round the second cone (a little wider than the spirals' round
+  // a cone with the dog inside: at theirs, coming out of the gap, the handler's foot went into its
+  // hind leg): nearer the first cone, the dog clear of the second.
+  const r = CONE_CLEARANCE.dogInside + WIDER_LOOP
+  const middle = { x: c1.x, z: c2.z - r, heading: -Math.PI / 2 }
+  const round = arc(c2.x, c2.z, r, -Math.PI / 2, (-5 * Math.PI) / 2)
+  // (Straight a moment either side of the loop: from a bend right into the loop left at once
+  // the handler's legs crossed.)
+  const before = { ...middle, x: middle.x + STRAIGHT_BY_THE_LOOP }
+  const after = { x: middle.x - STRAIGHT_BY_THE_LOOP, z: middle.z }
+  // Then at once down round the first cone ("kolem prvního kuželu", the author: in a wide bend
+  // 1.5 m off it was not), the dog going behind the handler meanwhile — in their track round the
+  // bend, up on their right along the cone.
+  const turn = 0.75
+  const down = { x: after.x - turn, z: after.z - turn }
+  return course(
+    [
+      line(0, 0, 0, 0.2),
+      bend({ x: 0, z: 0.2, heading: 0 }, before),
+      line(before.x, before.z, middle.x, middle.z),
+      round,
+      line(middle.x, middle.z, after.x, after.z),
+      bend({ ...after, heading: -Math.PI / 2 }, { ...down, heading: Math.PI }),
+      line(down.x, down.z, down.x, down.z - 2.5),
+    ],
+    [c1, c2],
+  )
+}
+
 /** Slalom: how far the middle of the team swings off the cones' line, metres. */
 const WEAVE = 0.78
 /** From the handler to the middle of the team (to the dog's side), metres. */

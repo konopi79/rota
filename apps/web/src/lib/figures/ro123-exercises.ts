@@ -1,5 +1,5 @@
 import type { Exercise, ExerciseStep } from './exercise'
-import { swerve } from './courses'
+import { roundTwoCones, swerve } from './courses'
 import type { FootTarget } from './locomotion'
 import {
   eightExercise,
@@ -1109,6 +1109,48 @@ const r3302_2027 = (dog: DogLeg): Exercise => {
 }
 
 /**
+ * 1-126 Um die Pylone – Seitenwechsel hinten (VDH 2027, S. 45): "Beim zweiten Kreuzen der
+ * Mittellinie beginnt der Hund aus der Bewegung heraus einen Seitenwechsel hinter dem HF" — the
+ * course round the two cones (`roundTwoCones`), the dog going behind the handler to their right
+ * on the way back through the gap. The card just before the first cone, on its line.
+ */
+const R1_126_2027: Exercise = (() => {
+  const course = roundTwoCones()
+  return {
+    code: '1-126',
+    cones: course.cones,
+    cardAt: { x: course.cones[0]!.x, z: 0.5 },
+    steps: [
+      { walk: 2.5, caption: 'approachCones' },
+      { course, parts: [0, 3], caption: 'twoConesIn' },
+      { course, parts: [3, 4], caption: 'twoConesRound' },
+      // From the second crossing the dog eases off between the cones, lets the handler go on
+      // round the bend and comes on the way the team turns on a tighter line, from the far cone
+      // towards the near one, up into the right leg — not out round them, nor past their left
+      // side (the author: "pes by se mohl … přibrzdit a vykružovat … těsnější linii").
+      {
+        course,
+        parts: [4, 6],
+        dogRuns: {
+          via: [
+            { x: -0.9, z: 2.37, heading: -Math.PI / 2 },
+            { x: -1.2, z: 1.95, heading: -2.6 },
+            { x: -1.27, z: 1.4, heading: Math.PI },
+          ],
+          ends: 'right',
+          most: 0.6,
+        },
+        caption: 'twoConesChange',
+      },
+      // Past the cone the handler slows till the dog is at the right leg, then on at the pace
+      // (as FCI 417 / 418).
+      { walk: 10, pace: 'slow', untilDogJoins: true, caption: 'leaveRightCones' },
+      { walk: 2, pace: 'normal', caption: 'leaveRightCones' },
+    ],
+  }
+})()
+
+/**
  * 2-233 Schicken um die Pylone – zurück in die Fußposition (VDH 2027, S. 53): "Das Team … hält an,
  * der Hund steht in Fußposition. Der HF schickt den Hund um die Pylone. Der Hund umrundet die
  * Pylone im Uhrzeigersinn (bei Linksführung) … und kehrt ohne anzuhalten auf direktem Weg zum HF
@@ -1213,6 +1255,7 @@ export const higherExercises2027 = (dog: DogLeg): Exercise[] => [
   Z036_2027,
   R1_116_2027,
   R2_234_2027,
+  R1_126_2027,
   r2233_2027(dog),
   r3302_2027(dog),
   R3_328_2027,

@@ -221,7 +221,13 @@ export type ExerciseStep = {
    * equipment (`courses.ts`), the dog at heel — one course over several steps, each with its
    * caption, on from where the last one ended.
    */
-  | { course: Course; parts: [number, number]; pace?: HandlerPace }
+  | {
+      course: Course
+      parts: [number, number]
+      pace?: HandlerPace
+      /** Meanwhile the dog goes a way of its own (2027's 1-126), as on a walk (`dogRuns`). */
+      dogRuns?: DogRun
+    }
   /**
    * The team walks to `walkTo` — a place on the field, the way it faces there — smoothly,
    * however the exercise before left it: the way between two cards of a course walked
@@ -303,6 +309,8 @@ const PATHS: Record<'dog' | 'dogClose', Path> = { dog: AROUND_DOG, dogClose: ARO
 export type DogRun = {
   via: Pose[]
   ends: 'left' | 'right'
+  /** Along its way at most this fast, m/s — easing off to let the handler go on (1-126). */
+  most?: number
 }
 
 /**
@@ -1290,6 +1298,7 @@ export class ExercisePlayer {
     speed: number
     at: Pose | null
     ends: 'left' | 'right'
+    most: number
   } | null = null
   private dogRunStep = -1
   /** Ahead of its place at heel as the team sets off: where it is, walking on slowly. */
@@ -1600,6 +1609,35 @@ export class ExercisePlayer {
    * the least — not another station's nearer the dog, walked through. Its bar the way the dog
    * goes over it from there.
    */
+  /**
+   * The dog changing sides on the way (`dogChanges`), `walked` of the way there (0–1) of `length`
+   * metres: where it is in the team's frame, facing the way it goes over the ground — the team's
+   * way and its own — but turning no faster than its paws can carry it round; where it all but
+   * stops (turning back the other way) the way it goes swings at once.
+   */
+  private changingSides(
+    walked: number,
+    length: number,
+    speed: number,
+    dt: number,
+    starting: boolean,
+  ) {
+    const { path, facesAsPath, ramps = 0 } = this.walkingWay!
+    const u = ramped(walked, ramps)
+    const here = path.at(path.length * u)
+    const ahead = path.at(Math.min(path.length, path.length * u + 0.01))
+    const pace = (ramped(Math.min(1, walked + 0.01), ramps) - u) / 0.01 || 0
+    const along = (path.length / length) * Math.max(speed, 0.2) * pace
+    const vx = ((ahead.x - here.x) / 0.01) * along
+    const vz = ((ahead.z - here.z) / 0.01) * along + speed
+    const wanted = facesAsPath ? here.heading : Math.atan2(vx, vz)
+    if (starting) this.walkingDogHeading = this.dogAt.heading
+    const most = DOG_MAX_SPIN * WALKING_TURN * dt
+    const turn = angleTo(this.walkingDogHeading, wanted)
+    this.walkingDogHeading += facesAsPath ? turn : Math.max(-most, Math.min(most, turn))
+    return { x: here.x, z: here.z, heading: this.walkingDogHeading }
+  }
+
   private barToward(dog: Pose, handler: Pose): Bar | undefined {
     const via = (b: Bar) =>
       Math.hypot(b.x - dog.x, b.z - dog.z) + Math.hypot(b.x - handler.x, b.z - handler.z)
@@ -2010,24 +2048,9 @@ export class ExercisePlayer {
         done = t >= SPIN_AHEAD_TIME + loop + SPIN_INTO_HEEL
       } else if (current.dogChanges) {
         if (starting) this.walkingWay = this.side(WALKING_PATHS[current.dogChanges])
-        const { path, ends, facesAsPath, ramps = 0 } = this.walkingWay!
         const walked = Math.min(1, (travelled - this.stepStart) / current.walk)
-        const u = ramped(walked, ramps)
-        const here = path.at(path.length * u)
-        const ahead = path.at(Math.min(path.length, path.length * u + 0.01))
-        const pace = (ramped(Math.min(1, walked + 0.01), ramps) - u) / 0.01 || 0
-        const along = (path.length / current.walk) * Math.max(speed, 0.2) * pace
-        const vx = ((ahead.x - here.x) / 0.01) * along
-        const vz = ((ahead.z - here.z) / 0.01) * along + speed
-        // Facing the way it goes, but turning no faster than its paws can carry it round —
-        // where it all but stops (turning back the other way) the way it goes swings at once.
-        const wanted = facesAsPath ? here.heading : Math.atan2(vx, vz)
-        if (starting) this.walkingDogHeading = this.dogAt.heading
-        const most = DOG_MAX_SPIN * WALKING_TURN * dt
-        const turn = angleTo(this.walkingDogHeading, wanted)
-        this.walkingDogHeading += facesAsPath ? turn : Math.max(-most, Math.min(most, turn))
-        controls.dogAt = { x: here.x, z: here.z, heading: this.walkingDogHeading }
-        if (done) this.dogPlace = ends
+        controls.dogAt = this.changingSides(walked, current.walk, speed, dt, starting)
+        if (done) this.dogPlace = this.walkingWay!.ends
       }
     } else if (current && 'stop' in current) {
       done = this.stepTime >= STOP_TIME
@@ -2790,7 +2813,12 @@ export class ExercisePlayer {
     // Sent off on a way of its own while the team goes on (`dogRuns`): along it at its own
     // pace — quickening, slowing for each bend as a dog called in does — then after the handler
     // into heel on the side it says, as one called on the run (`dogChases`).
-    if (current && 'walk' in current && current.dogRuns && this.dogRunStep !== this.index) {
+    if (
+      current &&
+      ('walk' in current || 'course' in current) &&
+      current.dogRuns &&
+      this.dogRunStep !== this.index
+    ) {
       this.dogRunStep = this.index
       const run = current.dogRuns
       const station = stationOf(this.exercise)
@@ -2804,6 +2832,7 @@ export class ExercisePlayer {
         speed: this.dogBody.speed,
         at: null,
         ends: run.ends,
+        most: run.most ?? RUN_SPEED,
       }
       this.recalling = true
     }
@@ -2816,7 +2845,7 @@ export class ExercisePlayer {
           Math.max(0, (DOG_FALLS_BEHIND - this.dogBody.behind) / (DOG_FALLS_BEHIND / 2)),
         )
         // As fast as each bend ahead lets it — not slowing for the way's end: it runs on.
-        let most = RUN_SPEED
+        let most = r.most
         for (let d = 0; d <= SLOWING_AHEAD && r.walked + d < r.route.length; d += 0.1) {
           const there = DOG_MAX_SPIN / Math.max(bendAhead(r.route, r.walked + d, 0.1, 0), 1e-6)
           most = Math.min(most, Math.sqrt(there * there + 2 * RECALL_BRAKING * d))
