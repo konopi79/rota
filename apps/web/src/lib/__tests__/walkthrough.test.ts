@@ -95,6 +95,13 @@ describe('a course walked through in animation (R16, R17, R19)', () => {
         (seed) => [`${classId} seed ${seed}`, classId, seed, false, false] as const,
       ),
     ),
+    // 2027's (R22b), every class, those with no D0e dealt (not animated yet).
+    ...(['RO-Z-2027', 'RO1-2027', 'RO2-2027', 'RO3-2027', 'RO-V-2027'] as const).flatMap(
+      (classId) =>
+        walkable(classId, 3).map(
+          (seed) => [`${classId} seed ${seed}`, classId, seed, false, false] as const,
+        ),
+    ),
     // FCI's (R19), the start "R" every third one, on both fields.
     ...walkable('FCI-ROB', 8).map(
       (seed) => [`FCI-ROB seed ${seed}`, 'FCI-ROB' as const, seed, false, false] as const,

@@ -222,7 +222,8 @@ export const RO3_2027: ClassContent2027 = {
       // ("in einer geraden Linie oder in einem Winkel von bis zu 90°"); "Die nachfolgenden Schilder
       // stehen mind. 5m vom Sprung entfernt" — 5 m past the second jump.
       geometry: {
-        exit: 7.5,
+        // (The team walks off 1.5 m past the second jump, the dog back at heel: its animation.)
+        exit: 9,
         gap: 12.5,
         via: [
           [9, 0],
