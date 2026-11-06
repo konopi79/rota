@@ -1109,6 +1109,54 @@ const r3302_2027 = (dog: DogLeg): Exercise => {
 }
 
 /**
+ * 2-230 / 2-231 Halt – 1 Schritt – 90° Drehung rechts / links – 1 Schritt – Halt (VDH 2027, S. 53):
+ * "Der Hund bleibt sitzen, während der Hundeführer einen Schritt vorwärts geht, stehen bleibt und
+ * einen 90°- Winkel nach rechts macht, wieder einen Schritt in die neue Richtung geht und wieder
+ * stehen bleibt. Danach wird der Hund gerufen … (kein Wechsel der Fußseite). Der Schritt … kann
+ * entweder direkt gemacht werden oder der Hundeführer kann sich auf der Stelle drehen und dann
+ * den Schritt machen." New in 2027: the step forward first. The turn as 1-127's: on the heel of
+ * the foot on the turning side, then the step with the other foot, the turned one closing up.
+ */
+const STEP_TOWARDS_THE_DOG = 0.5
+const stayStepTurnStepRecall2027 = (code: string, sign: 1 | -1, dog: DogLeg): Exercise => {
+  const inner = sign === LEFT ? 0 : 1
+  const other = (1 - inner) as 0 | 1
+  const turned: FootTarget = {
+    foot: inner,
+    x: inner ? -0.1 : 0.1,
+    z: -0.08,
+    yaw: (sign * Math.PI) / 2,
+  }
+  // Turning towards the dog, a longer step: called round into heel on the spot, its head swung
+  // into the handler's hip.
+  const step = towardsTheDog(sign, dog) ? STEP_TOWARDS_THE_DOG : FIRST_STEP
+  const at = (d: number) => turned.x + sign * d
+  return {
+    code,
+    card: 'ahead',
+    steps: [
+      ...stopSit('ahead'),
+      { dogStays: true, caption: 'staySit' },
+      { footwork: stepsForward(1), caption: 'oneStepAlone' },
+      {
+        footwork: [
+          turned,
+          { ...turned, foot: other, x: at(step), z: turned.z + FEET_APART },
+          { ...turned, x: at(step) },
+        ],
+        // (Set from the foot that stays: the heel the other one turns on is where it stands.)
+        fromFoot: other,
+        caption: sign === RIGHT ? 'turnRight90StepAlone' : 'turnLeft90StepAlone',
+      },
+      { recall: 'heel', caption: 'recallBase' },
+      { dog: 'sit', caption: 'finishSit' },
+      { wait: 1, caption: 'basePosition' },
+      { walk: 3, caption: 'leaveTurn' },
+    ],
+  }
+}
+
+/**
  * 1-126 Um die Pylone – Seitenwechsel hinten (VDH 2027, S. 45): "Beim zweiten Kreuzen der
  * Mittellinie beginnt der Hund aus der Bewegung heraus einen Seitenwechsel hinter dem HF" — the
  * course round the two cones (`roundTwoCones`), the dog going behind the handler to their right
@@ -1255,6 +1303,8 @@ export const higherExercises2027 = (dog: DogLeg): Exercise[] => [
   Z036_2027,
   R1_116_2027,
   R2_234_2027,
+  stayStepTurnStepRecall2027('2-230', RIGHT, dog),
+  stayStepTurnStepRecall2027('2-231', LEFT, dog),
   R1_126_2027,
   r2233_2027(dog),
   r3302_2027(dog),

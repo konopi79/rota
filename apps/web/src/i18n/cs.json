@@ -525,6 +525,8 @@
       "turnRight90Alone": "Pes zůstává, psovod se otočí vpravo o 90°",
       "turnLeft90Alone": "Pes zůstává, psovod se otočí vlevo o 90°",
       "oneStepAlone": "Psovod udělá jeden krok vpřed",
+      "turnRight90StepAlone": "Psovod natočí nohy o 90° vpravo, udělá krok novým směrem a zastaví se",
+      "turnLeft90StepAlone": "Psovod natočí nohy o 90° vlevo, udělá krok novým směrem a zastaví se",
       "stayRunOff": "Psovod dá psovi povel zůstat a odbíhá od něj",
       "runOff": "Psovod běží od psa přímým směrem, zády k němu",
       "recallRunning": "Za běhu psovod psa přivolá – pes okamžitě vyběhne za ním",
