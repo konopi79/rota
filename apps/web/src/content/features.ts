@@ -42,7 +42,7 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
         points: [
           'Třídy RO-Z až RO3 a RO-V s kartami a pravidly řádu 2027: nové karty, změněné cviky, doplňková karta D0e, změny strany vedení podle řádu a každá karta na parkuru nejvýš dvakrát.',
           'Animace všech cviků řádu 2027 se psem vlevo i vpravo a procházení parkuru v animaci.',
-          'Nové karty mají vlastní grafiku ROTA, než vyjdou oficiální české karty; popisy nových a změněných cviků jsou náš překlad německého textu.',
+          'Dokud nevyjdou oficiální české karty, mají nové karty vlastní grafiku ROTA; popisy nových a změněných cviků jsme přeložili z němčiny sami.',
         ],
       },
       {
