@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test'
 import { geometry as layout, getCard, type Card } from '@rota/content'
 
 import { ExercisePlayer, type Exercise } from '../figures/exercise'
-import { EXERCISES, RIGHT_EXERCISES } from '../figures/exercises'
+import { EXERCISES, EXERCISES_2027, RIGHT_EXERCISES } from '../figures/exercises'
 import { FCI_EXERCISES, FCI_RIGHT_EXERCISES } from '../figures/fci-exercises'
 import { CONE } from '../figures/fci-leave-exercises'
 
@@ -113,6 +113,72 @@ describe('course plan geometry matches the animations (R14)', () => {
         ...(own.cones ?? []).map((c) => ({ kind: 'cone', ahead: c.z, side: c.x })),
         ...(own.bowls ?? []).map((c) => ({ kind: 'bowl', ahead: c.z, side: c.x })),
         ...(own.jumps ?? []).map((c) => ({ kind: 'jump', ahead: c.z, side: c.x })),
+      ])
+      const planned = sorted(card.geometry?.props ?? [])
+      expect([e.code, planned.map((p) => p.kind)]).toEqual([e.code, animated.map((p) => p.kind)])
+      planned.forEach((p, i) => {
+        const a = animated[i] as (typeof animated)[number]
+        const off = Math.hypot(p.ahead - a.ahead, p.side - a.side)
+        expect([e.code, i, off < 0.1]).toEqual([e.code, i, true])
+      })
+    }
+  })
+})
+
+describe('2027 course plan geometry matches the animations (R22b)', () => {
+  // Each card 2027 animates its own way, once (2026's cards keep their geometry, checked above).
+  const exercises = EXERCISES_2027.filter(
+    (e, i) => EXERCISES_2027.findIndex((f) => f.code === e.code) === i,
+  )
+
+  test('the card before the team for a change of direction or a side step (§3.6)', () => {
+    for (const e of exercises) {
+      const card = getCard('CZ-2027', e.code) as Card
+      const { own } = ownPart(e)
+      expect([e.code, card.placement === 'B']).toEqual([e.code, own.card === 'ahead'])
+    }
+  })
+
+  test('the turn, where the team walks off, and where the card stands', () => {
+    for (const e of exercises) {
+      const card = getCard('CZ-2027', e.code) as Card
+      const g = card.geometry ?? {}
+      const { left, ahead, turn } = measure(e)
+      const turns = layout.turnsOf(card)
+      expect([e.code, mod360(turn)]).toEqual([e.code, mod360(turns[0] ?? 0)])
+      const near = turns.some((t) => t % 360) ? 0.7 : 0.3
+      expect([
+        e.code,
+        'exit',
+        +ahead.toFixed(2),
+        g.exit ?? 0,
+        Math.abs(ahead - (g.exit ?? 0)) < near,
+      ]).toEqual([e.code, 'exit', +ahead.toFixed(2), g.exit ?? 0, true])
+      expect([
+        e.code,
+        'side',
+        +left.toFixed(2),
+        g.exitSide ?? 0,
+        Math.abs(left - (g.exitSide ?? 0)) < near,
+      ]).toEqual([e.code, 'side', +left.toFixed(2), g.exitSide ?? 0, true])
+      const own =
+        e.cardAt && g.card && Math.hypot(g.card.ahead - e.cardAt.z, g.card.side - e.cardAt.x)
+      expect([e.code, !!g.card, (own ?? 0) < 0.1]).toEqual([e.code, !!e.cardAt, true])
+    }
+  }, 120_000)
+
+  test('the same cones, bowls and jumps in the same places', () => {
+    const sorted = (props: { kind: string; ahead: number; side: number }[]) =>
+      [...props].sort((a, b) => a.ahead - b.ahead || a.side - b.side)
+    for (const e of exercises) {
+      const card = getCard('CZ-2027', e.code) as Card
+      const { own } = ownPart(e)
+      const off = own.stopAt ?? { x: 0, z: 0 }
+      const at = (c: { x: number; z: number }) => ({ ahead: c.z + off.z, side: c.x + off.x })
+      const animated = sorted([
+        ...(own.cones ?? []).map((c) => ({ kind: 'cone', ...at(c) })),
+        ...(own.bowls ?? []).map((c) => ({ kind: 'bowl', ...at(c) })),
+        ...(own.jumps ?? []).map((c) => ({ kind: 'jump', ...at(c) })),
       ])
       const planned = sorted(card.geometry?.props ?? [])
       expect([e.code, planned.map((p) => p.kind)]).toEqual([e.code, animated.map((p) => p.kind)])

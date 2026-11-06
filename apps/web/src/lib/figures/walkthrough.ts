@@ -22,8 +22,14 @@ import {
   type Phase,
   type Pose,
 } from './exercise'
-import { animationSetOf, type AnimationSet } from './animated'
-import { exercisesOf, RIGHT_PARTS, RIGHT_SIDE_CARDS } from './exercises'
+import { animationSetOf, rightSideCards, type AnimationSet } from './animated'
+import {
+  exercisesOf,
+  FOLLOW_UP_PARTS_2027,
+  LEAVE_PARTS_2027,
+  RIGHT_PARTS,
+  RIGHT_PARTS_2027,
+} from './exercises'
 import { FCI_EXERCISES, FCI_RIGHT_EXERCISES } from './fci-exercises'
 import {
   CONE,
@@ -136,11 +142,18 @@ export function animationOf(
 ): Exercise | undefined {
   const right = entry.side === 'right'
   if (ruleset === 'FCI') return fciAnimationOf(entry, next)
-  if (right && !RIGHT_SIDE_CARDS.includes(entry.code)) return undefined
+  if (right && !rightSideCards(ruleset).includes(entry.code)) return undefined
   // A leave card and its follow-up each play their own part, the dog left in between.
-  const parts = (right ? RIGHT_PARTS : [...LEAVE_PARTS, ...FOLLOW_UP_PARTS]).filter(
-    (e) => e.code === entry.code,
-  )
+  const in2027 = ruleset === 'CZ-2027'
+  const parts = (
+    right
+      ? in2027
+        ? RIGHT_PARTS_2027
+        : RIGHT_PARTS
+      : in2027
+        ? [...LEAVE_PARTS_2027, ...FOLLOW_UP_PARTS_2027]
+        : [...LEAVE_PARTS, ...FOLLOW_UP_PARTS]
+  ).filter((e) => e.code === entry.code)
   if (parts.length) return parts.find((e) => e.supplementary === entry.supplementary) ?? parts[0]
   const variants = exercisesOf(ruleset, right).filter((e) => e.code === entry.code)
   if (entry.supplementary) return variants.find((e) => e.supplementary === entry.supplementary)
@@ -179,7 +192,8 @@ export { canWalkThrough } from './animated'
 function inWalkthrough(step: ExerciseStep, at: Pose, local: (p: Pose) => Pose): ExerciseStep {
   const place = (p: { x: number; z: number }) => local(onField(at, { ...p, heading: 0 }))
   if ('sendTo' in step) return { ...step, sendTo: place(step.sendTo) }
-  if ('walk' in step && step.dogRuns) {
+  // (On a walk, FCI 417 / 418, or round cones, 2027's 1-126.)
+  if (('walk' in step || 'course' in step) && step.dogRuns) {
     const via = step.dogRuns.via.map((p) => ({
       ...place(p),
       heading: p.heading + local(at).heading,
@@ -372,7 +386,9 @@ export function walkthroughOf(deck: Deck, cls: RoClass, start = 0): Walkthrough 
     // (the author) — past the jump on the way first, along it.
     const before = i > from ? exercises[i - 1]! : undefined
     const aside =
-      before && LEAVE_PARTS.includes(before) && !!card(before.code).geometry?.followUp?.sides
+      before &&
+      (LEAVE_PARTS.includes(before) || LEAVE_PARTS_2027.includes(before)) &&
+      !!card(before.code).geometry?.followUp?.sides
     const jump = aside ? before.jumps?.[0] : undefined
     if (jump) steps.push({ walk: jump.z + geometry.PAST_THE_JUMP, caption: leaving ?? 'toCard' })
     steps.push({

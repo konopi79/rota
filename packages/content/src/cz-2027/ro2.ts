@@ -224,25 +224,25 @@ export const RO2_2027: ClassContent2027 = {
         // "Er geht hinter dem HF wieder in die vorherige Fußposition."
         equipment: ['cones'],
       },
-      // By hand, the simplest layout "gerade im Laufweg": the cone 1.5 m past the work area
-      // (which ends about at the card, 0.45 m ahead), straight ahead. The dog's way kept clear
-      // as the team's (as FCI 417/418, a cone 1–2 m off): up the left of the cone, round it
-      // clockwise, straight back to the handler's right, behind the handler into heel. The
-      // team then walks on past the cone with it on the handler's side, 1 m off (the text does
-      // not say how the team goes on; this keeps the dog clear of the cone).
+      // The simplest layout "gerade im Laufweg", the cone straight ahead. The dog's way kept clear
+      // as the team's (`via`): up the left of the cone, round it clockwise, straight back to the
+      // handler's right, behind the handler into heel, the team then on past the cone.
+      // Read off its animation: the handler stops 0.3 m left in the square (the dog comes back
+      // between them and the card), the cone 2 m straight ahead of them, and the team on past it
+      // in a bend 1 m to the left.
       geometry: {
-        props: [{ kind: 'cone', ahead: 2, side: 0 }],
+        props: [{ kind: 'cone', ahead: 2, side: 0.3 }],
         via: [
-          [2, 0.6],
-          [2.6, 0],
-          [2, -0.6],
-          [0, -0.5],
-          [-0.4, 0],
-          [0, 0.4],
-          [1, 1],
+          [2, 0.9],
+          [2.6, 0.3],
+          [2, -0.3],
+          [0, -0.2],
+          [-0.4, 0.3],
+          [0, 0.7],
+          [1.5, 1.3],
         ],
-        exit: 2.6,
-        exitSide: 1,
+        exit: 1.7,
+        exitSide: 1.3,
       },
       image: '2-233',
       sourcePage: 53,

@@ -376,8 +376,13 @@ export const canWalkThrough = (deck: Deck): boolean => {
     return false
   }
   const fci = deck.options.classId === 'FCI-ROB'
-  const animated = fci ? FCI_ANIMATED_CARDS : ANIMATED_CARDS
-  const right = fci ? FCI_RIGHT_SIDE_CARDS : RIGHT_SIDE_CARDS
+  // (2027's: the 2026 cards it plays as they were, and its own.)
+  const animated = fci
+    ? FCI_ANIMATED_CARDS
+    : ruleset === 'CZ-2027'
+      ? [...ANIMATED_CARDS, ...ANIMATED_IN_2027]
+      : ANIMATED_CARDS
+  const right = ruleset ? rightSideCards(animationSetOf(ruleset)) : RIGHT_SIDE_CARDS
   return (
     deck.layout?.rounds.length === 1 &&
     deck.entries.every(

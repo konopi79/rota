@@ -1367,6 +1367,10 @@ export class ExercisePlayer {
   private static readonly PAST_THE_STAND = 0.5
   private static readonly DRIFT_OVER = 0.6
   private static readonly DRIFT_PAST = 0.3
+  /** …unless going over at once keeps this far from the stand (a dog's and the stand's half). */
+  private static readonly CLEAR_GOING_OVER = 0.8
+  /** Past a stand across the way the team goes over in at least this much, metres. */
+  private static readonly OVER_PAST_STAND = 0.6
   /**
    * …only this little aside, metres: further (beside the way in after a turn about) the team
    * went a third over past the card and the rest nearly sideways (FCI 115, 406 after 313 and
@@ -1378,7 +1382,7 @@ export class ExercisePlayer {
    * How far on the team is past the stands beside its way ahead on the side `side` (1 left, −1
    * right; team's frame, metres; 0: none).
    */
-  private pastStand(side: number): number {
+  private pastStand(side: number, before = Infinity, to?: { x: number; z: number }): number {
     const size = cardFootprint(this.exercise)
     let past = 0
     for (const stand of this.stands) {
@@ -1386,11 +1390,35 @@ export class ExercisePlayer {
         inTeam(this.team, { ...p, heading: 0 }),
       )
       if (!ends.some((p) => p.x * side > 0)) continue
+      // (Not one past where the team is going over to — the next card's own, beyond it — nor one
+      // going over at once keeps well clear of: waiting for those, the team went all but straight
+      // and over in a jog at the end, the author.)
+      if (Math.min(...ends.map((p) => p.z)) >= before) continue
+      const evenly = (p: { x: number; z: number }) =>
+        to && to.z > 0 ? to.x * Math.min(1, Math.max(0, p.z / to.z)) : 0
+      if (to && ends.every((p) => Math.abs(p.x - evenly(p)) >= ExercisePlayer.CLEAR_GOING_OVER))
+        continue
       if (Math.min(...ends.map((p) => Math.abs(p.x))) > ExercisePlayer.BESIDE_THE_WAY) continue
       const far = Math.max(...ends.map((p) => p.z))
       if (far > -0.3) past = Math.max(past, far + ExercisePlayer.PAST_THE_STAND)
     }
     return past
+  }
+
+  /**
+   * How far ahead the far end of a stand lies that is across the way over to `to` (team's frame;
+   * `null`: none) — between where the team is and the line it goes over to.
+   */
+  private standAcross(to: { x: number; z: number }): number | null {
+    const [lo, hi] = [Math.min(0, to.x), Math.max(0, to.x)]
+    const depth = cardFootprint(this.exercise).depth
+    let far: number | null = null
+    for (const stand of this.stands) {
+      const p = inTeam(this.team, { ...stand, heading: 0 })
+      if (p.z > 0 && p.z < to.z - 1 && p.x > lo - 0.3 && p.x < hi + 0.3 && Math.abs(p.x) < 0.6)
+        far = Math.max(far ?? 0, p.z + depth)
+    }
+    return far
   }
 
   constructor(private readonly exercise: Exercise) {
@@ -1446,7 +1474,18 @@ export class ExercisePlayer {
       across! > ExercisePlayer.FAR_OFF &&
       along! - (ExercisePlayer.JOIN + across!) < ExercisePlayer.WALK_IN + 0.9
     const walkIn = step.slant || shortAside ? braking : Math.max(ExercisePlayer.WALK_IN, braking)
-    const last = Math.max(0.3, Math.min(walkIn, ahead - 0.5))
+    // A stand across the way over (out of 1-115's side step past its card ahead, towards a card a
+    // little to the other side): straight on past it first, over only then — going over at once
+    // the handler went through it.
+    const standFar = this.standAcross(to)
+    const last = Math.max(
+      0.3,
+      Math.min(
+        walkIn,
+        ahead - 0.5,
+        standFar === null ? Infinity : ahead - standFar - ExercisePlayer.OVER_PAST_STAND,
+      ),
+    )
     const end = { x: to.x - last * Math.sin(heading), z: to.z - last * Math.cos(heading), heading }
     // Onto the plan's line first (however the last exercise left the team: an arc's end, beside
     // the way in), then over to where the exercise starts, a little aside of it (`stopAt`), in
@@ -1524,11 +1563,18 @@ export class ExercisePlayer {
       step.along &&
       through.length === 1 &&
       Math.abs(end.heading) < 0.2 &&
-      Math.abs(end.x) < ExercisePlayer.DRIFT_ASIDE
+      (Math.abs(end.x) < ExercisePlayer.DRIFT_ASIDE || standFar !== null)
     ) {
-      const past = Math.min(this.pastStand(Math.sign(end.x)), end.z - ExercisePlayer.DRIFT_OVER)
-      if (past > 0.3)
-        through.unshift({ x: end.x * ExercisePlayer.DRIFT_PAST, z: past, heading: end.heading })
+      const past =
+        standFar !== null
+          ? Math.min(standFar, end.z - ExercisePlayer.DRIFT_PAST)
+          : Math.min(
+              this.pastStand(Math.sign(end.x), end.z - ExercisePlayer.DRIFT_OVER, end),
+              end.z - ExercisePlayer.DRIFT_OVER,
+            )
+      // (Past a stand across the way straight on, over only then.)
+      const drifted = standFar !== null ? 0 : ExercisePlayer.DRIFT_PAST
+      if (past > 0.3) through.unshift({ x: end.x * drifted, z: past, heading: end.heading })
     }
     const { caption, pace } = step
     if (step.flipped !== undefined) this.flipped = step.flipped
@@ -2307,7 +2353,11 @@ export class ExercisePlayer {
         this.footworkOffset = {
           x: c * dx - s * dz,
           z: s * dx + c * dz,
-          heading: angleTo(over.heading, this.team.heading),
+          // (Not the way a foot still turning points: out of a turn on the spot into steps, Z-036,
+          // the team came out of them turned 13° on.)
+          heading: feet?.some((f) => f.swing !== null)
+            ? 0
+            : angleTo(over.heading, this.team.heading),
         }
       }
       // The body moves from where it stood to where the feet will have taken it, setting off

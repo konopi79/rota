@@ -180,7 +180,8 @@ export const RO_Z_2027: ClassContent2027 = {
       sequencing: {},
       // By hand from 2026 1-116 (`exit: -0.3`): the two steps after the first turn about are
       // walked back along the way in (~0.5 m each, as Z-024), so the team ends ~1 m further back.
-      geometry: { exit: -1.3 },
+      // (Read off its animation: the two steps and the turns about end 1 m back.)
+      geometry: { exit: -1 },
       image: 'z-036',
       sourcePage: 38,
     },

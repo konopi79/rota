@@ -1187,6 +1187,9 @@ const r1126_2027 = (dog: DogLeg): Exercise => {
       ]
   return {
     code: '1-126',
+    // (From the right the cones stand further from the handler: they stop that much further left,
+    // so the cones and the card are where the plan has them, as FCI's figures from the right.)
+    ...(right && { stopAt: { x: roundTwoCones().cones[0]!.x - c1.x, z: 0 } }),
     cones: course.cones,
     cardAt: { x: c1.x, z: 0.5 },
     steps: [

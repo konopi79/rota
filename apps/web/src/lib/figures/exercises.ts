@@ -157,6 +157,28 @@ export const RIGHT_EXERCISES: Exercise[] = EXERCISES.filter((e) =>
 /** The leave cards' and the follow-ups' parts with the dog on the right (a course walked through). */
 export const RIGHT_PARTS: Exercise[] = [...LEAVE_PARTS, ...FOLLOW_UP_PARTS].map(fromTheRight)
 
+/**
+ * The parts 2027 plays (a course walked through): 2026's, and 3-329's — 3-301's with the dog left
+ * standing. (2026's 3-302 recall is not a 2027 card: after 3-301 / 3-314 / 3-324 comes 2-214,
+ * whose part calls the dog in from wherever it was left.)
+ */
+const L3_329: Exercise = {
+  ...LEAVE_PARTS.find((e) => e.code === '3-301')!,
+  code: '3-329',
+  steps: [
+    { walk: 3.5, caption: 'approach' },
+    { stop: true, caption: 'stopStand' },
+    { wait: 1, caption: 'standHold' },
+    { dogStays: true, caption: 'stayStand' },
+    { walk: 3, caption: 'leaveDog' },
+  ],
+}
+export const LEAVE_PARTS_2027: Exercise[] = [...LEAVE_PARTS, L3_329]
+export const FOLLOW_UP_PARTS_2027: Exercise[] = FOLLOW_UP_PARTS.filter((e) => e.code !== '3-302')
+export const RIGHT_PARTS_2027: Exercise[] = [...LEAVE_PARTS_2027, ...FOLLOW_UP_PARTS_2027].map(
+  fromTheRight,
+)
+
 // ——— 2027 (plan R22b) ———
 
 /** The exercises the 2027 regulation does differently, in card order. */
