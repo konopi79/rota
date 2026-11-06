@@ -622,7 +622,7 @@ gesture for audio).
 - [x] Speech on the deck screen: setup option (remembered) + toggle in the deck header, `cs-CZ` voice (`lib/speech.ts`; `hlas=1` in the URL)
 - [x] Tried on an iPhone (home-screen app, speech included) by the author, 2026-09-27
 - [x] In the course walkthrough too (a handler's feedback, 2026-11-05): each station read as the team sets off to it — once the exercise before is done, so it never talks over it (the author: "Další karta 3, …", the first "Start. Karta 1, …"), a CNDC station whole, "Cíl. Hotovo." on arrival; a speaker toggle in the bottom bar, on with the course's `hlas`, kept in the URL (`walkthroughAnnouncement`, `deckScreen` shared with the deck). The walkthrough speaks without a tap, which iOS allows only after a page has spoken from one: the "Projít v animaci" tap speaks a silent utterance (`unlockSpeech`)
-- [ ] Walkthrough voice tried on an iPhone (Safari and the home-screen app)
+- [x] Walkthrough voice tried on an iPhone by the author after the deploy (2026-11-05): switched on in the course's setup or with the speaker button, it reads the cards on its own
 
 ### R10 — FCI field layout
 
