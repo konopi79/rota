@@ -1,17 +1,21 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { getClass, type RoClass } from '@rota/content'
 
+import { listedClassIds } from '../classes'
 import {
   adoptCustomCourse,
+  defaultRegulation,
   defaultSetup,
   dismissInstallHint,
   isInstallHintDismissed,
   loadCustomCourse,
+  loadRegulation,
   loadSetup,
   quizStatsSnapshot,
   resetQuizStats,
   saveCustomCourse,
   saveQuizStats,
+  saveRegulation,
   saveSetup,
 } from '../storage'
 
@@ -154,5 +158,33 @@ describe('custom course storage', () => {
       strict: false,
     })
     expect(loadCustomCourse(ro1).cards).toEqual([{ code: 'Z-001' }])
+  })
+})
+
+describe('national regulation (plan R23)', () => {
+  test('2026 until April 2027, then 2027', () => {
+    expect(defaultRegulation(new Date('2026-11-06'))).toBe('CZ')
+    expect(defaultRegulation(new Date('2027-03-31T12:00:00Z'))).toBe('CZ')
+    expect(defaultRegulation(new Date('2027-04-01T12:00:00Z'))).toBe('CZ-2027')
+  })
+
+  test('a choice is remembered', () => {
+    expect(loadRegulation()).toBe(defaultRegulation())
+    saveRegulation('CZ-2027')
+    expect(loadRegulation()).toBe('CZ-2027')
+    saveRegulation('CZ')
+    expect(loadRegulation()).toBe('CZ')
+  })
+
+  test("the home page lists the chosen regulation's classes and FCI-ROB", () => {
+    expect(listedClassIds('CZ')).toEqual(['RO-Z', 'RO1', 'RO2', 'RO3', 'RO-V', 'FCI-ROB'])
+    expect(listedClassIds('CZ-2027')).toEqual([
+      'RO-Z-2027',
+      'RO1-2027',
+      'RO2-2027',
+      'RO3-2027',
+      'RO-V-2027',
+      'FCI-ROB',
+    ])
   })
 })

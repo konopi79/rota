@@ -6,6 +6,10 @@
   },
   "home": {
     "chooseClass": "Vyber třídu",
+    "regulation": "Národní zkušební řád",
+    "regulation2026": "2026",
+    "regulation2027": "2027 – připravovaný",
+    "regulation2027Hint": "Řád platný od dubna 2027 podle německého řádu VDH 2027, který český řád přebírá. Než vyjde jeho český text, jsou popisy nových a změněných cviků náš překlad a nové karty naše vlastní.",
     "comingSoon": "Připravujeme",
     "cardCount_one": "{{count}} karta",
     "cardCount_few": "{{count}} karty",

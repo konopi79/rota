@@ -3,15 +3,29 @@
 import { getClass } from '@rota/content'
 import { ChevronRight } from 'lucide-react'
 import Link from 'next/link'
+import { useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { FeedbackLink } from '@/components/feedback'
 import { InstallHint, MovedHint } from '@/components/pwa'
 import { Button } from '@/components/ui/button'
-import { classSlug, LISTED_CLASS_IDS } from '@/lib/classes'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { classSlug, listedClassIds } from '@/lib/classes'
+import {
+  loadRegulation,
+  saveRegulation,
+  subscribeStorage,
+  type NationalRegulation,
+} from '@/lib/storage'
 
 export default function HomePage() {
   const { t } = useTranslation()
+  // The static HTML lists the 2026 classes; in the browser the remembered choice takes over.
+  const regulation = useSyncExternalStore(
+    subscribeStorage,
+    loadRegulation,
+    (): NationalRegulation => 'CZ',
+  )
 
   return (
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-8 px-6 py-12">
@@ -25,8 +39,24 @@ export default function HomePage() {
 
       <section className="space-y-3">
         <h2 className="text-lg font-semibold">{t('home.chooseClass')}</h2>
+        <div className="space-y-2">
+          <p className="text-muted-foreground text-sm">{t('home.regulation')}</p>
+          <ToggleGroup
+            variant="outline"
+            size="lg"
+            className="w-full *:h-11 *:flex-1 *:text-base"
+            value={[regulation]}
+            onValueChange={(v) => v[0] && saveRegulation(v[0] as NationalRegulation)}
+          >
+            <ToggleGroupItem value="CZ">{t('home.regulation2026')}</ToggleGroupItem>
+            <ToggleGroupItem value="CZ-2027">{t('home.regulation2027')}</ToggleGroupItem>
+          </ToggleGroup>
+          {regulation === 'CZ-2027' && (
+            <p className="text-muted-foreground text-sm">{t('home.regulation2027Hint')}</p>
+          )}
+        </div>
         <div className="grid gap-2">
-          {LISTED_CLASS_IDS.map((id) => {
+          {listedClassIds(regulation).map((id) => {
             const cls = getClass(id)
             const label = t(`classes.${id}`)
             if (!cls) {

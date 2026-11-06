@@ -1,4 +1,11 @@
-import { CLASS_IDS, EQUIPMENT, getCard, type ClassId, type RoClass } from '@rota/content'
+import {
+  CLASS_IDS,
+  CZ_2027_RULESET,
+  EQUIPMENT,
+  getCard,
+  type ClassId,
+  type RoClass,
+} from '@rota/content'
 import { z } from 'zod/v4'
 
 import type { QuizStats } from './quiz'
@@ -48,6 +55,8 @@ const storedSchema = z.object({
   /** The last hand-made course per class. */
   customCourses: z.partialRecord(z.enum(CLASS_IDS), customCourseSchema).optional(),
   installHintDismissed: z.boolean().optional(),
+  /** The national regulation chosen on the home page (plan R23); missing = by the date. */
+  regulation: z.enum(['CZ', 'CZ-2027']).optional(),
   /** Quiz answers per card (`lib/quiz.ts` `statKey`). */
   quiz: z
     .record(z.string(), z.object({ right: z.number().int(), wrong: z.number().int() }))
@@ -151,6 +160,22 @@ export function adoptCustomCourse(
   if (current.cards.length > 0 && differs && !confirmReplace()) return false
   saveCustomCourse(cls.id, course)
   return true
+}
+
+/** The national regulations to choose from (plan R23): 2026 and the coming 2027. */
+export type NationalRegulation = 'CZ' | 'CZ-2027'
+
+/**
+ * Until a choice is made: 2026 until the 2027 regulation is valid ("Spuštění řádu
+ * předpokládáme na měsíc duben 2027", the Czech club), 2027 from then on.
+ */
+export const defaultRegulation = (today = new Date()): NationalRegulation =>
+  today.toISOString().slice(0, 10) >= CZ_2027_RULESET.validFrom ? 'CZ-2027' : 'CZ'
+
+export const loadRegulation = (): NationalRegulation => read().regulation ?? defaultRegulation()
+
+export function saveRegulation(regulation: NationalRegulation): void {
+  write({ ...read(), regulation })
 }
 
 export const isInstallHintDismissed = () => read().installHintDismissed === true

@@ -24,7 +24,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'course-walkthrough'
+export const LATEST_FEATURE_ID = 'regulation-2027'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -33,7 +33,17 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
       {
         id: 'classes',
         title: 'Všechny třídy',
-        desc: 'RO-Z, RO1, RO2, RO3 a RO-V podle národního zkušebního řádu 2026 a FCI-ROB podle mezinárodního řádu FCI. Vyšší národní třídy obsahují i karty nižších tříd.',
+        desc: 'RO-Z, RO1, RO2, RO3 a RO-V podle národního zkušebního řádu 2026 nebo připravovaného 2027 a FCI-ROB podle mezinárodního řádu FCI. Vyšší národní třídy obsahují i karty nižších tříd.',
+      },
+      {
+        id: 'regulation-2027',
+        title: 'Řád 2027',
+        desc: 'Na úvodní stránce přepneš mezi národním řádem 2026 a připravovaným řádem 2027, který od dubna 2027 přebírá německý řád VDH 2027. Volba se zapamatuje; dokud ji nezměníš, platí řád 2026, od dubna 2027 řád 2027.',
+        points: [
+          'Třídy RO-Z až RO3 a RO-V s kartami a pravidly řádu 2027: nové karty, změněné cviky, doplňková karta D0e, změny strany vedení podle řádu a každá karta na parkuru nejvýš dvakrát.',
+          'Animace všech cviků řádu 2027 se psem vlevo i vpravo a procházení parkuru v animaci.',
+          'Nové karty mají vlastní grafiku ROTA, než vyjdou oficiální české karty; popisy nových a změněných cviků jsou náš překlad německého textu.',
+        ],
       },
       {
         id: 'official-cards',
