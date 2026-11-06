@@ -232,7 +232,7 @@
   },
   "card": {
     "ownCard": "Naše vlastní karta, dokud nevyjdou oficiální české karty.",
-    "vdhOriginal": "Originální karta VDH (německy, PDF)",
+    "vdhOriginal": "Originální karta VDH (německy, PDF, str. {{page}})",
     "back": "Zpět",
     "notFound": "Tuhle kartu ROTA nezná. Zkontroluj adresu, nebo ji najdi v katalogu třídy.",
     "diagram": "Nákres provedení",

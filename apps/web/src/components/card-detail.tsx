@@ -1,6 +1,6 @@
 'use client'
 
-import { RULESETS, vdhCardUrl, type Card } from '@rota/content'
+import { RULESETS, VDH_CARD_PAGES, vdhCardUrl, type Card } from '@rota/content'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -46,7 +46,8 @@ export function CardDetail({ card }: { card: Card }) {
         priority
         className="h-auto w-full rounded-md border"
       />
-      {/* A card drawn by ROTA (plan R23): the official German one, linked. */}
+      {/* A card drawn by ROTA (plan R23): the official German one, linked. The page is in the text
+          too: the PDF does not open at `#page` even in desktop Chrome (the author). */}
       {original && (
         <p className="text-muted-foreground -mt-3 text-sm">
           {t('card.ownCard')}{' '}
@@ -56,7 +57,7 @@ export function CardDetail({ card }: { card: Card }) {
             rel="noopener noreferrer"
             className="underline underline-offset-4"
           >
-            {t('card.vdhOriginal')}
+            {t('card.vdhOriginal', { page: VDH_CARD_PAGES[card.code] })}
           </a>
         </p>
       )}
