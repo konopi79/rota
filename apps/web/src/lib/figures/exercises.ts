@@ -105,8 +105,15 @@ const STEP_LATER = new Set(['Z-018', 'Z-026', '1-123', '3-327'])
  * the card on the dog's side, a jump (and its marks) on the dog's side. FCI's own scripts too
  * (`fci-exercises.ts`).
  */
-export const fromTheRight = (e: Exercise): Exercise => {
-  const own = OWN_WAY[e.code] ?? e
+export const fromTheRight = (e: Exercise): Exercise => rightOf(OWN_WAY[e.code] ?? e, e.code)
+
+/**
+ * …an exercise already built for the right leg (2027's): not replaced by 2026's script of its own
+ * for the right leg (2-230 / 2-231 played 2026's from the right).
+ */
+const builtFromTheRight = (e: Exercise): Exercise => rightOf(e, e.code)
+
+const rightOf = (own: Exercise, code: string): Exercise => {
   const card = own.cardAt ? null : (own.card ?? 'side')
   // (Back to a dog left in front, D0e, is no way round a dog at heel.)
   const goesRound = own.steps.some(
@@ -114,7 +121,7 @@ export const fromTheRight = (e: Exercise): Exercise => {
   )
   const room =
     card === 'side' ? (goesRound ? ROOM_TO_GO_ROUND : ROOM_BY_THE_CARD) : card && ROOM_AHEAD
-  const more = MORE_ROOM[e.code] ?? { x: 0, z: 0 }
+  const more = MORE_ROOM[code] ?? { x: 0, z: 0 }
   const stop = { x: (own.stopAt?.x ?? 0) + more.x, z: (own.stopAt?.z ?? 0) + more.z }
   const [first, ...rest] = own.steps
   // A jump stands on the dog's side (the dog goes over it beside the handler), so on the
@@ -127,7 +134,7 @@ export const fromTheRight = (e: Exercise): Exercise => {
     ...(own.marks && { marks: own.marks.map(mirrored) }),
     stopAt: { x: stop.x + (room ? room.x : 0), z: stop.z + (room ? room.z : 0) },
     steps:
-      first && 'walk' in first && STEP_LATER.has(e.code)
+      first && 'walk' in first && STEP_LATER.has(code)
         ? [{ ...first, walk: first.walk + A_STEP_LATER }, ...rest]
         : own.steps,
   }
@@ -315,7 +322,7 @@ export const RIGHT_EXERCISES_IN_2027: Exercise[] = [
   // (The turns' footwork depends on the dog's side: built for the dog at the right leg.)
   ...[...ROZ_EXERCISES_2027, ...higherExercises2027('right')]
     .filter((e) => rightSideCards('CZ-2027').includes(e.code))
-    .map(fromTheRight),
+    .map(builtFromTheRight),
 ].sort((a, b) => cardOrder(a.code).localeCompare(cardOrder(b.code)))
 
 /** The exercises of an animation set, with the dog at the left leg or the right one. */
