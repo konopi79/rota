@@ -311,6 +311,8 @@ export type DogRun = {
   ends: 'left' | 'right'
   /** Along its way at most this fast, m/s — easing off to let the handler go on (1-126). */
   most?: number
+  /** …only for the first this many metres of it, then on at its pace (1-126 from the right). */
+  slowFor?: number
 }
 
 /**
@@ -1299,6 +1301,7 @@ export class ExercisePlayer {
     at: Pose | null
     ends: 'left' | 'right'
     most: number
+    slowFor: number
   } | null = null
   private dogRunStep = -1
   /** Ahead of its place at heel as the team sets off: where it is, walking on slowly. */
@@ -2833,6 +2836,7 @@ export class ExercisePlayer {
         at: null,
         ends: run.ends,
         most: run.most ?? RUN_SPEED,
+        slowFor: run.slowFor ?? Infinity,
       }
       this.recalling = true
     }
@@ -2845,7 +2849,7 @@ export class ExercisePlayer {
           Math.max(0, (DOG_FALLS_BEHIND - this.dogBody.behind) / (DOG_FALLS_BEHIND / 2)),
         )
         // As fast as each bend ahead lets it — not slowing for the way's end: it runs on.
-        let most = r.most
+        let most = r.walked < r.slowFor ? r.most : RUN_SPEED
         for (let d = 0; d <= SLOWING_AHEAD && r.walked + d < r.route.length; d += 0.1) {
           const there = DOG_MAX_SPIN / Math.max(bendAhead(r.route, r.walked + d, 0.1, 0), 1e-6)
           most = Math.min(most, Math.sqrt(there * there + 2 * RECALL_BRAKING * d))

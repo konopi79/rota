@@ -209,16 +209,22 @@ export const towards = (...through: Heading[]): Course => {
  * gap, 6 the bend down, 7 past the first cone.
  */
 const STRAIGHT_BY_THE_LOOP = 0.3
+/** With the dog outside the loop, the handler this far from the second cone (at 0.55 a shoe came onto its plate). */
+const CLOSE_ROUND = 0.6
 const WIDER_LOOP = 0.1
-export const roundTwoCones = (): Course => {
+export const roundTwoCones = (dogRight = false): Course => {
   // The card just before the first cone, as the plan has it ("Karta je umístěna u prvního
-  // kuželu"): the cones 1.5 m and 3 m on, the card 1 m before the first.
-  const cone = { x: -0.65, z: 1.5 }
+  // kuželu"): the cones 1.5 m and 3 m on, the card 1 m before the first. With the dog on the
+  // right, between the handler and the cones, they stand further off: the dog as far from them
+  // as the handler is with it on the left.
+  const cone = { x: dogRight ? -CONE_CLEARANCE.dogInside : -0.65, z: 1.5 }
   const [c1, c2] = [cone, { x: cone.x, z: cone.z + CONE_GAP }]
-  // Through the gap on the circle round the second cone (a little wider than the spirals' round
-  // a cone with the dog inside: at theirs, coming out of the gap, the handler's foot went into its
-  // hind leg): nearer the first cone, the dog clear of the second.
-  const r = CONE_CLEARANCE.dogInside + WIDER_LOOP
+  // Through the gap on the circle round the second cone: with the dog on the left, inside the
+  // loop, a little wider than the spirals' round a cone with the dog inside (at theirs, coming out
+  // of the gap, the handler's foot went into its hind leg), so nearer the first cone, the dog
+  // clear of the second; with the dog on the right, outside the loop and between the handler and
+  // the first cone in the gap, close round the second.
+  const r = dogRight ? CLOSE_ROUND : CONE_CLEARANCE.dogInside + WIDER_LOOP
   const middle = { x: c1.x, z: c2.z - r, heading: -Math.PI / 2 }
   const round = arc(c2.x, c2.z, r, -Math.PI / 2, (-5 * Math.PI) / 2)
   // (Straight a moment either side of the loop: from a bend right into the loop left at once
@@ -226,9 +232,8 @@ export const roundTwoCones = (): Course => {
   const before = { ...middle, x: middle.x + STRAIGHT_BY_THE_LOOP }
   const after = { x: middle.x - STRAIGHT_BY_THE_LOOP, z: middle.z }
   // Then at once down round the first cone ("kolem prvního kuželu", the author: in a wide bend
-  // 1.5 m off it was not), the dog going behind the handler meanwhile — in their track round the
-  // bend, up on their right along the cone.
-  const turn = 0.75
+  // 1.5 m off it was not).
+  const turn = dogRight ? 0.65 : 0.75
   const down = { x: after.x - turn, z: after.z - turn }
   return course(
     [

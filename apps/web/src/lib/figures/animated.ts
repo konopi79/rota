@@ -149,7 +149,7 @@ export const RIGHT_SIDE_CARDS: readonly string[] = ANIMATED_CARDS.filter(
  */
 export const RIGHT_SIDE_NEW_IN_2027: readonly string[] = [
   ...['1-127', '1-128', '1-129', '1-130'],
-  ...['2-233', '3-302', '3-328', '3-329'],
+  ...['1-126', '2-233', '3-302', '3-328', '3-329'],
 ]
 
 /** The cards of an animation set played with the dog at the right leg as well. */

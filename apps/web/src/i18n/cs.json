@@ -536,6 +536,8 @@
       "twoConesIn": "Tým míjí kartu a první kužel po své pravé straně a projde středem mezi kužely",
       "twoConesRound": "Tým obejde druhý kužel, pes uvnitř oblouku",
       "twoConesChange": "Při druhém průchodu středem pes za pohybu vymění stranu za psovodem",
+      "twoConesRoundOutside": "Tým obejde druhý kužel, pes vně oblouku",
+      "leaveConesLeftLeg": "Tým odchází kolem prvního kuželu, který má nyní po své pravé straně – pes jde u levé nohy",
       "leaveRightCones": "Tým odchází kolem prvního kuželu, který má nyní po své pravé straně – pes jde u pravé nohy",
       "sendRoundConeBack": "Psovod vyšle psa oběhnout kužel po směru hodinových ručiček – pes se bez zastavení vrátí a za psovodem zpět k levé noze",
       "sendRoundConeBackRight": "Psovod vyšle psa oběhnout kužel proti směru hodinových ručiček – pes se bez zastavení vrátí a za psovodem zpět k pravé noze",

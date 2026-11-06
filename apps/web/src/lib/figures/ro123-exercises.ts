@@ -1162,41 +1162,60 @@ const stayStepTurnStepRecall2027 = (code: string, sign: 1 | -1, dog: DogLeg): Ex
  * course round the two cones (`roundTwoCones`), the dog going behind the handler to their right
  * on the way back through the gap. The card just before the first cone, on its line.
  */
-const R1_126_2027: Exercise = (() => {
-  const course = roundTwoCones()
+const r1126_2027 = (dog: DogLeg): Exercise => {
+  const right = dog === 'right'
+  const course = roundTwoCones(right)
+  const c1 = course.cones[0]!
+  const gapZ = course.path.at(course.starts[4]!).z
+  // The dog's own way from the second crossing: on the left it eases off between the cones, lets
+  // the handler go on round the bend and comes on a tighter line from the far cone towards the
+  // near one, up into the right leg — not out round them, nor past their left side (the author:
+  // "pes by se mohl … přibrzdit a vykružovat … těsnější linii"); on the right, the handler
+  // turning down towards it, it all but stops in the gap ("zastavit (nebo téměř zastavit)") till
+  // they have turned down ahead of it, then trots across behind them into the left leg, outside
+  // the bend.
+  const via = right
+    ? [
+        { x: c1.x - 0.3, z: gapZ - 0.42, heading: -Math.PI / 2 },
+        { x: c1.x - 0.9, z: gapZ - 0.8, heading: -2.4 },
+        { x: c1.x - 1.4, z: c1.z - 0.4, heading: Math.PI },
+      ]
+    : [
+        { x: -0.9, z: 2.37, heading: -Math.PI / 2 },
+        { x: -1.2, z: 1.95, heading: -2.6 },
+        { x: -1.27, z: 1.4, heading: Math.PI },
+      ]
   return {
     code: '1-126',
     cones: course.cones,
-    cardAt: { x: course.cones[0]!.x, z: 0.5 },
+    cardAt: { x: c1.x, z: 0.5 },
     steps: [
       { walk: 2.5, caption: 'approachCones' },
       { course, parts: [0, 3], caption: 'twoConesIn' },
-      { course, parts: [3, 4], caption: 'twoConesRound' },
-      // From the second crossing the dog eases off between the cones, lets the handler go on
-      // round the bend and comes on the way the team turns on a tighter line, from the far cone
-      // towards the near one, up into the right leg — not out round them, nor past their left
-      // side (the author: "pes by se mohl … přibrzdit a vykružovat … těsnější linii").
+      { course, parts: [3, 4], caption: right ? 'twoConesRoundOutside' : 'twoConesRound' },
       {
         course,
         parts: [4, 6],
         dogRuns: {
-          via: [
-            { x: -0.9, z: 2.37, heading: -Math.PI / 2 },
-            { x: -1.2, z: 1.95, heading: -2.6 },
-            { x: -1.27, z: 1.4, heading: Math.PI },
-          ],
-          ends: 'right',
-          most: 0.6,
+          via,
+          ends: right ? 'left' : 'right',
+          most: right ? 0.25 : 0.6,
+          ...(right && { slowFor: 0.6 }),
         },
         caption: 'twoConesChange',
       },
-      // Past the cone the handler slows till the dog is at the right leg, then on at the pace
+      // Past the cone the handler slows till the dog is at its new leg, then on at the pace
       // (as FCI 417 / 418).
-      { walk: 10, pace: 'slow', untilDogJoins: true, caption: 'leaveRightCones' },
-      { walk: 2, pace: 'normal', caption: 'leaveRightCones' },
+      {
+        walk: 10,
+        pace: 'slow',
+        untilDogJoins: true,
+        caption: right ? 'leaveConesLeftLeg' : 'leaveRightCones',
+      },
+      { walk: 2, pace: 'normal', caption: right ? 'leaveConesLeftLeg' : 'leaveRightCones' },
     ],
   }
-})()
+}
 
 /**
  * 2-233 Schicken um die Pylone – zurück in die Fußposition (VDH 2027, S. 53): "Das Team … hält an,
@@ -1305,7 +1324,7 @@ export const higherExercises2027 = (dog: DogLeg): Exercise[] => [
   R2_234_2027,
   stayStepTurnStepRecall2027('2-230', RIGHT, dog),
   stayStepTurnStepRecall2027('2-231', LEFT, dog),
-  R1_126_2027,
+  r1126_2027(dog),
   r2233_2027(dog),
   r3302_2027(dog),
   R3_328_2027,
