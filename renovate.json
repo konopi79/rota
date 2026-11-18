@@ -3,13 +3,19 @@
   "description": "Every push to main deploys rotapp.cz, so nothing is automerged — each PR waits for green CI and a human.",
   "extends": ["config:recommended", ":semanticCommitsDisabled"],
   "timezone": "Europe/Prague",
-  "schedule": ["before 6am on monday"],
+  "schedule": ["on monday"],
   "labels": ["dependencies"],
   "rangeStrategy": "bump",
   "automerge": false,
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": {
+    "labels": ["security"],
+    "schedule": ["at any time"],
+    "prCreation": "immediate"
+  },
   "lockFileMaintenance": {
     "enabled": true,
-    "schedule": ["before 6am on the first day of the month"]
+    "schedule": ["on the first day of the month"]
   },
   "packageRules": [
     {
@@ -32,6 +38,11 @@
       "matchPackageNames": ["tailwindcss", "@tailwindcss/**", "prettier-plugin-tailwindcss"]
     },
     {
+      "description": "The exercise animations: three.js and its React renderer move together.",
+      "groupName": "three.js",
+      "matchPackageNames": ["three", "@types/three", "@react-three/**"]
+    },
+    {
       "groupName": "Serwist",
       "matchPackageNames": ["serwist", "@serwist/**"]
     },
@@ -43,6 +54,11 @@
       "description": "Docker base images and GitHub Actions together",
       "groupName": "CI and Docker",
       "matchManagers": ["dockerfile", "github-actions"]
+    },
+    {
+      "description": "TypeScript 7 (the native Go compiler) failed lint and typecheck in Zkofno, the same toolchain. Hold it until typescript-eslint and Next support it, then remove this rule.",
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<7"
     }
   ]
 }
