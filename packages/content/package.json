@@ -13,7 +13,7 @@
   },
   "devDependencies": {
     "@rota/eslint-config": "workspace:*",
-    "eslint": "^9.39.5",
+    "eslint": "^10.15.0",
     "typescript": "^5"
   }
 }
