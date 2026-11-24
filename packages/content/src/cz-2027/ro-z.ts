@@ -107,7 +107,10 @@ export const RO_Z_2027: ClassContent2027 = {
       ],
       // VDH 2027, S. 38: "Hund und HF biegen vor dem Schild nach rechts ab, gehen zwei Schritte
       // in die neue Richtung und biegen dann nach links ab." No sequencing rule.
-      sequencing: {},
+      sequencing: {
+        // "Tým bez zastavení pokračuje dál": starts on the move.
+        startsWalking: true,
+      },
       // By hand: Z-006's right turn (out 0.45 m ahead, 0.35 m right), two steps of ~0.5 m (as
       // Z-024's one step) to the right, then Z-007's left turn back to the way in (another
       // 0.35 m ahead, 0.45 m right). The team goes on parallel to its way in, ~1.8 m right.
@@ -135,7 +138,10 @@ export const RO_Z_2027: ClassContent2027 = {
       ],
       // VDH 2027, S. 38: "Hund und HF biegen vor dem Schild nach links ab, gehen zwei Schritte
       // in die neue Richtung und biegen dann nach rechts ab." No sequencing rule.
-      sequencing: {},
+      sequencing: {
+        // "Tým bez zastavení pokračuje dál": starts on the move.
+        startsWalking: true,
+      },
       // By hand: the mirror of Z-033 (Z-007's left turn, two steps, Z-006's right turn).
       geometry: {
         via: [
@@ -179,7 +185,10 @@ export const RO_Z_2027: ClassContent2027 = {
       // Ende der Übung wieder in Ausgangsrichtung weitergehen." (2026 1-116: "bez mezikroku").
       // The turns' direction is not in the text; the card shows both as Z-010's (handler to
       // the dog's side), as 2026 1-116 had it. No sequencing rule.
-      sequencing: {},
+      sequencing: {
+        // "Tým pokračuje dál bez zastavení": starts on the move.
+        startsWalking: true,
+      },
       // By hand from 2026 1-116 (`exit: -0.3`): the two steps after the first turn about are
       // walked back along the way in (~0.5 m each, as Z-024), so the team ends ~1 m further back.
       // (Read off its animation: the two steps and the turns about end 1 m back.)

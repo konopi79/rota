@@ -169,7 +169,10 @@ export const RO2_CARDS: Card[] = [
       { text: 'Psovod zůstává v pohybu', main: false },
       { text: 'Pes okolo psovoda', main: true },
     ],
-    sequencing: {},
+    sequencing: {
+      // "za pohybu": starts on the move.
+      startsWalking: true,
+    },
     geometry: { exit: 3 },
     image: '2-208',
     sourcePage: 41,
@@ -247,6 +250,8 @@ export const RO2_CARDS: Card[] = [
       { text: 'setrvání psa v pozici', main: true },
     ],
     sequencing: {
+      // "rovnou velí psa do pozice lehni": starts on the move.
+      startsWalking: true,
       // p. 43: "Další cvik v parkuru musí být vybrán z těchto karet: …"
       nextOneOf: ['2-213', '2-215', '2-216', '2-214', '3-302', '3-320', '3-308', '3-319'],
     },
@@ -417,7 +422,10 @@ export const RO2_CARDS: Card[] = [
       { text: 'pes se otáčí vně od psovoda', main: true },
       { text: 'psovod zůstává v pohybu', main: true },
     ],
-    sequencing: {},
+    sequencing: {
+      // "Cvik se provádí za nepřerušované chůze": starts on the move.
+      startsWalking: true,
+    },
     geometry: { exit: 4 },
     image: '2-219',
     sourcePage: 45,

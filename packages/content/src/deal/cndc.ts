@@ -1,5 +1,5 @@
 import type { Card, RoClass } from '../schema'
-import { turnsOf } from './geometry'
+import { CNDC_STEP, turnsOf } from './geometry'
 import { cardOf, endsStatic } from './rules'
 import type { DeckEntry } from './types'
 
@@ -35,8 +35,14 @@ export const cndcEligible = (card: Card): boolean =>
  * plan seen (302 + D0c + 031, 120 + 317, 216 + 201 + 206).
  */
 const TURNS_ROUND = new Set(['Z-013', '1-101', '1-116', '1-121', '1-122', '3-315'])
+/**
+ * In 2027 the double about turn of 1-116 is Z-036, and 1-116 "Stůj – 1 krok vpřed – stůj"
+ * (cards are `(ruleset, code)`, plan R21).
+ */
+const TURNS_ROUND_2027 = new Set([...TURNS_ROUND, 'Z-036'].filter((c) => c !== '1-116'))
 export const turns = (card: Card): boolean =>
-  turnsOf(card).some((t) => t !== 0) || TURNS_ROUND.has(card.code)
+  turnsOf(card).some((t) => t !== 0) ||
+  (card.ruleset === 'CZ-2027' ? TURNS_ROUND_2027 : TURNS_ROUND).has(card.code)
 
 /** A side step (1-102, 1-114, 1-115, 2-207, 2-222, 2-229): done before its card, not a turn. */
 const stepsAside = (card: Card): boolean => card.placement === 'B' && !turns(card)
@@ -176,12 +182,31 @@ export function mostStations(cls: RoClass): { guidelines?: number; strict?: numb
 }
 
 /**
- * Whether the next card at the same station comes after a step forward: "po všech ¨B¨
+ * How the team gets from one card of a station to the next (řád p. 16): the cards "mohou být
+ * dle volby psovoda provedeny bezprostředně za sebou nebo s mezikrokem … po všech ¨B¨
  * (dynamických) cvicích je nutné provést krok dopředu pro ukončení cviku. Teprve poté se psovod
- * může rozhodnout, zda udělá ještě jeden mezikrok" (řád p. 16).
+ * může rozhodnout, zda udělá ještě jeden mezikrok … Pokud psovod udělá více kroků, než je
+ * povoleno, je to již hodnoceno jako průběh následujících cviků."
+ * - `step`: after a dynamic exercise, a step forward ends it, then at most one mezikrok;
+ * - `interstep`: after a static exercise the team stands, but the next exercise starts on the
+ *   move (`startsWalking`, 2-210 + 2-212 — a handler's feedback, 2026-11-23): the one mezikrok;
+ * - `free`: after a static exercise, at once or after one mezikrok.
  */
-export const stepForwardAfter = (cls: RoClass, entry: DeckEntry): boolean =>
-  !endsStatic(cls, cardOf(cls, entry.code), entry.supplementary)
+export type StationStep = 'step' | 'interstep' | 'free'
+export function stationStep(
+  cls: RoClass,
+  previous: DeckEntry,
+  next: Pick<DeckEntry, 'code'>,
+): StationStep {
+  if (!endsStatic(cls, cardOf(cls, previous.code), previous.supplementary)) return 'step'
+  return cardOf(cls, next.code).sequencing.startsWalking ? 'interstep' : 'free'
+}
+
+/**
+ * How far on the next exercise of a station starts, metres: a step on after a dynamic one or
+ * as a mezikrok before one that starts on the move, right where the one before ends otherwise.
+ */
+export const stationStepLength = (step: StationStep): number => (step === 'free' ? 0 : CNDC_STEP)
 
 /** The stations of a deck: runs of entries, each next one `withPrevious`, as index ranges. */
 export function stationsOf(entries: DeckEntry[]): [number, number][] {

@@ -1,13 +1,14 @@
 import {
   finishSide,
   getCard,
+  stationStep,
   stationsOf,
-  stepForwardAfter,
   type Card,
   type Deck,
   type DeckEntry,
   type RoClass,
   type Side,
+  type StationStep,
 } from '@rota/content'
 
 /**
@@ -34,11 +35,21 @@ export type Screen =
         number: number
         card: Card
         supplementary?: Card
-        /** After a dynamic exercise: a step forward first (řád p. 16). */
-        stepFirst?: boolean
+        /**
+         * How the team gets there (řád p. 16, `stationStep`): after a dynamic exercise a step
+         * forward, before one that starts on the move the mezikrok; at once otherwise.
+         */
+        step: StationStep
       }[]
     }
   | { kind: 'finish'; side: Side }
+
+/** A card at the same station, by how the team gets to it (the mezikrok being optional: none). */
+const SAME_STATION = {
+  step: 'speech.sameStationStep',
+  interstep: 'speech.sameStationInterstep',
+  free: 'speech.sameStation',
+} as const
 
 export function announcement(screen: Screen, t: T): string {
   if (screen.kind === 'start') {
@@ -55,7 +66,7 @@ export function announcement(screen: Screen, t: T): string {
   if (entry.pace !== pacePrevious) parts.push(t(`speech.pace.${entry.pace}`))
   if (previous && entry.side !== previous.side) parts.push(t(`speech.side.${entry.side}`))
   for (const next of screen.following ?? []) {
-    const key = next.stepFirst ? 'speech.sameStationStep' : 'speech.sameStation'
+    const key = SAME_STATION[next.step]
     parts.push(t(key, { number: next.number, name: next.card.name }))
     if (next.supplementary) {
       parts.push(t('speech.supplementary', { name: next.supplementary.name }))
@@ -81,9 +92,7 @@ export function deckScreen(deck: Deck, cls: RoClass, pos: number): Screen {
     number: pos + 1 + i,
     card: card(e.code),
     ...(e.supplementary && { supplementary: card(e.supplementary) }),
-    ...(stepForwardAfter(cls, deck.entries[pos - 1 + i] as DeckEntry) && {
-      stepFirst: true as const,
-    }),
+    step: stationStep(cls, deck.entries[pos - 1 + i] as DeckEntry, e),
   }))
   return {
     kind: 'card',

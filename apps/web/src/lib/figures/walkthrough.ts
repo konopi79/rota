@@ -4,6 +4,7 @@ import {
   geometry,
   getCard,
   paceAfter,
+  stationStep,
   type Card,
   type Deck,
   type DeckEntry,
@@ -339,15 +340,16 @@ export function walkthroughOf(deck: Deck, cls: RoClass, start = 0): Walkthrough 
     const follows = card(entry.code).sequencing.onlyAfterLeave ? (jumpsAt[i - 1] ?? []) : []
     const firstStep = steps.length
     // Several cards at one station (CNDC): the next exercise right where the one before ends,
-    // after a dynamic one a step on ("krok dopředu pro ukončení cviku", řád p. 16) — no way
-    // to it. Its card on the station's stand, beside the one before.
+    // after a dynamic one a step on ("krok dopředu pro ukončení cviku", řád p. 16), before one
+    // that starts on the move the mezikrok — no way to it. Its card on the station's stand,
+    // beside the one before.
     const previousEntry = entries[i - 1]
     if (i > from && entry.withPrevious && previousEntry) {
-      const previous = card(previousEntry.code)
-      if (!endsStatic(cls, previous, previousEntry.supplementary)) {
-        steps.push({ walk: geometry.CNDC_STEP, pace: entry.pace, caption: 'cndcStep' })
-      } else {
-        steps.push({ wait: 0.4, caption: 'cndcNext' })
+      const how = stationStep(cls, previousEntry, entry)
+      if (how === 'free') steps.push({ wait: 0.4, caption: 'cndcNext' })
+      else {
+        const caption = how === 'step' ? 'cndcStep' : 'cndcInterstep'
+        steps.push({ walk: geometry.CNDC_STEP, pace: entry.pace, caption })
       }
       steps.push({ dogSide: exercise.dogStarts ?? 'left', caption: 'cndcNext' })
       const exerciseStep = steps.length

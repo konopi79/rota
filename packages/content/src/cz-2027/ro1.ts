@@ -236,7 +236,10 @@ export const RO1_2027: ClassContent2027 = {
       // Schritt in die neue Richtung, schließt einen weiteren Schritt an und bleibt stehen. Der
       // Hund bleibt in der Fußposition und legt sich ins Platz neben den HF, wenn dieser anhält."
       // From walking: no Halt on the card and no "aus dem Stand" (cf. 1-103). Ends static.
-      sequencing: {},
+      sequencing: {
+        // "za chůze": starts on the move.
+        startsWalking: true,
+      },
       // As 2-201 (turn, one step: exitSide −0.6), one step (0.4 m) further.
       geometry: { turn: 90, exit: 0.5, exitSide: -1 },
       image: '1-127',
@@ -253,7 +256,10 @@ export const RO1_2027: ClassContent2027 = {
         'Psovod v místě pro provedení cviku za chůze natočí nohy o 90° vlevo (jedním pohybem nohou, nohy se dotýkají). Poté udělá druhou nohou krok v novém směru, připojí další krok a zastaví se. Pes zůstává v pozici u nohy, a jakmile psovod zastaví, lehá si vedle něj.',
       ],
       // VDH 2027, S. 45: as 1-127, "nach links".
-      sequencing: {},
+      sequencing: {
+        // "za chůze": starts on the move.
+        startsWalking: true,
+      },
       // As 2-202, one step further.
       geometry: { turn: -90, exit: 0.5, exitSide: 1 },
       image: '1-128',
@@ -271,7 +277,10 @@ export const RO1_2027: ClassContent2027 = {
       ],
       // VDH 2027, S. 45: as 1-127, ending "Der Hund bleibt in der Fußposition und stellt sich
       // neben den HF, wenn dieser anhält."
-      sequencing: {},
+      sequencing: {
+        // "za chůze": starts on the move.
+        startsWalking: true,
+      },
       geometry: { turn: 90, exit: 0.5, exitSide: -1 },
       image: '1-129',
       sourcePage: 45,
@@ -287,7 +296,10 @@ export const RO1_2027: ClassContent2027 = {
         'Psovod v místě pro provedení cviku za chůze natočí nohy o 90° vlevo (jedním pohybem nohou, nohy se dotýkají). Poté udělá druhou nohou krok v novém směru, připojí další krok a zastaví se. Pes zůstává v pozici u nohy, a jakmile psovod zastaví, zaujme vedle něj pozici stůj.',
       ],
       // VDH 2027, S. 45: as 1-129, "nach links".
-      sequencing: {},
+      sequencing: {
+        // "za chůze": starts on the move.
+        startsWalking: true,
+      },
       geometry: { turn: -90, exit: 0.5, exitSide: 1 },
       image: '1-130',
       sourcePage: 45,

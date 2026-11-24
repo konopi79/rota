@@ -1,4 +1,12 @@
-export { cndcAllowed, stationsOf, stepForwardAfter, type CndcLevel, type CndcReason } from './cndc'
+export {
+  cndcAllowed,
+  stationsOf,
+  stationStep,
+  stationStepLength,
+  type CndcLevel,
+  type CndcReason,
+  type StationStep,
+} from './cndc'
 export { customDeck, type CustomCard } from './custom'
 export { dealDeck } from './deal'
 export { randomSeed } from './prng'

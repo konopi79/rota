@@ -92,6 +92,8 @@ export const RO2_2027: ClassContent2027 = {
         'Další cvik v parkuru musí být vybrán z těchto karet: 2–213, 2–215, 2–216 a 2–214 s D0a–e. Pro třídu RO3 je možné použít i tyto karty: 3–320, 3–321 a 3–308, 3–319 s D0a–e.',
       ],
       sequencing: {
+        // "rovnou velí psa do pozice lehni": starts on the move.
+        startsWalking: true,
         // VDH 2027, S. 48: "In Kombination mit den Schildern 213, 215, 216, sowie 214 mit Z a-e.
         // Ab Klasse 3 zusätzlich 320, 321 sowie 308 und 319 jeweils mit Z a-e" — 3-321 new,
         // 3-302 gone (in 2027 it is "Hund über 2 Hürden", S. 55).
@@ -263,7 +265,10 @@ export const RO2_2027: ClassContent2027 = {
       // VDH 2027, S. 54: "Vor dem Schild macht der HF in der Bewegung einen Schritt nach links
       // und der Hund folgt ihm gleichzeitig in einer Linie. Anschließend geht das Team links am
       // Schild vorbei." No sequencing rule.
-      sequencing: {},
+      sequencing: {
+        // "Za stálého pohybu": starts on the move.
+        startsWalking: true,
+      },
       // By hand: the mirror of 1-102 (right, -0.85), the size of 2-229's left side step (0.55,
       // read off its animation — a step towards the dog is shorter).
       geometry: { exitSide: 0.55 },

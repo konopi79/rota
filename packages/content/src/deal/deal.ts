@@ -1,11 +1,20 @@
 import { getClass } from '../registry'
 import type { Card, Field, RoClass } from '../schema'
 import { mulberry32, pick, pickWeighted } from './prng'
-import { CNDC_STEP, normalize, turnsOf, withSupplementary } from './geometry'
+import { normalize, turnsOf, withSupplementary } from './geometry'
 import { FieldPlanner, type PlannerState } from './layout'
 import { NationalCourse, type CourseState } from './course'
 import { cardOf, endsStatic, fieldKey, fieldOf, hasEquipment, paceAfter, sideAfter } from './rules'
-import { groupStations, grouped, joinable, startGrouping, wantsJoin, type Grouping } from './cndc'
+import {
+  groupStations,
+  grouped,
+  joinable,
+  startGrouping,
+  stationStep,
+  stationStepLength,
+  wantsJoin,
+  type Grouping,
+} from './cndc'
 import type { Deck, DeckEntry, DealOptions, Layout, Pace, Side } from './types'
 
 const ATTEMPTS = 100
@@ -322,13 +331,14 @@ function attemptDeal(
     const grouping = state.grouping
     const station = grouping ? entries.slice(entries.length - grouping.size) : []
     const drawJoined = (): Drawn | undefined => {
-      const step = state.prevStatic ? 0 : CNDC_STEP
+      const before = entries.at(-1) as DeckEntry
       let pool = eligible.filter((c) => joinable(cls, station, c, d0sOf(c, true)))
       while (pool.length && planner) {
         const card = weighted
           ? pickWeighted(pool, (c) => weights.get(c) ?? 1, random)
           : pick(pool, random)
         if (!card) return undefined
+        const step = stationStepLength(stationStep(cls, before, card))
         const at = planner.join(card, state.side, step)
         if (at) return { card, at }
         pool = pool.filter((c) => c !== card)

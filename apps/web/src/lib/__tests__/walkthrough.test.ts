@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { dealDeck, getClass, type ClassId } from '@rota/content'
+import { dealDeck, getClass, stationStep, type ClassId } from '@rota/content'
 
 import { DOG } from '../figures/dog'
 import { cardFootprint, ExercisePlayer, offStand, tailTip, type Pose } from '../figures/exercise'
@@ -88,6 +88,17 @@ const walkable = (classId: ClassId, n: number, cndc = false, big = false) => {
   return seeds
 }
 
+/** CNDC courses with a mezikrok at a station (`stationStep` 'interstep'), class and seed. */
+const MEZIKROK = [
+  ['RO2', 16],
+  ['RO2', 17],
+  ['RO3', 1],
+  ['RO3', 11],
+  ['RO1-2027', 8],
+  ['RO2-2027', 6],
+  ['RO3-2027', 10],
+] as const
+
 describe('a course walked through in animation (R16, R17, R19)', () => {
   const courses = [
     ...(['RO-Z', 'RO1', 'RO2', 'RO3', 'RO-V'] as const).flatMap((classId) =>
@@ -115,6 +126,12 @@ describe('a course walked through in animation (R16, R17, R19)', () => {
       walkable(classId, 2, true).map(
         (seed) => [`${classId} seed ${seed} with CNDC`, classId, seed, true, false] as const,
       ),
+    ),
+    // …with a mezikrok before an exercise that starts on the move (2-229 + 2-212, 1-124 +
+    // 2-219, 1-115 + 3-310, 3-302 + 3-306, 1-128 + 1-123, 2-229 + 2-208, 1-130 + 3-331 + 1-123).
+    ...MEZIKROK.map(
+      ([classId, seed]) =>
+        [`${classId} seed ${seed} with a mezikrok`, classId, seed, true, false] as const,
     ),
   ]
 
@@ -208,6 +225,17 @@ describe('a course walked through in animation (R16, R17, R19)', () => {
     },
     60_000,
   )
+
+  test.each(MEZIKROK)('%s seed %d: a mezikrok before an exercise on the move', (classId, seed) => {
+    const { cls, deck } = courseOf(classId, seed, true)
+    const interstep = deck.entries.filter(
+      (e, i) => e.withPrevious && stationStep(cls, deck.entries[i - 1]!, e) === 'interstep',
+    )
+    expect(interstep.length).toBeGreaterThan(0)
+    const w = walkthroughOf(deck, cls)
+    const steps = w.exercise.steps.filter((s) => 'walk' in s && s.caption === 'cndcInterstep')
+    expect(steps).toHaveLength(interstep.length)
+  })
 
   test('starting at a card, the team sets off just before it', () => {
     const { cls, deck } = courseOf('RO1', 1)

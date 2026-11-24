@@ -5,8 +5,8 @@ import {
   getCard,
   getClass,
   randomSeed,
+  stationStep,
   stationsOf,
-  stepForwardAfter,
   type Card,
   type DeckEntry,
   type RoClass,
@@ -369,9 +369,12 @@ function StationCards({
         <div key={i} className="flex min-h-0 min-w-0 flex-1 flex-col items-center gap-1">
           <span className="text-sm font-semibold tabular-nums">
             {first + i}
-            {/* After a dynamic exercise the next one starts with a step forward (řád p. 16). */}
-            {i > 0 && stepForwardAfter(cls, entries[i - 1] as DeckEntry) && (
-              <span className="text-muted-foreground font-normal"> · {t('deck.stepFirst')}</span>
+            {/* How many steps between the cards of a station (řád p. 16). */}
+            {i > 0 && (
+              <span className="text-muted-foreground font-normal">
+                {' · '}
+                {t(`deck.stationStep.${stationStep(cls, entries[i - 1] as DeckEntry, entry)}`)}
+              </span>
             )}
           </span>
           <div className="min-h-0 w-full flex-1">

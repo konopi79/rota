@@ -57,6 +57,8 @@ export const RO3_2027: ClassContent2027 = {
         LEAVE_FOLLOW_UPS_TEXT,
       ],
       sequencing: {
+        // "aniž by si předtím sedl": starts on the move.
+        startsWalking: true,
         // VDH 2027, S. 56: "In Kombination mit den Schildern 213, 215, 216, 320, 321, 322 sowie
         // 214, 308, 309, 319 jeweils mit Z a-e" — no 3-302 any more.
         nextOneOf: LEAVE_FOLLOW_UPS,
@@ -82,6 +84,8 @@ export const RO3_2027: ClassContent2027 = {
         LEAVE_FOLLOW_UPS_TEXT,
       ],
       sequencing: {
+        // "aniž by se zastavil": starts on the move.
+        startsWalking: true,
         // VDH 2027, S. 57: "In Kombination mit den Schildern 213, 215, 216, 320, 321, 322 sowie
         // 214, 308, 309, 319 jeweils mit Z a-e" — no 3-302 any more.
         nextOneOf: LEAVE_FOLLOW_UPS,
@@ -93,6 +97,8 @@ export const RO3_2027: ClassContent2027 = {
         'Další cvik v parkuru musí být vybrán z těchto karet: 2-213, 2-215, 2-216, 3-320, 3-321, a také 2-214, 3-308, 3-319 s doplňkovou kartou D0a–e.',
       ],
       sequencing: {
+        // "aniž by se zastavil": starts on the move.
+        startsWalking: true,
         // VDH 2027, S. 58: "In Kombination mit den Schildern 213, 215, 216, 320, 321, sowie 214,
         // 308, 319 jeweils mit Z a-e" — still no 322 or 309 (the dog is already down), no 3-302.
         nextOneOf: ['2-213', '2-215', '2-216', '3-320', '3-321', '2-214', '3-308', '3-319'],
@@ -104,6 +110,8 @@ export const RO3_2027: ClassContent2027 = {
         LEAVE_FOLLOW_UPS_TEXT,
       ],
       sequencing: {
+        // "aniž by se zastavil": starts on the move.
+        startsWalking: true,
         // VDH 2027, S. 58: "In Kombination mit den Schildern 213, 215, 216, 320, 321, 322 sowie
         // 214, 308, 309, 319 jeweils mit Z a-e" — no 3-302 any more.
         nextOneOf: LEAVE_FOLLOW_UPS,
@@ -251,6 +259,8 @@ export const RO3_2027: ClassContent2027 = {
         'Psovod a pes se před kartou současně otočí o 180° každý směrem od sebe a poté pokračují v opačném směru. Strana vedení psa se změní. Tým zůstává v pohybu.',
       ],
       sequencing: {
+        // "Tým zůstává v pohybu": starts on the move.
+        startsWalking: true,
         // VDH 2027, S. 62: "Der Hund wechselt dabei die Fußposition."
         sideChange: true,
       },
@@ -274,6 +284,8 @@ export const RO3_2027: ClassContent2027 = {
         SIDE_MARK,
       ],
       sequencing: {
+        // "Zastavit – odložení ve stoje": starts on the move.
+        startsWalking: true,
         // VDH 2027, S. 62: "In Kombination mit den Schilder 214 Z a-e, 319 Z a-e, 215 und 216."
         nextOneOf: ['2-214', '3-319', '2-215', '2-216'],
       },
@@ -295,7 +307,10 @@ export const RO3_2027: ClassContent2027 = {
       // VDH 2027, S. 63: the handler comes back to the dog ("zurück in die Fußposition und bleibt
       // stehen") — not a leave card, no follow-up. Round the dog "vorwärts" (S. 16), within 50 cm:
       // done on the spot, no geometry (as 3-303).
-      sequencing: {},
+      sequencing: {
+        // "aniž by se zastavil": starts on the move.
+        startsWalking: true,
+      },
       image: '3-330',
       sourcePage: 63,
     },
@@ -309,7 +324,10 @@ export const RO3_2027: ClassContent2027 = {
         'V místě pro provedení cviku psovod, aniž by se zastavil, odkládá psa do lehu a velí mu zůstat. Pes musí zaujmout pozici z pohybu. Psovod se během odkládání psa smí otočit tělem ke psu, ale přitom se musí stále pohybovat vpřed. Psovod obejde psa zepředu ve vzdálenosti nejvýše 50 cm, vrátí se do pozice u nohy a zastaví se. Pes musí zaujmout pozici dříve, než psovod dojde k jeho protějšímu rameni. Pes zůstává ležet, dokud se tým opět nerozejde.',
       ],
       // VDH 2027, S. 63: as 3-330 — not a leave card, done on the spot.
-      sequencing: {},
+      sequencing: {
+        // "aniž by se zastavil": starts on the move.
+        startsWalking: true,
+      },
       image: '3-331',
       sourcePage: 63,
     },
@@ -323,7 +341,10 @@ export const RO3_2027: ClassContent2027 = {
         'V místě pro provedení cviku psovod, aniž by se zastavil, odkládá psa do stoje a velí mu zůstat. Pes musí zaujmout pozici z pohybu. Psovod se během odkládání psa smí otočit tělem ke psu, ale přitom se musí stále pohybovat vpřed. Psovod obejde psa zepředu ve vzdálenosti nejvýše 50 cm, vrátí se do pozice u nohy a zastaví se. Pes musí zaujmout pozici dříve, než psovod dojde k jeho protějšímu rameni. Pes zůstává stát, dokud se tým opět nerozejde.',
       ],
       // VDH 2027, S. 63: as 3-330 — not a leave card, done on the spot.
-      sequencing: {},
+      sequencing: {
+        // "aniž by se zastavil": starts on the move.
+        startsWalking: true,
+      },
       image: '3-332',
       sourcePage: 63,
     },
