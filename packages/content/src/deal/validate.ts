@@ -663,7 +663,8 @@ function validateRound(
 
   /**
    * A card done at the station of the one before: where that exercise ends, a step on after a
-   * dynamic one ("krok dopředu pro ukončení cviku", řád p. 16).
+   * dynamic one ("krok dopředu pro ukončení cviku", řád p. 16) or before one that starts on the
+   * move (the mezikrok).
    */
   const checkJoined = (i: number, to: Pose) => {
     const previous = shapes[i - 1]
@@ -674,7 +675,7 @@ function validateRound(
     }
     const static_ = endsStatic(cls, cards[i - 1] as Card, before.supplementary)
     const walk = walkOf(previous.exit, to)
-    const step = static_ ? 0 : CNDC_STEP
+    const step = !static_ || (cards[i] as Card).sequencing.startsWalking ? CNDC_STEP : 0
     if (!walk || Math.abs(walk.ahead - step) > EPS || Math.abs(walk.across) > EPS) {
       errors.push(`${label(i)}: not where the exercise before it ends`)
     }

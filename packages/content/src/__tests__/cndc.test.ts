@@ -1,11 +1,13 @@
 import { describe, expect, test } from 'bun:test'
 
 import { getClass } from '../registry'
-import { cndcAllowed, stationsOf, stepForwardAfter } from '../deal/cndc'
+import { cndcAllowed, stationsOf, stationStep, stationStepLength } from '../deal/cndc'
 import { customDeck, customDeckIssues, dealDeck, geometry, validateDeck } from '../deal'
 import { cardOf } from '../deal/rules'
 import type { DeckEntry } from '../deal'
-import { EQUIPMENT } from '../schema'
+import { EQUIPMENT, type Card } from '../schema'
+import { CZ_CARDS } from '../cz'
+import { CZ_2027_CARDS } from '../cz-2027'
 
 const ro3 = getClass('RO3')!
 const group = (...codes: string[]) =>
@@ -37,13 +39,42 @@ describe('CNDC — several cards at one station (R18)', () => {
     expect(allowed('2-209', 'Z-001')).toBe(false)
   })
 
-  test('after a dynamic exercise a step forward (řád p. 16)', () => {
-    const step = (code: string) => stepForwardAfter(ro3, group(code)[0] as DeckEntry)
-    expect(step('3-326')).toBe(true)
-    expect(step('3-317')).toBe(false)
+  test('after a dynamic exercise a step forward, before one on the move a mezikrok (řád p. 16)', () => {
+    const step = (codes: string) => {
+      const [before, next] = group(...codes.split(' ')) as [DeckEntry, DeckEntry]
+      return stationStep(ro3, before, next)
+    }
+    expect(step('3-326 3-305')).toBe('step')
+    expect(step('3-317 3-305')).toBe('free')
     // "A nebo B": the D0 card decides.
-    expect(step('3-302+D0c')).toBe(true)
-    expect(step('3-302+D0a')).toBe(false)
+    expect(step('3-302+D0c 3-305')).toBe('step')
+    expect(step('3-302+D0a 3-305')).toBe('free')
+    // "Stop – vstaň – sedni" then "Zastavit – lehni – odchod": the dog sits, the team stands,
+    // and 2-212 starts on the move — one mezikrok (a handler's feedback, 2026-11-23).
+    expect(step('2-210 2-212')).toBe('interstep')
+    expect(step('3-305 3-311')).toBe('interstep')
+    // After a dynamic exercise its own step forward does.
+    expect(step('3-326 2-212')).toBe('step')
+    expect(stationStepLength('free')).toBe(0)
+    expect(stationStepLength('interstep')).toBe(geometry.CNDC_STEP)
+  })
+
+  test('the cards that start on the move, as the regulation words them', () => {
+    const walking = (cards: Card[]) =>
+      cards.filter((c) => c.sequencing.startsWalking).map((c) => c.code)
+    // "za chůze", "aniž by se zastavil", "rovnou lehá", "aniž by si předtím sedl", …
+    expect(walking(CZ_CARDS)).toEqual([
+      ...['Z-006', 'Z-007', 'Z-008', 'Z-009', 'Z-010', '1-102', '1-109', '1-116', '1-118'],
+      ...['1-123', '2-208', '2-212', '2-219', '3-303', '3-306', '3-307', '3-310', '3-311'],
+      ...['3-312', '3-315', '3-318', '3-327'],
+    ])
+    // 1-116 is another exercise in 2027 (its double about turn is Z-036).
+    expect(walking(CZ_2027_CARDS)).toEqual([
+      ...['Z-006', 'Z-007', 'Z-008', 'Z-009', 'Z-010', 'Z-033', 'Z-034', 'Z-036', '1-102'],
+      ...['1-109', '1-118', '1-123', '1-127', '1-128', '1-129', '1-130', '2-208', '2-212'],
+      ...['2-219', '2-234', '3-303', '3-306', '3-307', '3-310', '3-311', '3-312', '3-315'],
+      ...['3-318', '3-327', '3-328', '3-329', '3-330', '3-331', '3-332'],
+    ])
   })
 
   test('a change of direction first, a leave card last, a follow-up first', () => {
@@ -136,7 +167,7 @@ describe('CNDC — several cards at one station (R18)', () => {
       const entry = deck.entries[i]!
       const before = deck.entries[i - 1]!
       const exit = geometry.shapeOf(cardOf(ro3, before.code), before.at!, before.side, false).exit
-      const step = stepForwardAfter(ro3, before) ? geometry.CNDC_STEP : 0
+      const step = stationStepLength(stationStep(ro3, before, entry))
       const walk = geometry.walkOf(exit, entry.at!)!
       expect(walk.ahead).toBeCloseTo(step, 6)
       expect(walk.across).toBeCloseTo(0, 6)

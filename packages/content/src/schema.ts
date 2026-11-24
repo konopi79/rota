@@ -57,6 +57,13 @@ export const sequencingSchema = z
     sideOnly: z.enum(['left', 'right']).optional(),
     /** FCI: may be performed in slow/fast pace (the flowing exercises 105–113). */
     paceCompatible: z.boolean().optional(),
+    /**
+     * National: the exercise starts on the move — done while walking ("za chůze", "aniž by se
+     * zastavil") or a stop straight into a position ("rovnou lehá", "aniž by si předtím sedl").
+     * At a CNDC after a static exercise the team is standing, so it takes the one mezikrok the
+     * regulation allows first (řád p. 16, `stationStep`).
+     */
+    startsWalking: z.boolean().optional(),
     /** Classes in which the card may only be the last one before the finish. */
     lastOnly: z.array(classIdSchema).min(1).optional(),
     equipment: z.array(equipmentSchema).min(1).optional(),

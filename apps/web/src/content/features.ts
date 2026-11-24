@@ -24,7 +24,7 @@ export interface FeatureGroup {
 }
 
 /** The most recently shipped feature — badged "Nové" on the page. */
-export const LATEST_FEATURE_ID = 'regulation-2027'
+export const LATEST_FEATURE_ID = 'cndc'
 
 export const FEATURE_GROUPS: FeatureGroup[] = [
   {
@@ -147,7 +147,8 @@ export const FEATURE_GROUPS: FeatureGroup[] = [
         points: [
           'Raději přísněji: jen kombinace, které pravidla jistě dovolují.',
           'Na plánku stojí karty stanoviště vedle sebe; za CNDC s dynamickým cvikem je další stanoviště o metr dál, jak chtějí směrnice.',
-          'V animaci tým na stanovišti navazuje dalším cvikem hned, po dynamickém cviku krokem vpřed.',
+          'U každé karty stanoviště vidíš, kolik kroků smíš udělat: po statickém cviku hned, nebo po jednom mezikroku; když další cvik začíná z chůze (třeba Zastavit – lehni), ten mezikrok uděláš; po dynamickém cviku krok vpřed a nejvýš jeden mezikrok.',
+          'V animaci tým na stanovišti navazuje dalším cvikem hned, po dynamickém cviku krokem vpřed, před cvikem z chůze jedním mezikrokem.',
           'Ve vlastním parkuru dáš kartu na stejné stanoviště jako předchozí.',
         ],
       },

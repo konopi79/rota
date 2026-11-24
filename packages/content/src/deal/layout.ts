@@ -336,7 +336,7 @@ export class FieldPlanner {
 
   /**
    * `card` done at the station laid out last (CNDC, plan R18), right where its last exercise
-   * ends — `step` metres on after a dynamic one (`CNDC_STEP`) — its card on the station's stand
+   * ends — `step` metres on after a dynamic one or a mezikrok (`stationStep`) — its card on the station's stand
    * beside the others (`standsOf`); or `undefined` if it does not fit there.
    */
   join(card: Card, side: Side, step: number): Placement | undefined {

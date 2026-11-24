@@ -74,7 +74,10 @@ export const RO3_CARDS: Card[] = [
       { text: 'psovod okolo psa, pes zůstává v pozici', main: true },
       { text: 'psovod stojí na konci vedle psa', main: false },
     ],
-    sequencing: {},
+    sequencing: {
+      // "aniž by předtím zaujal polohu sedni": starts on the move.
+      startsWalking: true,
+    },
     image: '3-303',
     sourcePage: 52,
   },
@@ -128,7 +131,10 @@ export const RO3_CARDS: Card[] = [
       { text: 'psovod zastaví, pes stojí', main: true },
       { text: 'psovod vzad, pes vzad u nohy psovoda, aniž by se posadil', main: true },
     ],
-    sequencing: {},
+    sequencing: {
+      // "aniž by si předtím sedl": starts on the move.
+      startsWalking: true,
+    },
     geometry: { exit: -1 },
     image: '3-306',
     sourcePage: 53,
@@ -148,6 +154,8 @@ export const RO3_CARDS: Card[] = [
       { text: 'pes zůstává v pozici', main: true },
     ],
     sequencing: {
+      // "aniž by si předtím sedl": starts on the move.
+      startsWalking: true,
       // p. 53: "Další cvik v parkuru musí být vybrán z těchto karet: …"
       nextOneOf: [
         '2-213',
@@ -236,6 +244,8 @@ export const RO3_CARDS: Card[] = [
       { text: 'psovod dodržuje pohyb vpřed', main: true },
     ],
     sequencing: {
+      // "aniž by se zastavil": starts on the move.
+      startsWalking: true,
       // p. 54: "Další cvik v parkuru musí být vybrán z těchto karet: …"
       nextOneOf: [
         '2-213',
@@ -270,6 +280,8 @@ export const RO3_CARDS: Card[] = [
       { text: 'psovod dodržuje pohyb vpřed', main: true },
     ],
     sequencing: {
+      // "aniž by se zastavil": starts on the move.
+      startsWalking: true,
       // p. 55: "Další cvik v parkuru musí být vybrán z těchto karet: …" — 3-322 and 3-309
       // are struck through here (unlike 3-310/3-312): both start with a down, and the dog
       // is already down.
@@ -294,6 +306,8 @@ export const RO3_CARDS: Card[] = [
       { text: 'psovod dodržuje pohyb vpřed', main: true },
     ],
     sequencing: {
+      // "aniž by se zastavil": starts on the move.
+      startsWalking: true,
       // p. 55: "Další cvik v parkuru musí být vybrán z těchto karet: …"
       nextOneOf: [
         '2-213',
@@ -392,7 +406,10 @@ export const RO3_CARDS: Card[] = [
       { text: 'pes se otáčí od psovoda, psovod současně od psa', main: true },
       { text: 'psovod zůstává v pohybu', main: true },
     ],
-    sequencing: {},
+    sequencing: {
+      // "Cvik se provádí za nepřerušované chůze": starts on the move.
+      startsWalking: true,
+    },
     image: '3-315',
     sourcePage: 57,
   },
@@ -450,7 +467,10 @@ export const RO3_CARDS: Card[] = [
       { text: 'pes obejde psovoda', main: true },
       { text: 'pes se přiřadí k noze do stoje', main: false },
     ],
-    sequencing: {},
+    sequencing: {
+      // "aniž by si předtím sedl": starts on the move.
+      startsWalking: true,
+    },
     image: '3-318',
     sourcePage: 58,
   },
@@ -675,6 +695,8 @@ export const RO3_CARDS: Card[] = [
       { text: 'pes mění stranu diagonálně před psovodem', main: true },
     ],
     sequencing: {
+      // "za pohybu": starts on the move.
+      startsWalking: true,
       // p. 61: the dog changes the heeling side.
       sideChange: true,
     },

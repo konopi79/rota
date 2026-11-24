@@ -107,7 +107,10 @@ export const RO_Z_CARDS: Card[] = [
     name: 'Obrat vpravo za chůze',
     description: ['Tým provede před kartou obrat vpravo o 90° a bez zastavení pokračuje dál.'],
     subParts: [{ text: 'obrat vpravo', main: true }],
-    sequencing: {},
+    sequencing: {
+      // "Obrat vpravo za chůze": starts on the move.
+      startsWalking: true,
+    },
     geometry: { turn: 90, exit: 0.45, exitSide: -0.35 },
     image: 'z-006',
     sourcePage: 20,
@@ -121,7 +124,10 @@ export const RO_Z_CARDS: Card[] = [
     name: 'Obrat vlevo za chůze',
     description: ['Tým provede před kartou obrat vlevo o 90° a bez zastavení pokračuje dál.'],
     subParts: [{ text: 'obrat vlevo', main: true }],
-    sequencing: {},
+    sequencing: {
+      // "Obrat vlevo za chůze": starts on the move.
+      startsWalking: true,
+    },
     geometry: { turn: -90, exit: 0.45, exitSide: 0.35 },
     image: 'z-007',
     sourcePage: 21,
@@ -137,7 +143,10 @@ export const RO_Z_CARDS: Card[] = [
       'Tým provede před kartou obrat vpravo o 180° a bez zastavení pokračuje dál. Obrat v malém oblouku je dovolen.',
     ],
     subParts: [{ text: 'obrat vpravo 180°', main: true }],
-    sequencing: {},
+    sequencing: {
+      // "bez zastavení pokračuje dál": starts on the move.
+      startsWalking: true,
+    },
     geometry: { turn: 180 },
     image: 'z-008',
     sourcePage: 21,
@@ -153,7 +162,10 @@ export const RO_Z_CARDS: Card[] = [
       'Tým provede před kartou obrat vlevo o 180° a bez zastavení pokračuje dál. Obrat v malém oblouku je dovolen.',
     ],
     subParts: [{ text: 'obrat vlevo 180°', main: true }],
-    sequencing: {},
+    sequencing: {
+      // "bez zastavení pokračuje dál": starts on the move.
+      startsWalking: true,
+    },
     geometry: { turn: -180 },
     image: 'z-009',
     sourcePage: 21,
@@ -169,7 +181,10 @@ export const RO_Z_CARDS: Card[] = [
       'Psovod provede před kartou obrat do té strany, na které se nachází pes, zatímco pes provádí obrat na tu stranu, kde se nachází psovod. Pes obchází psovoda zezadu a vrací se na výchozí stranu u nohy psovoda. Tým poté bez zastavení pokračuje dál.',
     ],
     subParts: [{ text: 'čelem vzad - pes za psovodem', main: true }],
-    sequencing: {},
+    sequencing: {
+      // "Tým poté bez zastavení pokračuje dál": starts on the move.
+      startsWalking: true,
+    },
     geometry: { turn: -180 },
     image: 'z-010',
     sourcePage: 21,

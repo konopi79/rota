@@ -249,8 +249,9 @@ export function standsOf(
 
 /**
  * The next exercise of a CNDC starts where the one before ends — "bezprostředně za sebou nebo s
- * mezikrokem" — after a dynamic one past "krok dopředu pro ukončení cviku" (řád p. 16): a
- * step this long, metres (as animated, `SCRIPTED_STEP`). The optional step between is left out.
+ * mezikrokem" — after a dynamic one past "krok dopředu pro ukončení cviku" (řád p. 16), before
+ * one that starts on the move past the mezikrok (`stationStep`): a step this long, metres (as
+ * animated, `SCRIPTED_STEP`). The optional mezikrok otherwise is left out.
  */
 export const CNDC_STEP = 0.55
 /**

@@ -53,7 +53,7 @@ describe('announcement', () => {
           number: 4,
           entry: entry('1-124'),
           card: card('1-124'),
-          following: [{ number: 5, card: card('3-305') }],
+          following: [{ number: 5, card: card('3-305'), step: 'free' }],
         },
         t,
       ),
@@ -70,12 +70,29 @@ describe('announcement', () => {
           number: 17,
           entry: entry('3-326'),
           card: card('3-326'),
-          following: [{ number: 18, card: card('1-103'), stepFirst: true }],
+          following: [{ number: 18, card: card('1-103'), step: 'step' }],
         },
         t,
       ),
     ).toBe(
       'Karta 17, Výměna při obratu o 180° vlevo. Na stejném stanovišti po kroku vpřed karta 18, Stop – obrat vpravo o 90° – vpřed.',
+    )
+  })
+
+  test('before an exercise that starts on the move, a mezikrok', () => {
+    expect(
+      announcement(
+        {
+          kind: 'card',
+          number: 12,
+          entry: entry('2-210'),
+          card: card('2-210'),
+          following: [{ number: 13, card: card('2-212'), step: 'interstep' }],
+        },
+        t,
+      ),
+    ).toBe(
+      'Karta 12, Stop – vstaň – sedni. Na stejném stanovišti po jednom mezikroku karta 13, Zastavit – lehni – odchod.',
     )
   })
 

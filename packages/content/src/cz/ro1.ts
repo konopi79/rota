@@ -39,7 +39,10 @@ export const RO1_CARDS: Card[] = [
       { text: 'pes se pohybuje současně se psovodem', main: false },
       { text: 'psovod zůstává v pohybu', main: false },
     ],
-    sequencing: {},
+    sequencing: {
+      // "Za stálého pohybu": starts on the move.
+      startsWalking: true,
+    },
     geometry: { exitSide: -0.85 },
     image: '1-102',
     sourcePage: 30,
@@ -188,7 +191,10 @@ export const RO1_CARDS: Card[] = [
       { text: 'lehni (z plynulého pohybu) bez předchozího sedni', main: true },
       { text: 'na konci psovod stojí vedle psa', main: false },
     ],
-    sequencing: {},
+    sequencing: {
+      // "pes rovnou na povel lehá": starts on the move.
+      startsWalking: true,
+    },
     image: '1-109',
     sourcePage: 33,
   },
@@ -357,7 +363,10 @@ export const RO1_CARDS: Card[] = [
       { text: '2x čelem vzad', main: true },
       { text: 'práce týmu bez mezikroku', main: false },
     ],
-    sequencing: {},
+    sequencing: {
+      // "Tým pokračuje dál bez zastavení": starts on the move.
+      startsWalking: true,
+    },
     geometry: { exit: -0.3 },
     image: '1-116',
     sourcePage: 35,
@@ -422,7 +431,10 @@ export const RO1_CARDS: Card[] = [
       { text: 'zastavení', main: true },
       { text: 'stání bez usedání', main: true },
     ],
-    sequencing: {},
+    sequencing: {
+      // "aniž by si před tím sedl": starts on the move.
+      startsWalking: true,
+    },
     image: '1-118',
     sourcePage: 36,
   },
@@ -521,6 +533,8 @@ export const RO1_CARDS: Card[] = [
       { text: 'Psovod je stále v pohybu', main: false },
     ],
     sequencing: {
+      // "Psovod se stále pohybuje dopředu": starts on the move.
+      startsWalking: true,
       // p. 38: the dog changes the heeling side.
       sideChange: true,
     },
